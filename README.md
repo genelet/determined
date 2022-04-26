@@ -65,23 +65,23 @@ type Toy struct {
     Price   float32 `json:"price"`
 }
 
-type Adult struct {
+type Child struct {
     Toys []*Toy `json:"toys"`
     Family bool `json:"family"`
     Lastname string `json:"lastname"`
     objectMap []byte
     ref map[string]interface{}
 }
-func (self *Adult) Assign(objectMap []byte, ref map[string]interface{}) {
+func (self *Child) Assign(objectMap []byte, ref map[string]interface{}) {
     self.objectMap = objectMap
     self.ref = ref
 }
-func (self *Adult) UnmarshalJSON(dat []byte) error {
-    return JJUnmarshal(dat, self, self.objectMap, self.ref)
+func (self *Child) UnmarshalJSON(dat []byte) error {
+    return xxx.JJUnmarshal(dat, self, self.objectMap, self.ref)
 }
 
 func main() {
-	data1 := `{
+    data1 := `{
 "family":true,
 "lastname":"Bizhang",
 "toys":[{
@@ -106,8 +106,8 @@ func main() {
 }]
 }`
 
-// carefully build this DeterminedMap:
-   data0 = `{
+// build this DeterminedMap:
+    data0 = `{
 "Toys": {"meta_type": 4, "slice_name": ["Toy", "Toy"], "slice_field": [{
     "Geo": {"meta_type": 1, "single_name": "Geo", "single_field": {
         "Shape": {"meta_type": 1, "single_name": "Circle"}}}
@@ -116,21 +116,38 @@ func main() {
         "Shape": {"meta_type": 1, "single_name": "Square"}}}
     }]
 }}`
-    ref = map[string]interface{}{"Geo": &Geo{}, "Toy": &Toy{}, "Circle": &Circle{}, "Square": &Square{}}
-    
-    adult := new(Adult)
-    adult.Assign([]byte(data0), ref)
-    err = json.Unmarshal([]byte(data1), adult)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("Toy 0: %#v\n", adult.Toys[0])
-    fmt.Printf("Toy 1: %#v\n", adult.Toys[1])
+    ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
+    child := new(Child)
+    child.Assign([]byte(data0), ref)
+    err := json.Unmarshal([]byte(data1), child)
+    if err != nil { panic(err) }
+
+    fmt.Printf("Toy 0: %#v\n", child.Toys[0])
+    fmt.Printf("Toy 1: %#v\n", child.Toys[1])
 }
 ```
 
 The output will looks like:
 ```bash
+Toy 0: &main.Toy{Geo:main.Geo{Name:"peter shape", Shape:(*main.Circle)(0xc0000169f0)}, ToyName:"roblox", Price:99.9}
+Toy 1: &main.Toy{Geo:main.Geo{Name:"marcus shape", Shape:(*main.Square)(0xc000016b20)}, ToyName:"minecraft", Price:199.9}
+```
+
+You may also build _child's DeterminedMap_ manually by:
+
+go```
+    sd1   := &Determined{MetaType: METASingle, SingleName: "Circle"}
+    smap1 := DeterminedMap(map[string]*Determined{"Shape": sd1})
+    gd1   := &Determined{MetaType: METASingle, SingleName: "Geo", SingleField: smap1}
+    gmap1 := DeterminedMap(map[string]*Determined{"Geo": gd1})
+
+    sd2   := &Determined{MetaType: METASingle, SingleName: "Square"}
+    smap2 := DeterminedMap(map[string]*Determined{"Shape": sd2})
+    gd2   := &Determined{MetaType: METASingle, SingleName: "Geo", SingleField: smap2}
+    gmap2 := DeterminedMap(map[string]*Determined{"Geo": gd2})
+
+    td1   := &Determined{MetaType: METASlice, SliceName: []string{"Toy", "Toy"}, SliceField: []DeterminedMap{gmap1, gmap2}}
+    theMap := DeterminedMap(map[string]*Determined{"Toys": td1})
 ```
 	
 [Check the document](https://godoc.org/github.com/genelet/determined)
