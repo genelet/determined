@@ -12,7 +12,7 @@ json: cannot unmarshal object into Go struct field XYZ of type ABC
 
 This package helps you to implement customized _Unmarshaller_ easily.
 
-Alternatively, you can use the function, _JJUnmarshal_ directly.
+Alternatively, you can use the functions, _JJUnmarshal_ or _JsonUnmarshal_.
 
 ## 1. Installation
 
