@@ -24,8 +24,7 @@ go get github.com/genelet/determined
 
 ## 2. Usage
 
-In the following example, _Child_ contains multiple-level objects including an interface. We create a customized marshaller using _determined_
-and then _json.Unmarshal_ will work again.
+In the following example, _Child_ contains multiple-level objects including an interface. _json.Unmarshal_ will fail. We create a customized marshaller and then _json.Unmarshal_ works again.
 
 ```go
 package main
