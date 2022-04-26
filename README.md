@@ -14,7 +14,6 @@ This package helps you to implement customized _Unmarshaller_ easily.
 
 Alternatively, you can use it directly.
 
-<br /><br />
 ## 1. Installation
 
 To download, 
@@ -27,7 +26,6 @@ go get github.com/genelet/determined
 
 In the following example, _Adult_ contains multiple-level objects including an interface. We create a customized marshaller using _determined_
 and then _json.Unmarshal_ works again.
-
 
 ```go
 package main
@@ -108,6 +106,7 @@ func main() {
 }]
 }`
 
+// carefully build this DeterminedMap:
    data0 = `{
 "Toys": {"meta_type": 4, "slice_name": ["Toy", "Toy"], "slice_field": [{
     "Geo": {"meta_type": 1, "single_name": "Geo", "single_field": {
@@ -117,16 +116,16 @@ func main() {
         "Shape": {"meta_type": 1, "single_name": "Square"}}}
     }]
 }}`
-
-	ref = map[string]interface{}{"Geo": &Geo{}, "Toy": &Toy{}, "Circle": &Circle{}, "Square": &Square{}}
+    ref = map[string]interface{}{"Geo": &Geo{}, "Toy": &Toy{}, "Circle": &Circle{}, "Square": &Square{}}
+    
     adult := new(Adult)
-	second.Assign([]byte(data0), ref)
+    adult.Assign([]byte(data0), ref)
     err = json.Unmarshal([]byte(data1), adult)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Toy 0: %#v\n", adult.Toys[0])
-	fmt.Printf("Toy 1: %#v\n", adult.Toys[1])
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Toy 0: %#v\n", adult.Toys[0])
+    fmt.Printf("Toy 1: %#v\n", adult.Toys[1])
 }
 ```
 
