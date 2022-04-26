@@ -136,7 +136,7 @@ Toy 1: &main.Toy{Geo:main.Geo{Name:"marcus shape", Shape:(*main.Square)(0xc00001
 
 You may also build _child's DeterminedMap_ manually by:
 
-go```
+```go
     sd1   := &Determined{MetaType: METASingle, SingleName: "Circle"}
     smap1 := DeterminedMap(map[string]*Determined{"Shape": sd1})
     gd1   := &Determined{MetaType: METASingle, SingleName: "Geo", SingleField: smap1}
