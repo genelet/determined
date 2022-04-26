@@ -127,7 +127,7 @@ func main() {
 }
 ```
 
-The output will looks like:
+The output will look like:
 ```bash
 Toy 0: &main.Toy{Geo:main.Geo{Name:"peter shape", Shape:(*main.Circle)(0xc0000169f0)}, ToyName:"roblox", Price:99.9}
 Toy 1: &main.Toy{Geo:main.Geo{Name:"marcus shape", Shape:(*main.Square)(0xc000016b20)}, ToyName:"minecraft", Price:199.9}
