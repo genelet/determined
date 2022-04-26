@@ -4,7 +4,7 @@ _Determined_ unmarshal JSON string with interfaces determined at run-time.
 
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
-If a struct contains interface field, unmarshalling by _encoding/json_ will fail with the error:
+If a _struct_ contains interface field, unmarshalling by _encoding/json_ will fail with the error:
 
 ```bash
 json: cannot unmarshal object into Go struct field XYZ of type ABC
@@ -12,7 +12,7 @@ json: cannot unmarshal object into Go struct field XYZ of type ABC
 
 This package helps you to implement customized _Unmarshaller_ easily.
 
-Alternatively, you can use the functions, _JJUnmarshal_ or _JsonUnmarshal_.
+Alternatively, you can use the functions _JJUnmarshal_ or _JsonUnmarshal_.
 
 ## 1. Installation
 
@@ -24,7 +24,7 @@ go get github.com/genelet/determined
 
 ## 2. Usage
 
-In the following example, _Child_ contains multiple-level objects including an interface. _json.Unmarshal_ will fail. We create a customized marshaller and then _json.Unmarshal_ works again.
+In the following example, _Child_ contains multiple-level objects including an interface in _Geo_. Use of _json.Unmarshal_ would fail. We create a customized _Unmarshaller_ and then _json.Unmarshal_ works again.
 
 ```go
 package main
