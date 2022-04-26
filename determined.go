@@ -1,8 +1,11 @@
 package determined
 
 // Struct field's type:
+//
 // METASingle: a single interface
+//
 // METASlice: a slice of interfaces
+//
 // METAMap: a string map for interfaces
 //
 type METAType int
@@ -16,7 +19,9 @@ const (
 )
 
 // Determined represents struct's interface field
+//
 // Name: name of struct implmenting the interface
+//
 // Field: the mapped struct has a DeterminedMap
 //
 type Determined struct {
@@ -36,6 +41,7 @@ type Determined struct {
 //
 type DeterminedMap map[string]*Determined
 
+/*
 func NewSingleDetermined(m METAType, c string, n DeterminedMap) *Determined {
 	return &Determined{MetaType:m, SingleName:c, SingleField:n}
 }
@@ -47,8 +53,9 @@ func NewMapDetermined(c map[string]string, n map[string]DeterminedMap) *Determin
 func NewSliceDetermined(c []string, n []DeterminedMap) *Determined {
 	return &Determined{MetaType:METASlice, SliceName:c, SliceField:n}
 }
+*/
 
-func (self *Determined) GetPair(dex ...interface{}) (string, DeterminedMap, error) {
+func (self *Determined) getPair(dex ...interface{}) (string, DeterminedMap, error) {
 	var structName string
 	var dmap DeterminedMap
 	switch self.MetaType {

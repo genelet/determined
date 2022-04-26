@@ -4,12 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"unicode"
 )
 
 // JJUnmarshal unmarshals json data with interfaces determined by JSON-represented DeterminedMap
+//
 // dat: the JSON data
+//
 // current: pointer of the struct
+//
 // objectMap: the DeterminedMap in JSON
+//
 // ref: structs involed in the Unmarshaller should be placed here, with key the name and value the new pointer to struct
 //
 func JJUnmarshal(dat []byte, current interface{}, objectMap []byte, ref map[string]interface{}) error {
@@ -22,9 +27,13 @@ func JJUnmarshal(dat []byte, current interface{}, objectMap []byte, ref map[stri
 }
 
 // JsonUnmarshal unmarshals json data with interfaces determined by DeterminedMap
+//
 // dat: the JSON data
+//
 // current: pointer of the struct
+//
 // objectMap: the DeterminedMap
+//
 // ref: structs involed in the Unmarshaller should be placed here, with key the name and value the new pointer to struct
 //
 func JsonUnmarshal(dat []byte, current interface{}, objectMap DeterminedMap, ref map[string]interface{}) error {
@@ -39,11 +48,12 @@ func JsonUnmarshal(dat []byte, current interface{}, objectMap DeterminedMap, ref
 	found := false
 	for i:=0; i<n; i++ {
 		field := t.Field(i)
-		if field.Tag == "" {
-			return fmt.Errorf("missing tag for %s", field.Name)
+		name := field.Name
+		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
+			return fmt.Errorf("missing tag for %s", name)
 		}
 		if result, ok := objectMap[field.Name]; ok {
-			newField := reflect.StructField{Name: field.Name, Tag: field.Tag}
+			newField := reflect.StructField{Name: name, Tag: field.Tag}
 			switch result.MetaType {
 			case METAMap, METAMapSingle:
 				newField.Type = reflect.TypeOf(map[string]json.RawMessage{})
@@ -80,7 +90,7 @@ func JsonUnmarshal(dat []byte, current interface{}, objectMap DeterminedMap, ref
 		result, ok := objectMap[field.Name]
 		if ok {
 			run := func(bs []byte, dex interface{}) (interface{}, error) {
-				confName, nextmap, err := result.GetPair(dex)
+				confName, nextmap, err := result.getPair(dex)
 				if err != nil { return nil, err }
 				conf, ok := ref[confName]
 				if !ok && nextmap != nil {
@@ -122,7 +132,7 @@ func JsonUnmarshal(dat []byte, current interface{}, objectMap DeterminedMap, ref
 					f.Set(reflect.ValueOf(trial).Elem())
 				}
 			}
-		} else {
+		} else if unicode.IsUpper([]rune(field.Name)[0]) {
 			f.Set(rawField)
 		}
 	}

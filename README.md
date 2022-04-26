@@ -1,19 +1,18 @@
 # determined
 
-_determined_ unmarshal JSON string with interfaces determined at run-time.
+_Determined_ unmarshal JSON string with interfaces determined at run-time.
 
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
-If struct has an interface field, to unmarshal its JSON string
-will fail:
+If a struct contains interface field, unmarshaller using _encoding/json_ will fail with the error:
 
 ```bash
 json: cannot unmarshal object into Go struct field XYZ of type ABC
 ```
 
-Implementatin of a customized _Unmarshaller_ could be difficult or just tedious.
+This package helps you to implement customized _Unmarshaller_ easily.
 
-Alternatively, you can use this _determined_ package.
+Alternatively, you can use it directly.
 
 <br /><br />
 ## 1. Installation
@@ -24,10 +23,11 @@ To download,
 go get github.com/genelet/determined
 ```
 
-<br /><br />
 ## 2. Usage
 
-To use
+In the following example, _Adult_ contains multiple-level objects including an interface. We create a customized marshaller using _determined_
+and then _json.Unmarshal_ works again.
+
 
 ```go
 package main
@@ -71,6 +71,15 @@ type Adult struct {
     Toys []*Toy `json:"toys"`
     Family bool `json:"family"`
     Lastname string `json:"lastname"`
+    objectMap []byte
+    ref map[string]interface{}
+}
+func (self *Adult) Assign(objectMap []byte, ref map[string]interface{}) {
+    self.objectMap = objectMap
+    self.ref = ref
+}
+func (self *Adult) UnmarshalJSON(dat []byte) error {
+    return JJUnmarshal(dat, self, self.objectMap, self.ref)
 }
 
 func main() {
@@ -111,7 +120,8 @@ func main() {
 
 	ref = map[string]interface{}{"Geo": &Geo{}, "Toy": &Toy{}, "Circle": &Circle{}, "Square": &Square{}}
     adult := new(Adult)
-    err = JJUnmarshal([]byte(data1), adult, []byte(data0), ref)
+	second.Assign([]byte(data0), ref)
+    err = json.Unmarshal([]byte(data1), adult)
 	if err != nil {
 		panic(err)
 	}
@@ -120,7 +130,8 @@ func main() {
 }
 ```
 
+The output will looks like:
+```bash
+```
 	
-<br /><br />
-
 [Check the document](https://godoc.org/github.com/genelet/determined)

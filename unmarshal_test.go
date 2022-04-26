@@ -175,6 +175,15 @@ type Adult struct {
 	Toys []*Toy `json:"toys"`
 	Family bool `json:"family"`
 	Lastname string `json:"lastname"`
+	objectMap []byte
+	ref map[string]interface{}
+}
+func (self *Adult) Assign(objectMap []byte, ref map[string]interface{}) {
+	self.objectMap = objectMap
+	self.ref = ref
+}
+func (self *Adult) UnmarshalJSON(dat []byte) error {
+	return JJUnmarshal(dat, self, self.objectMap, self.ref)
 }
 
 func TestJsonToy(t *testing.T) {
@@ -385,4 +394,19 @@ func TestJsonToy(t *testing.T) {
 	if !ok || adult.Toys[1].ToyName != "minecraft" {
 		t.Errorf("%#v", adult.Toys[1])
 	}
+
+    second := &Adult{}
+    second.Assign([]byte(data0), ref)
+    err = json.Unmarshal([]byte(data1), second)
+    if err != nil { panic(err) }
+
+	_, ok = second.Toys[0].Shape.(*Circle)
+	if !ok || second.Toys[0].ToyName != "roblox" {
+		t.Errorf("%#v", second.Toys[0])
+	}
+	_, ok = second.Toys[1].Shape.(*Circle)
+	if !ok || second.Toys[1].ToyName != "minecraft" {
+		t.Errorf("%#v", second.Toys[1])
+	}
+
 }

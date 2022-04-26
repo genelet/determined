@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-// Clone clones a pointer to a new pointer
+// Clone clones a value via pointer
 //
 func Clone(old interface{}) interface{} {
 	obj := reflect.New(reflect.TypeOf(old).Elem())
