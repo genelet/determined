@@ -24,12 +24,13 @@ go get github.com/genelet/determined
 
 ## 2. Usage
 
-In the following example, _Child_ contains multiple-level objects including an interface in _Geo_. Use of _json.Unmarshal_ would fail. We create a customized _Unmarshaler_ and then _json.Unmarshal_ works.
+In the following example, _Child_ contains multiple-level objects including an interface in _Geo_. Direct use of _json.Unmarshal_ will fail. We create a customized _Unmarshaler_ and then _json.Unmarshal_ works again.
 
 ```go
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/genelet/determined"
 )
