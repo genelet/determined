@@ -41,32 +41,26 @@ type Determined struct {
 //
 type DeterminedMap map[string]*Determined
 
-/*
-func NewSingleDetermined(m METAType, c string, n DeterminedMap) *Determined {
-	return &Determined{MetaType:m, SingleName:c, SingleField:n}
-}
-
-func NewMapDetermined(c map[string]string, n map[string]DeterminedMap) *Determined {
-	return &Determined{MetaType:METAMap, MapName:c, MapField:n}
-}
-
-func NewSliceDetermined(c []string, n []DeterminedMap) *Determined {
-	return &Determined{MetaType:METASlice, SliceName:c, SliceField:n}
-}
-*/
-
 func (self *Determined) getPair(dex ...interface{}) (string, DeterminedMap, error) {
 	var structName string
 	var dmap DeterminedMap
 	switch self.MetaType {
 	case METAMap:
 		key := dex[0].(string)
-		structName = self.MapName[key]
-		dmap = self.MapField[key]
+		if self.MapName != nil {
+			structName = self.MapName[key]
+		}
+		if self.MapField != nil {
+			dmap = self.MapField[key]
+		}
 	case METASlice:
 		key := dex[0].(int)
-		structName = self.SliceName[key]
-		dmap = self.SliceField[key]
+		if self.SliceName != nil && len(self.SliceName) > key {
+			structName = self.SliceName[key]
+		}
+		if self.SliceField != nil && len(self.SliceField) > key {
+			dmap = self.SliceField[key]
+		}
 	default:
 		structName = self.SingleName
 		dmap = self.SingleField
