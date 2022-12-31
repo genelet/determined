@@ -1,10 +1,10 @@
 # determined
 
-_Determined_ unmarshal JSON string containing interfaces determined at run-time.
+_Determined_ unmarshal JSON string to _go struct_ containing interfaces determined at run-time.
 
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
-If a _struct_ contains interface field, unmarshaling by _encoding/json_ will fail with the error:
+If _object_ contains interface fields, unmarshaling by _encoding/json_ will result in the error:
 
 ```bash
 json: cannot unmarshal object into Go struct field XYZ of type ABC
@@ -24,7 +24,9 @@ go get github.com/genelet/determined
 
 ## 2. Usage
 
-In the following example, _Child_ contains multiple-level objects including an interface in _Geo_. Direct use of _json.Unmarshal_ will fail. We create a customized _Unmarshaler_ and then _json.Unmarshal_ works again.
+In the following example, _Child_ contains multiple-level objects including an interface in _Geo_. To unmarshal a JSON to _Child_ by _json.Unmarshal_ does not work.
+
+We need to build _UnmarshalJSON_ for _Child_, using this package.
 
 ```go
 package main
@@ -69,15 +71,15 @@ type Child struct {
     Toys []*Toy `json:"toys"`
     Family bool `json:"family"`
     Lastname string `json:"lastname"`
-    objectMap []byte
+    endpoint []byte
     ref map[string]interface{}
 }
-func (self *Child) Assign(objectMap []byte, ref map[string]interface{}) {
-    self.objectMap = objectMap
+func (self *Child) Assign(endpoint []byte, ref map[string]interface{}) {
+    self.endpoint = endpoint
     self.ref = ref
 }
 func (self *Child) UnmarshalJSON(dat []byte) error {
-    return xxx.JJUnmarshal(dat, self, self.objectMap, self.ref)
+    return xxx.JJUnmarshal(dat, self, self.endpoint, self.ref)
 }
 
 func main() {
@@ -106,8 +108,8 @@ func main() {
 }]
 }`
 
-// build this DeterminedMap:
-    data0 = `{
+// build this Determined:
+    data0 = `{"meta_type": 1, "single_name": "Child", "single_field": {
 "Toys": {"meta_type": 4, "slice_name": ["Toy", "Toy"], "slice_field": [{
     "Geo": {"meta_type": 1, "single_name": "Geo", "single_field": {
         "Shape": {"meta_type": 1, "single_name": "Circle"}}}
@@ -115,7 +117,7 @@ func main() {
     "Geo": {"meta_type": 1, "single_name": "Geo", "single_field": {
         "Shape": {"meta_type": 1, "single_name": "Square"}}}
     }]
-}}`
+}}}`
     ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
     child := new(Child)
     child.Assign([]byte(data0), ref)
@@ -134,7 +136,7 @@ Toy 0: &main.Toy{Geo:main.Geo{Name:"peter shape", Shape:(*main.Circle)(0xc000016
 Toy 1: &main.Toy{Geo:main.Geo{Name:"marcus shape", Shape:(*main.Square)(0xc000016b20)}, ToyName:"minecraft", Price:199.9}
 ```
 
-You may also build _child's DeterminedMap_ manually by:
+You may also build _child's Determined_ manually by:
 
 ```go
     sd1   := &Determined{MetaType: METASingle, SingleName: "Circle"}
@@ -149,6 +151,8 @@ You may also build _child's DeterminedMap_ manually by:
 
     td1   := &Determined{MetaType: METASlice, SliceName: []string{"Toy", "Toy"}, SliceField: []DeterminedMap{gmap1, gmap2}}
     theMap := DeterminedMap(map[string]*Determined{"Toys": td1})
+
+	theDetermined := &Determined{MetaType: METASingle, SingleName: "Child", SingleField: theMap}
 ```
 	
 [Check the document](https://godoc.org/github.com/genelet/determined)

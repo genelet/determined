@@ -75,7 +75,8 @@ func TestJsonShape(t *testing.T) {
 	ref := map[string]interface{}{"Circle":c}
 	determined := &Determined{MetaType: METASingle, SingleName: "Circle"}
 	dmap := DeterminedMap(map[string]*Determined{"Shape": determined})
-	err := JsonUnmarshal([]byte(data1), geo, dmap, ref)
+	endpoint := &Determined{MetaType:METASingle, SingleField:dmap}
+	err := JsonUnmarshal([]byte(data1), geo, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,8 @@ func TestJsonShape(t *testing.T) {
 	ref = map[string]interface{}{"Circle":c, "Square":s}
 	determined = &Determined{MetaType: METASingle, SingleName: "Square"}
 	dmap = DeterminedMap(map[string]*Determined{"Shape": determined})
-	err = JsonUnmarshal([]byte(data2), geo, dmap, ref)
+	endpoint = &Determined{MetaType:METASingle, SingleField:dmap}
+	err = JsonUnmarshal([]byte(data2), geo, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +116,8 @@ func TestJsonShape(t *testing.T) {
 	s = &Square{}
 	determined = &Determined{MetaType: METAMapSingle, SingleName: "Square"}
 	dmap = DeterminedMap(map[string]*Determined{"Shapes": determined})
-	err = JsonUnmarshal([]byte(data3), geometry, dmap, ref)
+	endpoint = &Determined{MetaType:METASingle, SingleField:dmap}
+	err = JsonUnmarshal([]byte(data3), geometry, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +140,8 @@ func TestJsonShape(t *testing.T) {
 	s = &Square{}
 	determined = &Determined{MetaType: METASliceSingle, SingleName: "Square"}
 	dmap = DeterminedMap(map[string]*Determined{"Drawings": determined})
-	err = JsonUnmarshal([]byte(data4), picture, dmap, ref)
+	endpoint = &Determined{MetaType:METASingle, SingleField:dmap}
+	err = JsonUnmarshal([]byte(data4), picture, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,12 +238,13 @@ func TestJsonToy(t *testing.T) {
 	}
 
 	dmap := DeterminedMap{}
+	endpoint := &Determined{MetaType:METASingle, SingleField:dmap}
 	err = json.Unmarshal([]byte(data0), &dmap)
 	if err != nil { t.Fatal(err) }
 	ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
 
 	child := new(Child)
-	err = JsonUnmarshal([]byte(data1), child, dmap, ref)
+	err = JsonUnmarshal([]byte(data1), child, endpoint, ref)
 	if err != nil { t.Fatal(err) }
 	if child.Age != 5 || child.Toy.Shape.(*Circle).Radius != 1.234 {
 		t.Errorf("%#v", child)
@@ -325,12 +330,13 @@ func TestJsonToy(t *testing.T) {
 	}
 
 	dmap = DeterminedMap{}
+	endpoint = &Determined{MetaType:METASingle, SingleField:dmap}
 	err = json.Unmarshal([]byte(data0), &dmap)
 	if err != nil { t.Fatal(err) }
 	ref = map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
 
 	adult := new(Adult)
-	err = JsonUnmarshal([]byte(data1), adult, dmap, ref)
+	err = JsonUnmarshal([]byte(data1), adult, endpoint, ref)
 	if err != nil { t.Fatal(err) }
 	_, ok := adult.Toys[0].Shape.(*Circle)
 	if !ok {
@@ -365,6 +371,8 @@ func TestJsonToy(t *testing.T) {
 }]
 }`
 	data0 = `{
+"meta_type": 1,
+"single_field": {
   "Toys": {
     "meta_type": 2,
     "single_name": "Toy",
@@ -381,6 +389,7 @@ func TestJsonToy(t *testing.T) {
       }
     }
   }
+}
 }`
 
 	adult = new(Adult)

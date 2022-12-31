@@ -13,30 +13,35 @@ import (
 //
 // current: pointer of the struct
 //
-// objectMap: the DeterminedMap in JSON
+// endpoint: the Determined in JSON
 //
 // ref: structs involed in the Unmarshaller should be placed here, with key the name and value the new pointer to struct
 //
-func JJUnmarshal(dat []byte, current interface{}, objectMap []byte, ref map[string]interface{}) error {
-	theMap := DeterminedMap{}
-	err := json.Unmarshal(objectMap, &theMap)
+func JJUnmarshal(dat []byte, current interface{}, endpoint []byte, ref map[string]interface{}) error {
+	theEndpoint := Determined{}
+	err := json.Unmarshal(endpoint, &theEndpoint)
 	if err != nil {
 		return err
 	}
-	return JsonUnmarshal(dat, current, theMap, ref)
+	return JsonUnmarshal(dat, current, &theEndpoint, ref)
 }
 
 // JsonUnmarshal unmarshals json data with interfaces determined by DeterminedMap
 //
 // dat: the JSON data
-//
-// current: pointer of the struct
-//
-// objectMap: the DeterminedMap
+// current: object as interface
+// endpoint: determined of the object
 //
 // ref: structs involed in the Unmarshaller should be placed here, with key the name and value the new pointer to struct
 //
-func JsonUnmarshal(dat []byte, current interface{}, objectMap DeterminedMap, ref map[string]interface{}) error {
+func JsonUnmarshal(dat []byte, current interface{}, endpoint *Determined, ref map[string]interface{}) error {
+	if endpoint == nil {
+		return json.Unmarshal(dat, current)
+	}
+	if endpoint.MetaType != METASingle {
+		return fmt.Errorf("endpoint must start with METASingle. Got: %v", endpoint.MetaType)
+	}
+	objectMap := endpoint.SingleField
 	if objectMap == nil || len(objectMap) == 0 {
 		return json.Unmarshal(dat, current)
 	}
@@ -97,7 +102,7 @@ func JsonUnmarshal(dat []byte, current interface{}, objectMap DeterminedMap, ref
 					return nil, fmt.Errorf("struct %s not found", confName)
 				}
 				trial := Clone(conf)
-				err = JsonUnmarshal(bs, trial, nextmap, ref)
+				err = JsonUnmarshal(bs, trial, &Determined{MetaType:METASingle, SingleField:nextmap}, ref)
 				return trial, err
 			}
 			switch result.MetaType {
