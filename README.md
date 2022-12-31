@@ -10,9 +10,9 @@ If object contains interface fields, unmarshaling by _encoding/json_ will result
 json: cannot unmarshal object into Go struct field XYZ of type ABC
 ```
 
-The solution is to build customized _Unmarshaler_ for the object. This package helps you to implement [Unmarshaler](https://pkg.go.dev/encoding/json@go1.18.1#Unmarshaler) easily.
+The solution is to build customized _Unmarshaler_ for the object. This package helps to implement [Unmarshaler](https://pkg.go.dev/encoding/json@go1.18.1#Unmarshaler) easily.
 
-You may also use functions [JJUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JJUnmarshal) or [JsonUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JsonUnmarshal) directly.
+We may also use functions [JJUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JJUnmarshal) or [JsonUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JsonUnmarshal) directly.
 
 ## 1. Installation
 
@@ -26,7 +26,7 @@ go get github.com/genelet/determined
 
 In the following example, _Child_ contains multiple-level objects including an interface in _Geo_. To unmarshal a JSON to _Child_ by _json.Unmarshal_ does not work.
 
-We need to build _UnmarshalJSON_ for _Child_, using this package.
+We need to build _UnmarshalJSON_ for _Child_.
 
 ```go
 package main
