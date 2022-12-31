@@ -1,6 +1,6 @@
 # determined
 
-_Determined_ unmarshal JSON string to _go struct_ containing interfaces determined at run-time.
+_Determined_ unmarshals JSON string to _go struct_ containing interfaces determined at run-time.
 
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
