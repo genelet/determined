@@ -12,7 +12,7 @@ json: cannot unmarshal object into Go struct field XYZ of type ABC
 
 The solution is to build customized _Unmarshaler_ for the object. This package helps you to implement [Unmarshaler](https://pkg.go.dev/encoding/json@go1.18.1#Unmarshaler) easily.
 
-You may also use functions [JJUnmarshal ot ](https://pkg.go.dev/github.com/genelet/determined#JJUnmarshal) or [JsonUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JsonUnmarshal) directly.
+You may also use functions [JJUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JJUnmarshal) or [JsonUnmarshal](https://pkg.go.dev/github.com/genelet/determined#JsonUnmarshal) directly.
 
 ## 1. Installation
 
