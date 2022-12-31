@@ -152,7 +152,7 @@ You may also build _child's Determined_ manually by:
     td1   := &Determined{MetaType: METASlice, SliceName: []string{"Toy", "Toy"}, SliceField: []DeterminedMap{gmap1, gmap2}}
     theMap := DeterminedMap(map[string]*Determined{"Toys": td1})
 
-	theDetermined := &Determined{MetaType: METASingle, SingleName: "Child", SingleField: theMap}
+    theDetermined := &Determined{MetaType: METASingle, SingleName: "Child", SingleField: theMap}
 ```
 	
 [Check the document](https://godoc.org/github.com/genelet/determined)
