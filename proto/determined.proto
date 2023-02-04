@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package xdetermined;
+
+option go_package = "./xdetermined";
+
+message Struct {
+	string ClassName = 1;
+        map<string, Value> fields = 2;
+}
+
+message Value {
+  // The kind of value.
+  oneof kind {
+    Struct single_struct   = 1;
+    ListStruct list_struct = 2;
+    MapStruct map_struct   = 3;
+  }
+}
+
+message ListStruct {
+  repeated Struct list_fields = 1;
+}
+
+message MapStruct {
+  map<string, Struct> map_fields = 1;
+}

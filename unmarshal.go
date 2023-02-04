@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"reflect"
 	"unicode"
+
+	det "github.com/genelet/determined/xdetermined"
 )
 
-// JJUnmarshal unmarshals json data with interfaces determined by JSON-represented DeterminedMap
+// JJUnmarshal unmarshals JSON data with interfaces determined by JSON-represented Determined.
 //
-// dat: the JSON data
-//
-// current: pointer of the struct
-//
-// endpoint: the Determined in JSON
-//
-// ref: structs involed in the Unmarshaller should be placed here, with key the name and value the new pointer to struct
+//  - dat: JSON data
+//  - current: pointer of the struct
+//  - endpoint: Determined expressed in JSON
+//  - ref: struct map, in which the key is its string name and value the pointer to struct
 //
 func JJUnmarshal(dat []byte, current interface{}, endpoint []byte, ref map[string]interface{}) error {
 	theEndpoint := Determined{}
@@ -26,22 +25,18 @@ func JJUnmarshal(dat []byte, current interface{}, endpoint []byte, ref map[strin
 	return JsonUnmarshal(dat, current, &theEndpoint, ref)
 }
 
-// JsonUnmarshal unmarshals json data with interfaces determined by DeterminedMap
+// JsonUnmarshal unmarshals JSON data with interfaces determined by Determined.
 //
-// dat: the JSON data
-// current: object as interface
-// endpoint: determined of the object
+//  - dat: JSON data
+//  - current: object as interface
+//  - endpoint: Determined
+//  - ref: struct map, in which the key is its string name and value the pointer to struct
 //
-// ref: structs involed in the Unmarshaller should be placed here, with key the name and value the new pointer to struct
-//
-func JsonUnmarshal(dat []byte, current interface{}, endpoint *Determined, ref map[string]interface{}) error {
+func JsonUnmarshal(dat []byte, current interface{}, endpoint *structpb.Struct, ref map[string]interface{}) error {
 	if endpoint == nil {
 		return json.Unmarshal(dat, current)
 	}
-	if endpoint.MetaType != METASingle {
-		return fmt.Errorf("endpoint must start with METASingle. Got: %v", endpoint.MetaType)
-	}
-	objectMap := endpoint.SingleField
+	objectMap := endpoint.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
 		return json.Unmarshal(dat, current)
 	}
@@ -59,10 +54,10 @@ func JsonUnmarshal(dat []byte, current interface{}, endpoint *Determined, ref ma
 		}
 		if result, ok := objectMap[field.Name]; ok {
 			newField := reflect.StructField{Name: name, Tag: field.Tag}
-			switch result.MetaType {
-			case METAMap, METAMapSingle:
+			switch result.Kind {
+			case *det.Value_MapEnd, *x.Value_MapStruct:
 				newField.Type = reflect.TypeOf(map[string]json.RawMessage{})
-			case METASlice, METASliceSingle:
+			case *det.Value_ListEnd, *x.Value_ListStruct:
 				newField.Type = reflect.TypeOf([]json.RawMessage{})
 			default:
 				newField.Type = reflect.TypeOf(json.RawMessage{})
@@ -94,8 +89,9 @@ func JsonUnmarshal(dat []byte, current interface{}, endpoint *Determined, ref ma
 		rawField := rawValue.Field(i)
 		result, ok := objectMap[field.Name]
 		if ok {
-			run := func(bs []byte, dex interface{}) (interface{}, error) {
-				confName, nextmap, err := result.getPair(dex)
+			run := func(bs []byte, dex ...interface{}) (interface{}, error) {
+				switch 
+				confName, nextmap, err := result.getPair(dex...)
 				if err != nil { return nil, err }
 				conf, ok := ref[confName]
 				if !ok && nextmap != nil {
@@ -105,31 +101,60 @@ func JsonUnmarshal(dat []byte, current interface{}, endpoint *Determined, ref ma
 				err = JsonUnmarshal(bs, trial, &Determined{MetaType:METASingle, SingleField:nextmap}, ref)
 				return trial, err
 			}
-			switch result.MetaType {
-			case METAMap, METAMapSingle:
+
+			if x := result.GetSingleEnd(); x != nil {
+				trial := Clone(ref[x])
+				err := json.Unmarshal(rawField.Bytes(), trial)
+				if err != nil { return err }
+				if f.Kind() == reflect.Interface || f.Kind() == reflect.Ptr {
+					f.Set(reflect.ValueOf(trial))
+				} else {
+					f.Set(reflect.ValueOf(trial).Elem())
+				}
+			} else if x := result.GetMapEnd(); x != nil {
 				n := rawField.Len()
 				fMap := reflect.MakeMap(fieldType)
 				keys := rawField.MapKeys()
+				nextValues := x.GetMapEndFields()
 				for i:=0; i<n; i++ {
 					k := keys[i]
 					v := rawField.MapIndex(k)
-					trial, err := run(v.Bytes(), k.String())
+					key := k.String()
+					nextValue := nextValues[key]
+					trial := Clone(ref[nextValue])
+					err := json.Unmarshal(v.Bytes(), trial)
 					if err != nil { return err }
 					fMap.SetMapIndex(k, reflect.ValueOf(trial))
 				}
 				f.Set(fMap)
-			case METASlice, METASliceSingle:
+			} else if x := result.GetListEnd(); x != nil {
 				n := rawField.Len()
 				fSlice := reflect.MakeSlice(fieldType, n, n)
+				nextValues := x.GetListEndFields()
 				for k:=0; k<n; k++ {
 					v := rawField.Index(k)
-					trial, err := run(v.Bytes(), k)
+					nextValue := nextValues[k]
+					trial := Clone(ref[nextValue])
+					err := json.Unmarshal(v.Bytes(), trial)
 					if err != nil { return err }
 					fSlice.Index(k).Set(reflect.ValueOf(trial))
 				}
 				f.Set(fSlice)
+			} else if x := result.GetSingleStruct(); x != nil {
+				err = JsonUnmarshal(bs, trial, &Determined{MetaType:METASingle, SingleField:nextmap}, ref)
+				trial := Clone(ref[x])
+				err := json.Unmarshal(rawField.Bytes(), trial)
+				if err != nil { return err }
+				if f.Kind() == reflect.Interface || f.Kind() == reflect.Ptr {
+					f.Set(reflect.ValueOf(trial))
+				} else {
+					f.Set(reflect.ValueOf(trial).Elem())
+				}
+			case *structpb.Value_StringValue:
+				:wq
 			default:
-				trial, err := run(rawField.Bytes(), result.SingleName)
+				
+				trial, err := run(rawField.Bytes(), result.AsIntgerface())
 				if err != nil { return err }
 				if f.Kind() == reflect.Interface || f.Kind() == reflect.Ptr {
 					f.Set(reflect.ValueOf(trial))
