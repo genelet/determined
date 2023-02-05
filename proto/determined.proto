@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package xdetermined;
+package determined;
 
-option go_package = "./xdetermined";
+option go_package = "./det";
 
 message Struct {
 	string ClassName = 1;
