@@ -1,4 +1,4 @@
-package determined
+package det
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ func TestClone(t *testing.T) {
 	}
 
 	obj := &What{"mr x", 123, &Guess{true, "john"}}
-	obj1 := Clone(obj).(*What)
+	obj1 := clone(obj).(*What)
 	if obj.X != obj1.X ||
 		obj.Y != obj1.Y ||
 		obj.Z.A != obj1.Z.A ||
