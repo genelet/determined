@@ -13,7 +13,7 @@ import (
 //  - dat: JSON data
 //  - current: object as interface
 //  - endpoint: Determined
-//  - ref: struct map, in which the key is its string name and value the pointer to struct
+//  - ref: struct map, with key being string name and value pointer to struct
 //
 func JsonUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}) error {
 	if endpoint == nil {

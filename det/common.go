@@ -6,25 +6,25 @@ import (
 )
 
 func stringValue(t string) (*Value, error) {
-	v2, err := NewSingleStruct(t)
+	v2, err := NewStruct(t)
 	if err != nil {
 		return nil, err
 	}
 	return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
 }
 
-// NewValue constructs a Value from a general-purpose Go interface.
+// NewValue constructs a Value from generic Go interface v.
 //
-//	╔═══════════════════════════╤═════════════════════════════════════════════╗
-//	║ Go type                   │ Conversion                                  ║
-//	╠═══════════════════════════╪═════════════════════════════════════════════╣
-//	║ string                    │ stored as ending SingleStruct value         ║
-//	║ []string                  │ stored as ending ListStruct value           ║
-//	║ map[string]string         │ stored as ending MapStruct value            ║
-//	║ map[string]interface{}    │ stored as SingleStruct value                ║
-//	║ [][2]interface{}          │ stored as ListStruct value                  ║
-//	║ map[string][2]interface{} │ stored as ListStruct value                  ║
-//	╚═══════════════════════════╧═════════════════════════════════════════════╝
+//	╔═══════════════════════════╤═══════════════════════════════════╗
+//	║ Go type                   │ Conversion                        ║
+//	╠═══════════════════════════╪═══════════════════════════════════╣
+//	║ string                    │ ending SingleStruct value         ║
+//	║ []string                  │ ending ListStruct value           ║
+//	║ map[string]string         │ ending MapStruct value            ║
+//	║ map[string]interface{}    │ SingleStruct value                ║
+//	║ [][2]interface{}          │ ListStruct value                  ║
+//	║ map[string][2]interface{} │ MapStruct value                   ║
+//	╚═══════════════════════════╧═══════════════════════════════════╝
 //
 func NewValue(name string, v interface{}) (*Value, error) {
 	switch t := v.(type) {
@@ -57,7 +57,7 @@ func NewValue(name string, v interface{}) (*Value, error) {
 		if t[1] == nil { return stringValue(key) }
 		return NewValue(key, t[1])
 	case map[string]interface{}:
-		v2, err := NewSingleStruct(name, t)
+		v2, err := NewStruct(name, t)
 		if err != nil { return nil, err }
 		return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
 	case [][2]interface{}:
@@ -69,14 +69,14 @@ func NewValue(name string, v interface{}) (*Value, error) {
 		if err != nil { return nil, err }
 		return &Value{Kind: &Value_MapStruct{MapStruct: v2}}, nil
 	default:
-		return nil, protoimpl.X.NewError("invalid type: %T", v)
 	}
+	return nil, protoimpl.X.NewError("invalid type: %T", v)
 }
 
-// NewSingleStruct constructs a Struct from a general-purpose Go map.
+// NewStruct constructs a Struct from a generic Go map.
 // The map keys must be valid UTF-8.
 // The map values are converted using NewValue.
-func NewSingleStruct(name string, v ...map[string]interface{}) (*Struct, error) {
+func NewStruct(name string, v ...map[string]interface{}) (*Struct, error) {
 	x := &Struct{ClassName: name}
 	if v == nil { return x, nil}
 	x.Fields = make(map[string]*Value, len(v[0]))
@@ -102,7 +102,7 @@ func newListStruct(v [][2]interface{}) (*ListStruct, error) {
 		}
 		var err error
 		if u[1] == nil {
-			x.ListFields[i], err = NewSingleStruct(name)
+			x.ListFields[i], err = NewStruct(name)
 			if err != nil { return nil, err }
 			continue
 		}
@@ -110,7 +110,7 @@ func newListStruct(v [][2]interface{}) (*ListStruct, error) {
 		if !ok {
 			return nil, protoimpl.X.NewError("invalid type third in list: %T. expect map[string]interface{}", u[1])
 		}
-		x.ListFields[i], err = NewSingleStruct(name, hash)
+		x.ListFields[i], err = NewStruct(name, hash)
 		if err != nil { return nil, err }
 	}
 	return x, nil
@@ -125,7 +125,7 @@ func newMapStruct(v map[string][2]interface{}) (*MapStruct, error) {
 		}
 		var err error
 		if u[1] == nil {
-			x.MapFields[i], err = NewSingleStruct(name)
+			x.MapFields[i], err = NewStruct(name)
 			if err != nil { return nil, err }
 			continue
 		}
@@ -133,7 +133,7 @@ func newMapStruct(v map[string][2]interface{}) (*MapStruct, error) {
 		if !ok {
 			return nil, protoimpl.X.NewError("invalid type third in map: %T. expect map[string]interface{}", u[1])
 		}
-		x.MapFields[i], err = NewSingleStruct(name, hash)
+		x.MapFields[i], err = NewStruct(name, hash)
 		if err != nil { return nil, err }
 	}
 	return x, nil

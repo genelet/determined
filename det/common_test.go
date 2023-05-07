@@ -5,7 +5,7 @@ import (
 )
 
 func TestCommonString(t *testing.T) {
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"TheString888": "Circle",
 			"TheString": [2]interface{}{"Circle"},
@@ -38,7 +38,7 @@ func TestCommonString(t *testing.T) {
 }
 
 func TestCommonStruct(t *testing.T) {
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"Shape":     [2]interface{}{
 				"Class1", map[string]interface{}{"Field1": "Circle"}},
@@ -58,7 +58,7 @@ func TestCommonStruct(t *testing.T) {
 }
 
 func TestCommonMap(t *testing.T) {
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"HashShapes": map[string][2]interface{}{
 				"x1":[2]interface{}{"Class5", map[string]interface{}{"Field4":"Circle"}},
@@ -79,7 +79,7 @@ func TestCommonMap(t *testing.T) {
 }
 
 func TestCommonList(t *testing.T) {
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"ListShapes": [][2]interface{}{
 				[2]interface{}{"Class2", map[string]interface{}{"Field3":"Circle"}},

@@ -74,7 +74,7 @@ func TestJsonShape(t *testing.T) {
 	geo := &Geo{}
 	c := &Circle{}
 	ref := map[string]interface{}{"Circle":c}
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Geo", map[string]interface{}{"Shape": "Circle"})
 	err = JsonUnmarshal([]byte(data1), geo, endpoint, ref)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestJsonShape(t *testing.T) {
 	geo = &Geo{}
 	s := &Square{}
 	ref = map[string]interface{}{"Circle":c, "Square":s}
-	endpoint, err = NewSingleStruct(
+	endpoint, err = NewStruct(
 		"Geo", map[string]interface{}{"Shape": "Square"})
 	err = JsonUnmarshal([]byte(data2), geo, endpoint, ref)
 	if err != nil {
@@ -112,7 +112,7 @@ func TestJsonShape(t *testing.T) {
 	}
 }`
 	geometry := &Geometry{}
-	endpoint, err = NewSingleStruct(
+	endpoint, err = NewStruct(
 		"Geometry", map[string]interface{}{
 			"Shapes": map[string]string{
 				"obj5": "Square",
@@ -135,7 +135,7 @@ func TestJsonShape(t *testing.T) {
 	]
 }`
 	picture := &Picture{}
-	endpoint, err = NewSingleStruct(
+	endpoint, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"Square", "Square"}})
 	if err != nil { t.Fatal(err) }
@@ -202,7 +202,7 @@ func TestJsonToy(t *testing.T) {
 	}
 }
 }`
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Child", map[string]interface{}{
 			"Toy": [2]interface{}{
 				"Toy", map[string]interface{}{
@@ -241,7 +241,7 @@ func TestJsonToy(t *testing.T) {
 	}
 }]
 }`
-	endpoint, err = NewSingleStruct(
+	endpoint, err = NewStruct(
 		"Adult", map[string]interface{}{
 			"Toys": [][2]interface{}{
 				[2]interface{}{"Toy", map[string]interface{}{
@@ -282,7 +282,7 @@ func TestJsonToy(t *testing.T) {
 }
 
 func TestJsonEncoding(t *testing.T) {
-	endpoint, err := NewSingleStruct(
+	endpoint, err := NewStruct(
 		"Adult", map[string]interface{}{
 			"Toys": [][2]interface{}{
 				[2]interface{}{"Toy", map[string]interface{}{
