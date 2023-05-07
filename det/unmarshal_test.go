@@ -2,6 +2,7 @@ package det
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -295,7 +296,7 @@ func TestJsonEncoding(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	bs, err := protojson.Marshal(endpoint)
 	if err != nil { t.Fatal(err) }
-	if string(bs) != `{"ClassName":"Adult", "fields":{"Toys":{"listStruct":{"listFields":[{"ClassName":"Toy", "fields":{"Geo":{"singleStruct":{"ClassName":"Geo", "fields":{"Shape":{"singleStruct":{"ClassName":"Circle"}}}}}}}, {"ClassName":"Toy", "fields":{"Geo":{"singleStruct":{"ClassName":"Geo", "fields":{"Shape":{"singleStruct":{"ClassName":"Square"}}}}}}}]}}}}` {
+	if strings.ReplaceAll(string(bs), " ", "") != `{"ClassName":"Adult","fields":{"Toys":{"listStruct":{"listFields":[{"ClassName":"Toy","fields":{"Geo":{"singleStruct":{"ClassName":"Geo","fields":{"Shape":{"singleStruct":{"ClassName":"Circle"}}}}}}},{"ClassName":"Toy","fields":{"Geo":{"singleStruct":{"ClassName":"Geo","fields":{"Shape":{"singleStruct":{"ClassName":"Square"}}}}}}}]}}}}` {
 		t.Errorf("%s", bs)
 	}
 }

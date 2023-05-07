@@ -5,14 +5,6 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
-func stringValue(t string) (*Value, error) {
-	v2, err := NewStruct(t)
-	if err != nil {
-		return nil, err
-	}
-	return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
-}
-
 // NewValue constructs a Value from generic Go interface v.
 //
 //	╔═══════════════════════════╤═══════════════════════════════════╗
@@ -21,43 +13,34 @@ func stringValue(t string) (*Value, error) {
 //	║ string                    │ ending SingleStruct value         ║
 //	║ []string                  │ ending ListStruct value           ║
 //	║ map[string]string         │ ending MapStruct value            ║
-//	║ map[string]interface{}    │ SingleStruct value                ║
+//	║ [2]interface{}            │ SingleStruct value                ║
 //	║ [][2]interface{}          │ ListStruct value                  ║
 //	║ map[string][2]interface{} │ MapStruct value                   ║
 //	╚═══════════════════════════╧═══════════════════════════════════╝
 //
-func NewValue(name string, v interface{}) (*Value, error) {
+func NewValue(v interface{}) (*Value, error) {
 	switch t := v.(type) {
 	// string is treated as ending Struct without fields
 	case string:
-		return stringValue(t)
+		v2, err := newSingleStruct([2]interface{}{t})
+		if err != nil { return nil, err }
+		return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
 	// []string is treated as ending ListStruct without fields
 	case []string:
-		var output [][2]interface{}
-		for _, s := range t {
-			output = append(output, [2]interface{}{s})
+		output := make([][2]interface{}, len(t))
+		for k, s := range t {
+			output[k] = [2]interface{}{s}
 		}
-		v2, err := newListStruct(output)
-		if err != nil { return nil, err }
-		return &Value{Kind: &Value_ListStruct{ListStruct: v2}}, nil
+		return NewValue(output)
 	// map[string]string is treated as ending MapStruct without fields
 	case map[string]string:
 		output := make(map[string][2]interface{})
 		for k, s := range t {
 			output[k] = [2]interface{}{s}
 		}
-		v2, err := newMapStruct(output)
-		if err != nil { return nil, err }
-		return &Value{Kind: &Value_MapStruct{MapStruct: v2}}, nil
+		return NewValue(output)
 	case [2]interface{}:
-		key, ok := t[0].(string)
-		if !ok {
-			return nil, protoimpl.X.NewError("invalid string type: %T", t[0])
-		}
-		if t[1] == nil { return stringValue(key) }
-		return NewValue(key, t[1])
-	case map[string]interface{}:
-		v2, err := NewStruct(name, t)
+		v2, err := newSingleStruct(t)
 		if err != nil { return nil, err }
 		return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
 	case [][2]interface{}:
@@ -85,7 +68,7 @@ func NewStruct(name string, v ...map[string]interface{}) (*Struct, error) {
 			return nil, protoimpl.X.NewError("invalid UTF-8 in string: %q", key)
 		}
 		var err error
-		x.Fields[key], err = NewValue(key, val)
+		x.Fields[key], err = NewValue(val)
 		if err != nil {
 			return nil, err
 		}
@@ -93,48 +76,42 @@ func NewStruct(name string, v ...map[string]interface{}) (*Struct, error) {
 	return x, nil
 }
 
-func newListStruct(v [][2]interface{}) (*ListStruct, error) {
-	x := &ListStruct{ListFields: make([]*Struct, len(v))}
-	for i, u := range v {
-		name, ok := u[0].(string)
-		if !ok {
-			return nil, protoimpl.X.NewError("invalid type second in list: %T. expect string", u[0])
-		}
-		var err error
-		if u[1] == nil {
-			x.ListFields[i], err = NewStruct(name)
-			if err != nil { return nil, err }
-			continue
-		}
-		hash, ok := u[1].(map[string]interface{})
-		if !ok {
-			return nil, protoimpl.X.NewError("invalid type third in list: %T. expect map[string]interface{}", u[1])
-		}
-		x.ListFields[i], err = NewStruct(name, hash)
-		if err != nil { return nil, err }
+func newSingleStruct(v [2]interface{}) (*Struct, error) {
+	name, ok := v[0].(string)
+	if !ok {
+		return nil, protoimpl.X.NewError("expect string for the first: %T", v[0])
 	}
-	return x, nil
+	x := &Struct{ClassName: name}
+	if v[1] == nil {
+		return x, nil
+	}
+	hash, ok := v[1].(map[string]interface{})
+	if !ok {
+		return nil, protoimpl.X.NewError("expect map[string]interface{} for the second: %T", v[1])
+	}
+	return NewStruct(name, hash)
+}
+
+func newListStruct(v [][2]interface{}) (*ListStruct, error) {
+	var err error
+	x := make([]*Struct, len(v))
+	for i, u := range v {
+		x[i], err = newSingleStruct(u)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &ListStruct{ListFields: x}, nil
 }
 
 func newMapStruct(v map[string][2]interface{}) (*MapStruct, error) {
-	x := &MapStruct{MapFields: make(map[string]*Struct)}
+	var err error
+	x := make(map[string]*Struct)
 	for i, u := range v {
-		name, ok := u[0].(string)
-		if !ok {
-			return nil, protoimpl.X.NewError("invalid type second in map: %T. expect string", u[0])
+		x[i], err = newSingleStruct(u)
+		if err != nil {
+			return nil, err
 		}
-		var err error
-		if u[1] == nil {
-			x.MapFields[i], err = NewStruct(name)
-			if err != nil { return nil, err }
-			continue
-		}
-		hash, ok := u[1].(map[string]interface{})
-		if !ok {
-			return nil, protoimpl.X.NewError("invalid type third in map: %T. expect map[string]interface{}", u[1])
-		}
-		x.MapFields[i], err = NewStruct(name, hash)
-		if err != nil { return nil, err }
 	}
-	return x, nil
+	return &MapStruct{MapFields: x}, nil
 }
