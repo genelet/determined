@@ -35,7 +35,7 @@ func JsonUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[st
 		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
 			return fmt.Errorf("missing tag for %s", name)
 		}
-		if result, ok := objectMap[field.Name]; ok {
+		if result, ok := objectMap[name]; ok {
 			newField := reflect.StructField{Name: name, Tag: field.Tag}
 			if result.GetMapStruct() != nil {
 				newField.Type = reflect.TypeOf(map[string]json.RawMessage{})
@@ -72,37 +72,43 @@ func JsonUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[st
 		result, ok := objectMap[field.Name]
 		if ok {
 			if x := result.GetMapStruct(); x != nil {
-				n := rawField.Len()
-				fMap := reflect.MakeMap(fieldType)
-				keys := rawField.MapKeys()
 				nextMapStructs := x.GetMapFields()
-				var last, trial interface{}
+				nSmaller := len(nextMapStructs)
+				var first *Struct
+				for _, first = range nextMapStructs { break }
+
+				n := rawField.Len()
+				keys := rawField.MapKeys()
+				fMap := reflect.MakeMap(fieldType)
 				for i:=0; i<n; i++ {
-					k := keys[i]
-					v := rawField.MapIndex(k)
-					key := k.String()
-					nextStruct := nextMapStructs[key]
-					if nextStruct != nil { last = nextStruct }
-					trial = ref[nextStruct.ClassName]
-					if trial == nil { trial = last }
-					trial = clone(trial)
+					key := keys[i]
+					v := rawField.MapIndex(key)
+					nextStruct := first
+					if i < nSmaller {
+						if tmp, ok := nextMapStructs[key.String()]; ok {
+							nextStruct = tmp
+						}
+					}
+					trial := clone(ref[nextStruct.ClassName])
 					err := JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
 					if err != nil { return err }
-					fMap.SetMapIndex(k, reflect.ValueOf(trial))
+					fMap.SetMapIndex(key, reflect.ValueOf(trial))
 				}
 				f.Set(fMap)
 			} else if x := result.GetListStruct(); x != nil {
+				nextListStructs := x.GetListFields()
+				nSmaller := len(nextListStructs)
+
 				n := rawField.Len()
 				fSlice := reflect.MakeSlice(fieldType, n, n)
-				nextListStructs := x.GetListFields()
-				var last, trial interface{}
+				first := nextListStructs[0]
 				for k:=0; k<n; k++ {
 					v := rawField.Index(k)
-					nextStruct := nextListStructs[k]
-					if nextStruct != nil { last = nextStruct }
-					trial = ref[nextStruct.ClassName]
-					if trial == nil { trial = last }
-					trial = clone(trial)
+					nextStruct := first
+					if k < nSmaller {
+						nextStruct = nextListStructs[k]
+					}
+					trial := clone(ref[nextStruct.ClassName])
 					err := JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
 					if err != nil { return err }
 					fSlice.Index(k).Set(reflect.ValueOf(trial))

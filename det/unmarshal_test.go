@@ -128,6 +128,21 @@ func TestJsonShape(t *testing.T) {
 		t.Errorf("%#v", shapes["obj7"].(*Square))
 	}
 
+	geometry = &Geometry{}
+	endpoint, err = NewStruct(
+		"Geometry", map[string]interface{}{
+			"Shapes": map[string]string{
+				"obj7": "Square"}}) // in case of less items, use the first one
+	err = JsonUnmarshal([]byte(data3), geometry, endpoint, ref)
+	if err != nil { t.Fatal(err) }
+	shapes = geometry.Shapes
+	if geometry.Name != "peter shapes" ||
+		shapes["obj5"].(*Square).SX != 5 ||
+		shapes["obj7"].(*Square).SX != 7 {
+		t.Errorf("%#v", shapes["obj5"].(*Square))
+		t.Errorf("%#v", shapes["obj7"].(*Square))
+	}
+
 	data4 := `{
 	"name": "peter drawings",
 	"drawings": [
@@ -145,6 +160,23 @@ func TestJsonShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	drawings := picture.Drawings
+	if picture.Name != "peter drawings" ||
+		drawings[0].(*Square).SX != 5 ||
+		drawings[1].(*Square).SX != 7 {
+		t.Errorf("%#v", drawings[0].(*Square))
+		t.Errorf("%#v", drawings[1].(*Square))
+	}
+
+	picture = &Picture{}
+	endpoint, err = NewStruct(
+		"Picture", map[string]interface{}{
+			"Drawings": []string{"Square"}})
+	if err != nil { t.Fatal(err) }
+	err = JsonUnmarshal([]byte(data4), picture, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drawings = picture.Drawings
 	if picture.Name != "peter drawings" ||
 		drawings[0].(*Square).SX != 5 ||
 		drawings[1].(*Square).SX != 7 {
@@ -174,6 +206,11 @@ type Child struct {
 	Age int `json:"age"`
 }
 
+type Child1 struct {
+	Brand *Toy `json:"brand"`
+	Age   int  `json:"age"`
+}
+
 type Adult struct {
 	Toys []*Toy `json:"toys"`
 	Family bool `json:"family"`
@@ -187,6 +224,36 @@ func (self *Adult) Assign(endpoint *Struct, ref map[string]interface{}) {
 }
 func (self *Adult) UnmarshalJSON(dat []byte) error {
 	return JsonUnmarshal(dat, self, self.endpoint, self.ref)
+}
+
+func TestJsonToy1(t *testing.T) {
+	data1 := `{
+"age":5,
+"brand":{
+	"toy_name":"roblox",
+	"price":99.9,
+	"geo":{
+		"name": "peter shape",
+		"shape": {
+    		"radius":1.234
+		}
+	}
+}
+}`
+	endpoint, err := NewStruct(
+		"Child", map[string]interface{}{
+			"Brand": [2]interface{}{
+				"Toy", map[string]interface{}{
+					"Geo": [2]interface{}{
+						"Geo", map[string]interface{}{"Shape": "Circle"}}}}})
+	ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
+
+	child := new(Child1)
+	err = JsonUnmarshal([]byte(data1), child, endpoint, ref)
+	if err != nil { t.Fatal(err) }
+	if child.Age != 5 || child.Brand.Shape.(*Circle).Radius != 1.234 {
+		t.Errorf("%#v", child)
+	}
 }
 
 func TestJsonToy(t *testing.T) {
