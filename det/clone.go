@@ -5,7 +5,6 @@ import (
 )
 
 // clone clones a value via pointer
-//
 func clone(old interface{}) interface{} {
 	obj := reflect.New(reflect.TypeOf(old).Elem())
 	oldVal := reflect.ValueOf(old).Elem()

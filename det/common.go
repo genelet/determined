@@ -1,29 +1,35 @@
 package det
 
 import (
-	utf8 "unicode/utf8"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	utf8 "unicode/utf8"
 )
 
 // NewValue constructs a Value from generic Go interface v.
 //
-//	╔═══════════════════════════╤═══════════════════════════════════╗
-//	║ Go type                   │ Conversion                        ║
-//	╠═══════════════════════════╪═══════════════════════════════════╣
-//	║ string                    │ ending SingleStruct value         ║
-//	║ []string                  │ ending ListStruct value           ║
-//	║ map[string]string         │ ending MapStruct value            ║
-//	║ [2]interface{}            │ SingleStruct value                ║
-//	║ [][2]interface{}          │ ListStruct value                  ║
-//	║ map[string][2]interface{} │ MapStruct value                   ║
-//	╚═══════════════════════════╧═══════════════════════════════════╝
-//
+//	╔═══════════════════════════╤══════════════════════════════╗
+//	║ Go type                   │ Conversion                   ║
+//	╠═══════════════════════════╪══════════════════════════════╣
+//	║ string                    │ ending SingleStruct value    ║
+//	║ []string                  │ ending ListStruct value      ║
+//	║ map[string]string         │ ending MapStruct value       ║
+//  ║                           │                              ║
+//	║ [2]interface{}            │ SingleStruct value           ║
+//	║ [][2]interface{}          │ ListStruct value             ║
+//	║ map[string][2]interface{} │ MapStruct value              ║
+//  ║                           │                              ║
+//  ║ *Struct                   │ SingleStruct                 ║
+//  ║ []*Struct                 │ ListStruct                   ║
+//  ║ map[string]*Struct        │ MapStruct                    ║
+//	╚═══════════════════════════╧══════════════════════════════╝
 func NewValue(v interface{}) (*Value, error) {
 	switch t := v.(type) {
 	// string is treated as ending Struct without fields
 	case string:
 		v2, err := newSingleStruct([2]interface{}{t})
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
 	// []string is treated as ending ListStruct without fields
 	case []string:
@@ -41,15 +47,29 @@ func NewValue(v interface{}) (*Value, error) {
 		return NewValue(output)
 	case [2]interface{}:
 		v2, err := newSingleStruct(t)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
+	case *Struct:
+		return &Value{Kind: &Value_SingleStruct{SingleStruct: t}}, nil
 	case [][2]interface{}:
 		v2, err := newListStruct(t)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
+		return &Value{Kind: &Value_ListStruct{ListStruct: v2}}, nil
+	case []*Struct:
+		v2 := &ListStruct{ListFields: t}
 		return &Value{Kind: &Value_ListStruct{ListStruct: v2}}, nil
 	case map[string][2]interface{}:
 		v2, err := newMapStruct(t)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
+		return &Value{Kind: &Value_MapStruct{MapStruct: v2}}, nil
+	case map[string]*Struct:
+		v2 := &MapStruct{MapFields: t}
 		return &Value{Kind: &Value_MapStruct{MapStruct: v2}}, nil
 	default:
 	}
@@ -61,7 +81,9 @@ func NewValue(v interface{}) (*Value, error) {
 // The map values are converted using NewValue.
 func NewStruct(name string, v ...map[string]interface{}) (*Struct, error) {
 	x := &Struct{ClassName: name}
-	if v == nil { return x, nil}
+	if v == nil {
+		return x, nil
+	}
 	x.Fields = make(map[string]*Value, len(v[0]))
 	for key, val := range v[0] {
 		if !utf8.ValidString(key) {

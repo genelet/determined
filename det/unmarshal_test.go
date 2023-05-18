@@ -2,9 +2,9 @@ package det
 
 import (
 	"encoding/json"
+	"google.golang.org/protobuf/encoding/protojson"
 	"strings"
 	"testing"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type I interface {
@@ -12,8 +12,8 @@ type I interface {
 }
 
 type Square struct {
-	SX int `json:"sx"`
-	SY int `json:"sy"`
+	SX int `json:"sx" hcl:"sx"`
+	SY int `json:"sy" hcl:"sy"`
 }
 
 func (self *Square) Area() float32 {
@@ -21,7 +21,7 @@ func (self *Square) Area() float32 {
 }
 
 type Circle struct {
-	Radius float32 `json:"radius"`
+	Radius float32 `json:"radius" hcl:"radius"`
 }
 
 func (self *Circle) Area() float32 {
@@ -29,7 +29,7 @@ func (self *Circle) Area() float32 {
 }
 
 type Cubic struct {
-	Size int `json:"size"`
+	Size int `json:"size" hcl:"size"`
 }
 
 func (self *Cubic) Area() float32 {
@@ -50,19 +50,33 @@ func TestJsonSimple(t *testing.T) {
 	}
 }
 
+func TestHclSimple(t *testing.T) {
+	data1 := `
+	radius = 1.234
+`
+	c := new(Circle)
+	err := HclUnmarshal([]byte(data1), c, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Radius != 1.234 {
+		t.Errorf("%#v", c)
+	}
+}
+
 type Geo struct {
-	Name  string `json:"name"`
-	Shape I      `json:"shape"`
+	Name  string `json:"name" hcl:"name"`
+	Shape I      `json:"shape" hcl:"shape,block"`
 }
 
 type Geometry struct {
-	Name   string       `json:"name"`
-	Shapes map[string]I `json:"shapes"`
+	Name   string       `json:"name" hcl:"name"`
+	Shapes map[string]I `json:"shapes" hcl:"shapes,block"`
 }
 
 type Picture struct {
-	Name     string `json:"name"`
-	Drawings []I    `json:"drawings"`
+	Name     string `json:"name" hcl:"name"`
+	Drawings []I    `json:"drawings" hcl:"drawings,block"`
 }
 
 func TestJsonShape(t *testing.T) {
@@ -74,7 +88,7 @@ func TestJsonShape(t *testing.T) {
 }`
 	geo := &Geo{}
 	c := &Circle{}
-	ref := map[string]interface{}{"Circle":c}
+	ref := map[string]interface{}{"Circle": c}
 	endpoint, err := NewStruct(
 		"Geo", map[string]interface{}{"Shape": "Circle"})
 	err = JsonUnmarshal([]byte(data1), geo, endpoint, ref)
@@ -94,7 +108,7 @@ func TestJsonShape(t *testing.T) {
 }`
 	geo = &Geo{}
 	s := &Square{}
-	ref = map[string]interface{}{"Circle":c, "Square":s}
+	ref = map[string]interface{}{"Circle": c, "Square": s}
 	endpoint, err = NewStruct(
 		"Geo", map[string]interface{}{"Shape": "Square"})
 	err = JsonUnmarshal([]byte(data2), geo, endpoint, ref)
@@ -119,7 +133,9 @@ func TestJsonShape(t *testing.T) {
 				"obj5": "Square",
 				"obj7": "Square"}})
 	err = JsonUnmarshal([]byte(data3), geometry, endpoint, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	shapes := geometry.Shapes
 	if geometry.Name != "peter shapes" ||
 		shapes["obj5"].(*Square).SX != 5 ||
@@ -134,7 +150,9 @@ func TestJsonShape(t *testing.T) {
 			"Shapes": map[string]string{
 				"obj7": "Square"}}) // in case of less items, use the first one
 	err = JsonUnmarshal([]byte(data3), geometry, endpoint, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	shapes = geometry.Shapes
 	if geometry.Name != "peter shapes" ||
 		shapes["obj5"].(*Square).SX != 5 ||
@@ -154,7 +172,9 @@ func TestJsonShape(t *testing.T) {
 	endpoint, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"Square", "Square"}})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = JsonUnmarshal([]byte(data4), picture, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +191,9 @@ func TestJsonShape(t *testing.T) {
 	endpoint, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"Square"}})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = JsonUnmarshal([]byte(data4), picture, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -188,6 +210,140 @@ func TestJsonShape(t *testing.T) {
 	err = json.Unmarshal([]byte(data4), picture)
 	if err == nil || err.Error() != "json: cannot unmarshal object into Go struct field Picture.drawings of type det.I" {
 		t.Fatal(err)
+	}
+}
+
+func TestHclShape(t *testing.T) {
+	data1 := `
+	name = "peter shape"
+	shape = {
+		radius = 1.234
+	}
+`
+	geo := &Geo{}
+	c := &Circle{}
+	ref := map[string]interface{}{"Circle": c}
+	endpoint, err := NewStruct(
+		"Geo", map[string]interface{}{"Shape": "Circle"})
+	err = HclUnmarshal([]byte(data1), geo, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if geo.Name != "peter shape" || geo.Shape.(*Circle).Radius != 1.234 {
+		t.Errorf("%#v", geo)
+	}
+
+	data2 := `
+	name = "peter shape"
+	shape = {
+    	sx = 5
+    	sy = 6
+	}
+`
+	geo = &Geo{}
+	s := &Square{}
+	ref = map[string]interface{}{"Circle": c, "Square": s}
+	endpoint, err = NewStruct(
+		"Geo", map[string]interface{}{"Shape": "Square"})
+	err = HclUnmarshal([]byte(data2), geo, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if geo.Name != "peter shape" || geo.Shape.(*Square).SX != 5 {
+		t.Errorf("%#v", geo)
+	}
+
+	data3 := `
+	name =  "peter shapes"
+	shapes = {
+		obj5 = {
+			sx = 5,
+			sy = 6
+		}
+		obj7 = {
+			sx = 7,
+			sy = 8
+		}
+	}
+`
+	geometry := &Geometry{}
+	endpoint, err = NewStruct(
+		"Geometry", map[string]interface{}{
+			"Shapes": map[string]string{
+				"obj5": "Square",
+				"obj7": "Square"}})
+	err = HclUnmarshal([]byte(data3), geometry, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shapes := geometry.Shapes
+	if geometry.Name != "peter shapes" ||
+		shapes["obj5"].(*Square).SX != 5 ||
+		shapes["obj7"].(*Square).SX != 7 {
+		t.Errorf("%#v", shapes["obj5"].(*Square))
+		t.Errorf("%#v", shapes["obj7"].(*Square))
+	}
+
+	geometry = &Geometry{}
+	endpoint, err = NewStruct(
+		"Geometry", map[string]interface{}{
+			"Shapes": map[string]string{
+				"obj7": "Square"}}) // in case of less items, use the first one
+	err = HclUnmarshal([]byte(data3), geometry, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shapes = geometry.Shapes
+	if geometry.Name != "peter shapes" ||
+		shapes["obj5"].(*Square).SX != 5 ||
+		shapes["obj7"].(*Square).SX != 7 {
+		t.Errorf("%#v", shapes["obj5"].(*Square))
+		t.Errorf("%#v", shapes["obj7"].(*Square))
+	}
+
+	data4 := `
+	name = "peter drawings"
+	drawings = [
+		{ sx=5, sy=6 },
+		{ sx=7, sy=8 }
+	]
+`
+	picture := &Picture{}
+	endpoint, err = NewStruct(
+		"Picture", map[string]interface{}{
+			"Drawings": []string{"Square", "Square"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = HclUnmarshal([]byte(data4), picture, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drawings := picture.Drawings
+	if picture.Name != "peter drawings" ||
+		drawings[0].(*Square).SX != 5 ||
+		drawings[1].(*Square).SX != 7 {
+		t.Errorf("%#v", drawings[0].(*Square))
+		t.Errorf("%#v", drawings[1].(*Square))
+	}
+
+	picture = &Picture{}
+	endpoint, err = NewStruct(
+		"Picture", map[string]interface{}{
+			"Drawings": []string{"Square"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = HclUnmarshal([]byte(data4), picture, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drawings = picture.Drawings
+	if picture.Name != "peter drawings" ||
+		drawings[0].(*Square).SX != 5 ||
+		drawings[1].(*Square).SX != 7 {
+		t.Errorf("%#v", drawings[0].(*Square))
+		t.Errorf("%#v", drawings[1].(*Square))
 	}
 }
 
@@ -212,12 +368,13 @@ type Child1 struct {
 }
 
 type Adult struct {
-	Toys []*Toy `json:"toys"`
-	Family bool `json:"family"`
+	Toys     []*Toy `json:"toys"`
+	Family   bool   `json:"family"`
 	Lastname string `json:"lastname"`
 	endpoint *Struct
-	ref map[string]interface{}
+	ref      map[string]interface{}
 }
+
 func (self *Adult) Assign(endpoint *Struct, ref map[string]interface{}) {
 	self.endpoint = endpoint
 	self.ref = ref
@@ -250,7 +407,9 @@ func TestJsonToy1(t *testing.T) {
 
 	child := new(Child1)
 	err = JsonUnmarshal([]byte(data1), child, endpoint, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if child.Age != 5 || child.Brand.Shape.(*Circle).Radius != 1.234 {
 		t.Errorf("%#v", child)
 	}
@@ -280,7 +439,9 @@ func TestJsonToy(t *testing.T) {
 
 	child := new(Child)
 	err = JsonUnmarshal([]byte(data1), child, endpoint, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if child.Age != 5 || child.Toy.Shape.(*Circle).Radius != 1.234 {
 		t.Errorf("%#v", child)
 	}
@@ -312,19 +473,23 @@ func TestJsonToy(t *testing.T) {
 	endpoint, err = NewStruct(
 		"Adult", map[string]interface{}{
 			"Toys": [][2]interface{}{
-				[2]interface{}{"Toy", map[string]interface{}{
+				{"Toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"Geo", map[string]interface{}{"Shape": "Circle"}}}},
-				[2]interface{}{"Toy", map[string]interface{}{
+				{"Toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"Geo", map[string]interface{}{"Shape": "Square"}}}},
-				}})
-	if err != nil { t.Fatal(err) }
+			}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ref = map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
 
 	adult := new(Adult)
 	err = JsonUnmarshal([]byte(data2), adult, endpoint, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, ok := adult.Toys[0].Shape.(*Circle)
 	if !ok {
 		t.Errorf("%#v", adult.Toys[0])
@@ -337,32 +502,38 @@ func TestJsonToy(t *testing.T) {
 	second := new(Adult)
 	second.Assign(endpoint, ref)
 	err = json.Unmarshal([]byte(data2), second)
-    if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
-    _, ok = second.Toys[0].Shape.(*Circle)
-    if !ok || second.Toys[0].ToyName != "roblox" {
-        t.Errorf("%#v", second.Toys[0])
-    }
-    _, ok = second.Toys[1].Shape.(*Square)
-    if !ok || second.Toys[1].ToyName != "minecraft" {
-        t.Errorf("%#v", second.Toys[1])
-    }
+	_, ok = second.Toys[0].Shape.(*Circle)
+	if !ok || second.Toys[0].ToyName != "roblox" {
+		t.Errorf("%#v", second.Toys[0])
+	}
+	_, ok = second.Toys[1].Shape.(*Square)
+	if !ok || second.Toys[1].ToyName != "minecraft" {
+		t.Errorf("%#v", second.Toys[1])
+	}
 }
 
 func TestJsonEncoding(t *testing.T) {
 	endpoint, err := NewStruct(
 		"Adult", map[string]interface{}{
 			"Toys": [][2]interface{}{
-				[2]interface{}{"Toy", map[string]interface{}{
+				{"Toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"Geo", map[string]interface{}{"Shape": "Circle"}}}},
-				[2]interface{}{"Toy", map[string]interface{}{
+				{"Toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"Geo", map[string]interface{}{"Shape": "Square"}}}},
-				}})
-	if err != nil { t.Fatal(err) }
+			}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	bs, err := protojson.Marshal(endpoint)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if strings.ReplaceAll(string(bs), " ", "") != `{"ClassName":"Adult","fields":{"Toys":{"listStruct":{"listFields":[{"ClassName":"Toy","fields":{"Geo":{"singleStruct":{"ClassName":"Geo","fields":{"Shape":{"singleStruct":{"ClassName":"Circle"}}}}}}},{"ClassName":"Toy","fields":{"Geo":{"singleStruct":{"ClassName":"Geo","fields":{"Shape":{"singleStruct":{"ClassName":"Square"}}}}}}}]}}}}` {
 		t.Errorf("%s", bs)
 	}
