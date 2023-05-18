@@ -348,9 +348,9 @@ func TestHclShape(t *testing.T) {
 }
 
 type Toy struct {
-	Geo     `json:"geo"`
-	ToyName string  `json:"toy_name"`
-	Price   float32 `json:"price"`
+	Geo     `json:"geo" hcl:"geo,block"`
+	ToyName string  `json:"toy_name" hcl:"toy_name"`
+	Price   float32 `json:"price" hcl:"price"`
 }
 
 func (self *Toy) ImportPrice(rate float32) float32 {
@@ -358,19 +358,19 @@ func (self *Toy) ImportPrice(rate float32) float32 {
 }
 
 type Child struct {
-	Toy `json:"toy"`
-	Age int `json:"age"`
+	Toy `json:"toy" hcl:"toy,block"`
+	Age int `json:"age" hcl:"age"`
 }
 
 type Child1 struct {
-	Brand *Toy `json:"brand"`
-	Age   int  `json:"age"`
+	Brand *Toy `json:"brand" hcl:"brand,block"`
+	Age   int  `json:"age" hcl:"age"`
 }
 
 type Adult struct {
-	Toys     []*Toy `json:"toys"`
-	Family   bool   `json:"family"`
-	Lastname string `json:"lastname"`
+	Toys     []*Toy `json:"toys", hcl:"toys,block"`
+	Family   bool   `json:"family" hcl:"family"`
+	Lastname string `json:"lastname" hcl:"lastname"`
 	endpoint *Struct
 	ref      map[string]interface{}
 }
@@ -407,6 +407,38 @@ func TestJsonToy1(t *testing.T) {
 
 	child := new(Child1)
 	err = JsonUnmarshal([]byte(data1), child, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.Age != 5 || child.Brand.Shape.(*Circle).Radius != 1.234 {
+		t.Errorf("%#v", child)
+	}
+}
+
+func TestHclToy1(t *testing.T) {
+	data1 := `
+age = 5
+brand = {
+	toy_name = "roblox"
+	price = 99.9
+	geo = {
+		name = "peter shape"
+		shape = {
+    		radius = 1.234
+		}
+	}
+}
+`
+	endpoint, err := NewStruct(
+		"Child", map[string]interface{}{
+			"Brand": [2]interface{}{
+				"Toy", map[string]interface{}{
+					"Geo": [2]interface{}{
+						"Geo", map[string]interface{}{"Shape": "Circle"}}}}})
+	ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
+
+	child := new(Child1)
+	err = HclUnmarshal([]byte(data1), child, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -75,7 +75,7 @@ fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), 
 				}
 			} else {
 				if postfix == "hcl" {
-					newField.Type = reflect.TypeOf(map[string]string{})
+					newField.Type = reflect.TypeOf(map[string][]byte{})
 				} else {
 					newField.Type = reflect.TypeOf(json.RawMessage{})
 				}
