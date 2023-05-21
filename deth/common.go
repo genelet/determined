@@ -331,13 +331,13 @@ TOP:
 		switch t := value.(type) {
 		case string:
 			switch i {
-			case 1: x.Label1 = name
-			case 2: x.Label2 = name
-			case 3: x.Label3 = name
-			case 4: x.Label4 = name
-			case 5: x.Label5 = name
-			case 6: x.Label6 = name
-			case 7: x.Label7 = name
+			case 0: x.Label1 = t
+			case 1: x.Label2 = t
+			case 2: x.Label3 = t
+			case 3: x.Label4 = t
+			case 4: x.Label5 = t
+			case 5: x.Label6 = t
+			case 6: x.Label7 = t
 			default:
 			}
 		case map[string]interface{}:
@@ -359,7 +359,7 @@ TOP:
 
 func newSingleStruct(v []interface{}, n int) (*Struct, error) {
 	m := len(v)
-	if !(n==m || n==m-1 || m<1) {
+	if (n!=m && (n-1)!=m) || m<1 {
 		return nil, protoimpl.X.NewError("wrong counts: m %d => n %d", m, n)
 	}
 

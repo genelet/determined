@@ -6,24 +6,30 @@ import (
 
 func TestCommonString(t *testing.T) {
 	endpoint, err := NewStruct(
-		"Geo", map[string]interface{}{
+		"Geo", "label1_1", "label1_2", map[string]interface{}{
 			"TheString888": "Circle",
+			"TheString777": [2]string{"Circle", "label2_1"},
 			"TheString":    [2]interface{}{"Circle"},
+			"TheString666": [3]interface{}{"Circle", "label2_2"},
+
 			"TheList888":   []string{"CircleClass1", "CircleClass2"},
 			"TheList": [][2]interface{}{
 				{"CircleClass1"},
 				{"CircleClass2"}},
-			"TheHash": map[string][2]interface{}{
-				"a1": {"CircleClass1"},
-				"b1": {"CircleClass2"}},
-			"TheHash888": map[string]string{
-				"a1": "CircleClass1",
-				"a2": "CircleClass2"},
+
+			"TheHash": [][2]string{
+				{"CircleClass1", "a1"},
+				{"CircleClass2", "a2"}},
+			"TheHash888": [][3]interface{}{
+				{"CircleClass1", "a1"},
+				{"CircleClass2", "a2"}},
 		},
 	)
 	if err != nil {
 		panic(err)
 	}
+		t.Errorf("%s", endpoint.String())
+
 	fields := endpoint.GetFields()
 	if fields["TheString888"].String() != fields["TheString"].String() {
 		t.Errorf("%s", fields["TheString888"].String())
