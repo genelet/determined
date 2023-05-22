@@ -1,4 +1,4 @@
-package det
+package deth
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ func TestHclSimple(t *testing.T) {
 	data1 := `
 	radius = 1.234
 `
-	c := new(Circle)
+	c := new(circle)
 	err := HclUnmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -25,17 +25,17 @@ func TestHclShape(t *testing.T) {
 		radius = 1.234
 	}
 `
-	geo := &Geo{}
-	c := &Circle{}
-	ref := map[string]interface{}{"Circle": c}
+	g := &geo{}
+	c := &circle{}
+	ref := map[string]interface{}{"circle": c}
 	endpoint, err := NewStruct(
-		"Geo", map[string]interface{}{"Shape": "Circle"})
-	err = HclUnmarshal([]byte(data1), geo, endpoint, ref)
+		"geo", map[string]interface{}{"Shape": "circle"})
+	err = HclUnmarshal([]byte(data1), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if geo.Name != "peter shape" || geo.Shape.(*Circle).Radius != 1.234 {
-		t.Errorf("%#v", geo)
+	if g.Name != "peter shape" || g.Shape.(*circle).Radius != 1.234 {
+		t.Errorf("%#v", g)
 	}
 
 	data2 := `
@@ -45,110 +45,47 @@ func TestHclShape(t *testing.T) {
     	sy = 6
 	}
 `
-	geo = &Geo{}
-	s := &Square{}
-	ref = map[string]interface{}{"Circle": c, "Square": s}
+	g = &geo{}
+	s := &square{}
+	ref = map[string]interface{}{"circle": c, "square": s}
 	endpoint, err = NewStruct(
-		"Geo", map[string]interface{}{"Shape": "Square"})
-	err = HclUnmarshal([]byte(data2), geo, endpoint, ref)
+		"geo", map[string]interface{}{"Shape": "square"})
+	err = HclUnmarshal([]byte(data2), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if geo.Name != "peter shape" || geo.Shape.(*Square).SX != 5 {
-		t.Errorf("%#v", geo)
-	}
-
-	data3 := `
-	name =  "peter shapes"
-	shapes {
-		obj5 = {
-			sx = 5
-			sy = 6
-		}
-		obj7 = {
-			sx = 7
-			sy = 8
-		}
-	}
-`
-	geometry := &Geometry{}
-	endpoint, err = NewStruct(
-		"Geometry", map[string]interface{}{
-			"Shapes": map[string]string{
-				"obj5": "Square",
-				"obj7": "Square"}})
-	err = HclUnmarshal([]byte(data3), geometry, endpoint, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	shapes := geometry.Shapes
-	if geometry.Name != "peter shapes" ||
-		shapes["obj5"].(*Square).SX != 5 ||
-		shapes["obj7"].(*Square).SX != 7 {
-		t.Errorf("%#v", shapes["obj5"].(*Square))
-		t.Errorf("%#v", shapes["obj7"].(*Square))
-	}
-
-	geometry = &Geometry{}
-	endpoint, err = NewStruct(
-		"Geometry", map[string]interface{}{
-			"Shapes": map[string]string{
-				"obj7": "Square"}}) // in case of less items, use the first one
-	err = HclUnmarshal([]byte(data3), geometry, endpoint, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	shapes = geometry.Shapes
-	if geometry.Name != "peter shapes" ||
-		shapes["obj5"].(*Square).SX != 5 ||
-		shapes["obj7"].(*Square).SX != 7 {
-		t.Errorf("%#v", shapes["obj5"].(*Square))
-		t.Errorf("%#v", shapes["obj7"].(*Square))
+	if g.Name != "peter shape" || g.Shape.(*square).SX != 5 {
+		t.Errorf("%#v", g)
 	}
 
 	data4 := `
 	name = "peter drawings"
-	drawings = [
-		{ sx=5, sy=6 },
-		{ sx=7, sy=8 }
-	]
+	drawings {
+		sx=5
+		sy=6
+	}
+	drawings {
+		sx=7
+		sy=8
+	}
 `
-	picture := &Picture{}
+	p := &picture{}
 	endpoint, err = NewStruct(
 		"Picture", map[string]interface{}{
-			"Drawings": []string{"Square", "Square"}})
+			"Drawings": []string{"square", "square"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = HclUnmarshal([]byte(data4), picture, endpoint, ref)
+	err = HclUnmarshal([]byte(data4), p, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drawings := picture.Drawings
-	if picture.Name != "peter drawings" ||
-		drawings[0].(*Square).SX != 5 ||
-		drawings[1].(*Square).SX != 7 {
-		t.Errorf("%#v", drawings[0].(*Square))
-		t.Errorf("%#v", drawings[1].(*Square))
-	}
-
-	picture = &Picture{}
-	endpoint, err = NewStruct(
-		"Picture", map[string]interface{}{
-			"Drawings": []string{"Square"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = HclUnmarshal([]byte(data4), picture, endpoint, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drawings = picture.Drawings
-	if picture.Name != "peter drawings" ||
-		drawings[0].(*Square).SX != 5 ||
-		drawings[1].(*Square).SX != 7 {
-		t.Errorf("%#v", drawings[0].(*Square))
-		t.Errorf("%#v", drawings[1].(*Square))
+	drawings := p.Drawings
+	if p.Name != "peter drawings" ||
+		drawings[0].(*square).SX != 5 ||
+		drawings[1].(*square).SX != 7 {
+		t.Errorf("%#v", drawings[0].(*square))
+		t.Errorf("%#v", drawings[1].(*square))
 	}
 }
 
@@ -167,19 +104,19 @@ brand = {
 }
 `
 	endpoint, err := NewStruct(
-		"Child", map[string]interface{}{
+		"child", map[string]interface{}{
 			"Brand": [2]interface{}{
-				"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Circle"}}}}})
-	ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
+				"toy", map[string]interface{}{
+					"geo": [2]interface{}{
+						"geo", map[string]interface{}{"Shape": "circle"}}}}})
+	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
 
-	child := new(Child1)
-	err = HclUnmarshal([]byte(data1), child, endpoint, ref)
+	c := new(child1)
+	err = HclUnmarshal([]byte(data1), c, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if child.Age != 5 || child.Brand.Shape.(*Circle).Radius != 1.234 {
-		t.Errorf("%#v", child)
+	if c.Age != 5 || c.Brand.Shape.(*circle).Radius != 1.234 {
+		t.Errorf("%#v", c)
 	}
 }
