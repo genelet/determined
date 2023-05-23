@@ -89,6 +89,36 @@ func TestHclShape(t *testing.T) {
 	}
 }
 
+func TestHash(t *testing.T) {
+	data3 := `
+	name = "peter shapes"
+	shapes obj5 {
+		sx = 5
+		sy = 6
+	}
+	shapes obj7 {
+		sx = 7
+		sy = 8
+	}
+`
+	g := &geometry{}
+	endpoint, err := NewStruct(
+		"geometry", map[string]interface{}{
+			"Shapes": [][2]string{{"square", "obj5"}, {"square", "obj7"}}})
+	ref := map[string]interface{}{"square": new(square)}
+	err = HclUnmarshal([]byte(data3), g, endpoint, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shapes := g.Shapes
+	if g.Name != "peter shapes" ||
+		shapes["obj5"].(*square).SX != 5 ||
+		shapes["obj7"].(*square).SX != 7 {
+		t.Errorf("%#v", shapes["obj5"].(*square))
+		t.Errorf("%#v", shapes["obj7"].(*square))
+	}
+}
+
 func TestHclToy1(t *testing.T) {
 	data1 := `
 age = 5

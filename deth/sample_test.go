@@ -40,7 +40,7 @@ type geo struct {
 
 type geometry struct {
 	Name   string       `json:"name" hcl:"name"`
-	Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`
+	Shapes map[string]inter `json:"shapes" hcl:"shapes,hash"`
 }
 
 type picture struct {

@@ -42,7 +42,9 @@ fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), 
 		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
 			return fmt.Errorf("missing tag for %s", name)
 		}
-		_, ok := objectMap[name]
+		u, ok := objectMap[name]
+fmt.Printf("DDDDD: %#v\n", objectMap)
+fmt.Printf("DDDDD: %s=>%#v\n", name, u)
 		tag, tag_type := tag2tag(field.Tag, ok)
 		if tag_type[1] != "" {
 			tag_types[name] = tag_type
@@ -93,6 +95,7 @@ fmt.Printf("44444444: %T=> %#v\n", rawField, rawField)
 		tag_type := tag_types[fieldName]
 		if ok {
 			body := rawField.Interface().(*hclsyntax.Body)
+//debugBody(body, file)
 			if x := result.GetListStruct(); x != nil {
 				nextListStructs := x.GetListFields()
 				n := len(nextListStructs)
@@ -189,7 +192,6 @@ fmt.Printf("801 %s\n", bs)
 }
 
 func getBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
-	var labels []string
 	if block == nil {
 		return nil, nil, protoimpl.X.NewError("block not found")
 	}
@@ -198,5 +200,5 @@ func getBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) 
 	rng2 := block.CloseBraceRange
 	bs := file.Bytes[rng1.End.Byte:rng2.Start.Byte]
 fmt.Printf("801 %s\n", bs)
-	return bs, labels, nil
+	return bs, block.Labels, nil
 }

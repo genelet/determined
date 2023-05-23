@@ -19,15 +19,6 @@ import (
 //	║ [7]string        │ ending Struct     │  6    ║
 //	║ [8]string        │ ending Struct     │  7    ║
 //	║                  │                   │       ║
-//	║ []string         │ ending ListStruct │  no   ║
-//	║ [][2]string      │ ending ListStruct │  1    ║
-//	║ [][3]string      │ ending ListStruct │  2    ║
-//	║ [][4]string      │ ending ListStruct │  3    ║
-//	║ [][5]string      │ ending ListStruct │  4    ║
-//	║ [][6]string      │ ending ListStruct │  5    ║
-//	║ [][7]string      │ ending ListStruct │  6    ║
-//	║ [][8]string      │ ending ListStruct │  7    ║
-//  ║                  │                   │       ║
 //	║ [2]interface{}   │ SingleStruct      │  no   ║
 //	║ [3]interface{}   │ SingleStruct      │  1    ║
 //	║ [4]interface{}   │ SingleStruct      │  2    ║
@@ -36,6 +27,15 @@ import (
 //	║ [7]interface{}   │ SingleStruct      │  5    ║
 //	║ [8]interface{}   │ SingleStruct      │  6    ║
 //	║ [9]interface{}   │ SingleStruct      │  7    ║
+//  ║                  │                   │       ║
+//	║ []string         │ ending ListStruct │  no   ║
+//	║ [][2]string      │ ending ListStruct │  1    ║
+//	║ [][3]string      │ ending ListStruct │  2    ║
+//	║ [][4]string      │ ending ListStruct │  3    ║
+//	║ [][5]string      │ ending ListStruct │  4    ║
+//	║ [][6]string      │ ending ListStruct │  5    ║
+//	║ [][7]string      │ ending ListStruct │  6    ║
+//	║ [][8]string      │ ending ListStruct │  7    ║
 //  ║                  │                   │       ║
 //	║ [][2]interface{} │ ListStruct        │  no   ║
 //	║ [][3]interface{} │ ListStruct        │  1    ║
