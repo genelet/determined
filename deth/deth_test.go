@@ -104,7 +104,8 @@ func TestHash(t *testing.T) {
 	g := &geometry{}
 	endpoint, err := NewStruct(
 		"geometry", map[string]interface{}{
-			"Shapes": [][2]string{{"square", "obj5"}, {"square", "obj7"}}})
+			"Shapes": [][1]string{{"square"}, {"square"}}})
+			//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
 	err = HclUnmarshal([]byte(data3), g, endpoint, ref)
 	if err != nil {
@@ -119,34 +120,34 @@ func TestHash(t *testing.T) {
 	}
 }
 
-func TestHclToy1(t *testing.T) {
+func TestHclChild(t *testing.T) {
 	data1 := `
 age = 5
-brand = {
+brand {
 	toy_name = "roblox"
 	price = 99.9
-	geo = {
+	geo {
 		name = "peter shape"
-		shape = {
+		shape {
     		radius = 1.234
 		}
 	}
 }
 `
 	endpoint, err := NewStruct(
-		"child", map[string]interface{}{
+		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{
-					"geo": [2]interface{}{
+					"Geo": [2]interface{}{
 						"geo", map[string]interface{}{"Shape": "circle"}}}}})
 	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
 
-	c := new(child1)
+	c := new(child)
 	err = HclUnmarshal([]byte(data1), c, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Age != 5 || c.Brand.Shape.(*circle).Radius != 1.234 {
+	if c.Age != 5 || c.Brand.Geo.Shape.(*circle).Radius != 1.234 {
 		t.Errorf("%#v", c)
 	}
 }

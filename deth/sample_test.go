@@ -49,7 +49,7 @@ type picture struct {
 }
 
 type toy struct {
-	geo     `json:"geo" hcl:"geo,block"`
+	Geo     geo  `json:"geo" hcl:"geo,block"`
 	ToyName string  `json:"toy_name" hcl:"toy_name"`
 	Price   float32 `json:"price" hcl:"price"`
 }
@@ -59,21 +59,7 @@ func (self *toy) ImportPrice(rate float32) float32 {
 }
 
 type child struct {
-	toy `json:"toy" hcl:"toy,block"`
+	Brand *toy `json:"brand" hcl:"brand,block"`
 	Age int `json:"age" hcl:"age"`
 }
 
-type child1 struct {
-	Brand *toy `json:"brand" hcl:"brand,block"`
-	Age   int  `json:"age" hcl:"age"`
-}
-
-/*
-type Adult struct {
-	Toys     []*toy `json:"toys", hcl:"toys,block"`
-	Family   bool   `json:"family" hcl:"family"`
-	Lastname string `json:"lastname" hcl:"lastname"`
-	endpoint *Struct
-	ref      map[string]interface{}
-}
-*/
