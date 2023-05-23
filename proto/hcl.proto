@@ -5,18 +5,9 @@ package determined;
 option go_package = "./deth";
 
 message Struct {
-  string ClassName = 1;
-  string Label1    = 2;
-  string Label2    = 3;
-  string Label3    = 4;
-  string Label4    = 5;
-  string Label5    = 6;
-  string Label6    = 7;
-  string Label7    = 8;
-  string Label8    = 9;
-  string Label9    = 10;
-  string Label10   = 11;
-  map<string, Value> fields = 15;
+  string className = 1;
+  int32 nLabels      = 2;
+  map<string, Value> fields = 3;
 }
 
 message Value {
