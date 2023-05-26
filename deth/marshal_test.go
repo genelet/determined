@@ -21,6 +21,30 @@ func TestMHclSimple(t *testing.T) {
 	}
 }
 
+func TestMHclSimpleMore(t *testing.T) {
+	data1 := `
+	radius = 1.0
+arr1 = ["abc", "def"]
+arr2 = [123, 4356]
+arr3 = [true, false, true]
+`
+	c := new(circlemore)
+	err := HclUnmarshal([]byte(data1), c, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bs, err := HclMarshal(c)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `radius = 1
+        arr1   = ["abc", "def"]
+        arr2   = [123, 4356]
+        arr3   = [true, false, true]
+` {
+		t.Errorf("'%s'", bs)
+	}
+}
+
 func TestMHclShape(t *testing.T) {
 	data1 := `
 	name = "peter shape"

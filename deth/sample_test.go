@@ -36,6 +36,17 @@ func (self *circle) Area() float32 {
 	return 3.14159 * self.Radius
 }
 
+type circlemore struct {
+	Radius float32 `json:"radius" hcl:"radius"`
+	Arr1 []string `json:"arr1" hcl:"arr1,attr"`
+	Arr2 []int32 `json:"arr2" hcl:"arr2,attr"`
+	Arr3 []bool `json:"arr3" hcl:"arr3,attr"`
+}
+
+func (self *circlemore) Area() float32 {
+	return 3.14159 * self.Radius
+}
+
 type cubic struct {
 	Size int `json:"size" hcl:"size"`
 }
