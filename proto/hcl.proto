@@ -6,8 +6,7 @@ option go_package = "./deth";
 
 message Struct {
   string className = 1;
-  int32 nLabels      = 2;
-  map<string, Value> fields = 3;
+  map<string, Value> fields = 2;
 }
 
 message Value {

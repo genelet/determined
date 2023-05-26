@@ -17,6 +17,17 @@ func (self *square) Area() float32 {
 	return float32(self.SX * self.SY)
 }
 
+type moresquare struct {
+	Morename1 string `json:"morename1", hcl:"morename1,label"`
+	Morename2 string `json:"morename2", hcl:"morename2,label"`
+	SX int `json:"sx" hcl:"sx"`
+	SY int `json:"sy" hcl:"sy"`
+}
+
+func (self *moresquare) Area() float32 {
+	return float32(self.SX * self.SY)
+}
+
 type circle struct {
 	Radius float32 `json:"radius" hcl:"radius"`
 }
@@ -40,7 +51,7 @@ type geo struct {
 
 type geometry struct {
 	Name   string       `json:"name" hcl:"name"`
-	Shapes map[string]inter `json:"shapes" hcl:"shapes,hash"`
+	Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`
 }
 
 type picture struct {

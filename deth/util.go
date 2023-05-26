@@ -23,7 +23,21 @@ func clone(old interface{}) interface{} {
 	return obj.Interface()
 }
 
-func tag2tag(old reflect.StructTag, ok bool) (reflect.StructTag, [2]string) {
+func tag2(old reflect.StructTag) [2]string {
+    for _, tag := range strings.Fields(string(old)) {
+        if len(tag) >= 5 && strings.ToLower(tag[:5]) == "hcl:\"" {
+			tag = tag[5:len(tag)-1]
+            two := strings.SplitN(tag, ",", 2)
+			if len(two) == 2 {
+				return [2]string{two[0], two[1]}
+			}
+			return [2]string{two[0], ""}
+		}
+	}
+	return [2]string{}
+}
+
+func tag2tag(old reflect.StructTag, kind reflect.Kind, ok bool) (reflect.StructTag, [2]string) {
     for _, tag := range strings.Fields(string(old)) {
         if len(tag) >= 5 && strings.ToLower(tag[:5]) == "hcl:\"" {
 			tag = tag[5:len(tag)-1]
@@ -33,6 +47,9 @@ func tag2tag(old reflect.StructTag, ok bool) (reflect.StructTag, [2]string) {
 			}
 			if len(two) == 1 {
 				return old, [2]string{two[0], ""}
+			}
+			if kind == reflect.Map {
+				return old, [2]string{two[0], "hash"}
 			}
 			return old, [2]string{two[0], two[1]}
         }
@@ -44,7 +61,49 @@ func rname() string {
 	return fmt.Sprintf("%d.hcl", rand.Int())
 }
 
-func general(bs []byte, object interface{}, labels ...string) error {
+/*
+func marshal(object interface{}, is_label ...bool) ([]byte, error) {
+	f := hclwrite.NewEmptyFile()
+	gohcl.EncodeIntoBody(object, f.Body())
+	if is_label == nil || is_label[0] == false {
+		return f.Bytes(), nil
+	}
+
+	str := strings.ReplaceAll(string(f.Bytes()), "\n", "\n\t")
+	str = "{\n\t" + str[0:len(str)-1] + "}\n"
+	arr := getLabels(object)
+	if arr == nil {
+		return []byte(str), nil
+	}
+	return []byte(strings.Join(arr, " ") + " " + str), nil
+}
+
+func getLabels(current interface{}) []string {
+	t := reflect.TypeOf(current).Elem()
+	n := t.NumField()
+
+	oriValue := reflect.ValueOf(current).Elem()
+
+	var labels []string
+	for i := 0; i < n; i++ {
+		field := t.Field(i)
+		_, tag_type := tag2tag(field.Tag, field.Type.Kind(), false)
+		if strings.ToLower(tag_type[1]) == "label" {
+			oriField := oriValue.Field(i)
+			labels = append(labels, oriField.Interface().(string))
+		}
+	}
+
+	return labels
+}
+*/
+
+func hcltag(tag reflect.StructTag) []byte {
+	two := strings.SplitN(tag.Get("hcl"), ",", 2)
+	return []byte(two[0])
+}
+
+func unmarshal(bs []byte, object interface{}, labels ...string) error {
 	err := hclsimple.Decode(rname(), bs, nil, object)
 	if err != nil { return err }
 	addLables(object, labels...)
@@ -66,7 +125,7 @@ func addLables(current interface{}, label_values ...string) {
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
 		f := tmp.Elem().Field(i)
-		_, tag_type := tag2tag(field.Tag, false)
+		_, tag_type := tag2tag(field.Tag, field.Type.Kind(), false)
 		if strings.ToLower(tag_type[1]) == "label" && k < m {
 			f.Set(reflect.ValueOf(label_values[k]))
 			k++

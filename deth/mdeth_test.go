@@ -2,29 +2,30 @@ package deth
 
 import (
 	"testing"
-	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 )
 
-func TestHclSimple(t *testing.T) {
+func TestMHclSimple(t *testing.T) {
 	data1 := `
-	radius = 1.234
+	radius = 1.0
 `
 	c := new(circle)
 	err := HclUnmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Radius != 1.234 {
-		t.Errorf("%#v", c)
+
+	bs, err := HclMarshal(c)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != "radius = 1\n" {
+		t.Errorf("%s", bs)
 	}
 }
 
-func TestHclShape(t *testing.T) {
+func TestMHclShape(t *testing.T) {
 	data1 := `
 	name = "peter shape"
 	shape {
-		radius = 1.234
+		radius = 1.0
 	}
 `
 	g := &geo{}
@@ -36,11 +37,17 @@ func TestHclShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g.Name != "peter shape" || g.Shape.(*circle).Radius != 1.234 {
-		t.Errorf("%#v", g)
-	}
-//	marshal(g)
+	bs, err := HclMarshal(g)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `name = "peter shape"
+shape {
+	radius = 1
+}
 
+` {
+		t.Errorf("'%s'", bs)
+	}
+	
 	data2 := `
 	name = "peter shape"
 	shape {
@@ -54,11 +61,17 @@ func TestHclShape(t *testing.T) {
 	endpoint, err = NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
 	err = HclUnmarshal([]byte(data2), g, endpoint, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if g.Name != "peter shape" || g.Shape.(*square).SX != 5 {
-		t.Errorf("%#v", g)
+	if err != nil { t.Fatal(err) }
+	bs, err = HclMarshal(g)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `name = "peter shape"
+shape {
+	sx = 5
+	sy = 6
+}
+
+` {
+		t.Errorf("'%s'", bs)
 	}
 
 	data4 := `
@@ -83,14 +96,22 @@ func TestHclShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drawings := p.Drawings
-	if p.Name != "peter drawings" ||
-		drawings[0].(*square).SX != 5 ||
-		drawings[1].(*square).SX != 7 {
-		t.Errorf("%#v", drawings[0].(*square))
-		t.Errorf("%#v", drawings[1].(*square))
-	}
-//	marshal(p)
+	bs, err = HclMarshal(p)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `name = "peter drawings"
+drawings {
+	sx = 5
+	sy = 6
+}
+
+drawings {
+	sx = 7
+	sy = 8
+}
+
+` {
+		t.Errorf("'%s'", bs)
+    }
 
 	data5 := `
     name = "peter drawings"
@@ -113,32 +134,27 @@ func TestHclShape(t *testing.T) {
 	}
 	ref["moresquare"] = &moresquare{}
 	err = HclUnmarshal([]byte(data5), p, endpoint, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drawings = p.Drawings
-	if p.Name != "peter drawings" ||
-		drawings[0].(*moresquare).Morename1 != "abc1" ||
-		drawings[0].(*moresquare).SX != 5 ||
-		drawings[1].(*moresquare).Morename2 != "def2" ||
-		drawings[1].(*moresquare).SX != 7 {
-		t.Errorf("%#v", drawings[0].(*moresquare))
-		t.Errorf("%#v", drawings[1].(*moresquare))
-	}
-//	marshal(p)
-
-	bs, err := marshal(drawings[0].(*moresquare), true)
 	if err != nil { t.Fatal(err) }
-	if string(bs) != `abc1 def1 {
+
+	bs, err = HclMarshal(p)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `name = "peter drawings"
+drawings abc1 def1 {
 	sx = 5
 	sy = 6
 }
-` {
-		t.Errorf("%s", bs)
-	}
+
+drawings abc2 def2 {
+	sx = 7
+	sy = 8
 }
 
-func TestHash(t *testing.T) {
+` {
+		t.Errorf("'%s'", bs)
+    }
+}
+
+func TestMHash(t *testing.T) {
 	data3 := `
 	name = "peter shapes"
 	shapes obj5 {
@@ -160,22 +176,26 @@ func TestHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shapes := g.Shapes
-	if g.Name != "peter shapes" ||
-		shapes["obj5"].(*square).SX != 5 ||
-		shapes["obj7"].(*square).SX != 7 {
-		t.Errorf("%#v", shapes["obj5"].(*square))
-		t.Errorf("%#v", shapes["obj7"].(*square))
-	}
-t.Errorf("%#v", shapes)
-marshal(g)
 
-	f := hclwrite.NewEmptyFile()
-	gohcl.EncodeIntoBody(shapes, f.Body())
-	t.Errorf("%s", f.Bytes())
+	bs, err := HclMarshal(g)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `name = "peter shapes"
+shapes obj5 {
+	sx = 5
+	sy = 6
 }
 
-func TestHclChild(t *testing.T) {
+shapes obj7 {
+	sx = 7
+	sy = 8
+}
+
+` {
+		t.Errorf("'%s'", bs)
+    }
+}
+
+func TestMHclChild(t *testing.T) {
 	data1 := `
 age = 5
 brand {
@@ -184,7 +204,7 @@ brand {
 	geo {
 		name = "peter shape"
 		shape {
-    		radius = 1.234
+    		radius = 1.0
 		}
 	}
 }
@@ -202,7 +222,26 @@ brand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Age != 5 || c.Brand.Geo.Shape.(*circle).Radius != 1.234 {
-		t.Errorf("%#v", c)
-	}
+
+	bs, err := HclMarshal(c)
+	if err != nil { t.Fatal(err) }
+	if string(bs) != `
+brand {
+
+  geo {
+    name = "peter shape"
+
+    shape {
+      radius = 1
+    }
+  }
+
+  toy_name = "roblox"
+  price    = 99.9000015258789
+}
+
+age = 5
+` {
+		t.Errorf("'%s'", bs)
+    }
 }

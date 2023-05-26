@@ -18,16 +18,16 @@ import (
 //   - current: object as interface
 //   - endpoint: Determined
 //   - ref: struct map, with key being string name and value pointer to struct
-//   - optional label_values: fields' string values of labels
+//   - optional label_values: fields' values of labels
 func HclUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
 	if endpoint == nil {
 fmt.Printf("STOP 1\n")
-		return general(dat, current, label_values...)
+		return unmarshal(dat, current, label_values...)
 	}
 	objectMap := endpoint.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
 fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), dat, current)
-		return general(dat, current, label_values...)
+		return unmarshal(dat, current, label_values...)
 	}
 
 	t := reflect.TypeOf(current).Elem()
@@ -42,10 +42,8 @@ fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), 
 		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
 			return fmt.Errorf("missing tag for %s", name)
 		}
-		u, ok := objectMap[name]
-fmt.Printf("DDDDD: %#v\n", objectMap)
-fmt.Printf("DDDDD: %s=>%#v\n", name, u)
-		tag, tag_type := tag2tag(field.Tag, ok)
+		_, ok := objectMap[name]
+		tag, tag_type := tag2tag(field.Tag, field.Type.Kind(), ok)
 		if tag_type[1] != "" {
 			tag_types[name] = tag_type
 		}
@@ -61,7 +59,7 @@ fmt.Printf("DDDDD: %s=>%#v\n", name, u)
 	}
 	if found == false {
 fmt.Printf("STOP 3\n")
-		return general(dat, current, label_values...)
+		return unmarshal(dat, current, label_values...)
 	}
 
 	newType := reflect.StructOf(newFields)

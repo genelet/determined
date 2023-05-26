@@ -33,24 +33,24 @@ func TestClone(t *testing.T) {
 
 func TestTag(t *testing.T) {
 	old := reflect.StructTag(`json:"shapes" hcl:"shapes,block"`)
-	tag, two := tag2tag(old, true)
+	tag, two := tag2tag(old, reflect.Struct, true)
 	if string(tag) != `hcl:"shapes,remain"` || two[0] != `shapes` || two[1] != `block` {
 		t.Errorf("%s => %#v", tag, two)
 	}
 
-	tag, two = tag2tag(old, false)
+	tag, two = tag2tag(old, reflect.Struct, false)
 	if string(tag) != `json:"shapes" hcl:"shapes,block"` || two[0] != `shapes` || two[1] != `block` {
 		t.Errorf("%s => %#v", tag, two)
 	}
 
 	old = reflect.StructTag(`json:"shapes" hcl:"shapes,label"`)
-	tag, two = tag2tag(old, false)
+	tag, two = tag2tag(old, reflect.Struct, false)
 	if string(tag) != `json:"shapes" hcl:"shapes,label"` || two[0] != `shapes` || two[1] != `label` {
 		t.Errorf("%s => %#v", tag, two)
 	}
 
 	old = reflect.StructTag(`json:"shapes"`)
-	tag, two = tag2tag(old, false)
+	tag, two = tag2tag(old, reflect.Struct, false)
 	if string(tag) != `json:"shapes"` || two[0] != "" || two[1] != "" {
 		t.Errorf("%s => %#v", tag, two)
 	}
