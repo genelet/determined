@@ -22,12 +22,12 @@ import (
 func HclUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
 	if endpoint == nil {
 fmt.Printf("STOP 1\n")
-		return unmarshal(dat, current, label_values...)
+		return unplain(dat, current, label_values...)
 	}
 	objectMap := endpoint.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
 fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), dat, current)
-		return unmarshal(dat, current, label_values...)
+		return unplain(dat, current, label_values...)
 	}
 
 	t := reflect.TypeOf(current).Elem()
@@ -59,7 +59,7 @@ fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), 
 	}
 	if found == false {
 fmt.Printf("STOP 3\n")
-		return unmarshal(dat, current, label_values...)
+		return unplain(dat, current, label_values...)
 	}
 
 	newType := reflect.StructOf(newFields)

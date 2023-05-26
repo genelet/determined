@@ -103,7 +103,7 @@ func hcltag(tag reflect.StructTag) []byte {
 	return []byte(two[0])
 }
 
-func unmarshal(bs []byte, object interface{}, labels ...string) error {
+func unplain(bs []byte, object interface{}, labels ...string) error {
 	err := hclsimple.Decode(rname(), bs, nil, object)
 	if err != nil { return err }
 	addLables(object, labels...)
