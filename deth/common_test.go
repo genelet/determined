@@ -96,12 +96,15 @@ func TestMapList(t *testing.T) {
 				"k1": &square{SX: 1, SY: 2}, "k2": &square{SX: 3, SY: 4}},
 			Circles: map[string]*circle{
 				"k5": &circle{5.6}, "k6": &circle{6.7}}}
+	bs, err := Marshal(x)
+	if err != nil { t.Fatal(err) }
+
 	typ := reflect.TypeOf(x).Elem()
     n := typ.NumField()
 	oriValue := reflect.ValueOf(x).Elem()
 
-	fields := make(map[string]*Value)
-	ref := make(map[string]interface{})
+	ref  := make(map[string]interface{})
+	spec := make(map[string]interface{})
 
 	for i := 0; i < n; i++ {
 		field := typ.Field(i)
@@ -112,44 +115,31 @@ func TestMapList(t *testing.T) {
 		var arr []string
 		iter := rawField.MapRange()
     	for iter.Next() {
-        	k := iter.Key()
+        	//k := iter.Key()
         	v := iter.Value()
-			t.Errorf("%#v", k.Interface().(string))
 			s := v.Type().String()
 			arr = append(arr, s)
-			ref[s] = reflect.New(v.Type()).Elem().Interface()
+			ref[s] = reflect.New(v.Type().Elem()).Elem().Addr().Interface()
 		}
-		val, err := NewValue(arr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		fields[field.Name] = val
+		spec[field.Name] = arr
 	}
-	tr := &Struct{Fields:fields}
-	t.Errorf("%#v", tr.String())
-	t.Errorf("%#v", ref)
 
-	data6 := `
-    name = "peter drawings"
-    squares "abc1" def1 {
-        sx=5
-        sy=6
-    }
-    squares abc2 "def2" {
-        sx=7
-        sy=8
-    }
-    circles "xyz4" def1 {
-        radius=5.6
-    }
-    circles xyz5 "def2" {
-        radius=6.7
-    }
-`
+	tr, err := NewStruct(typ.Name(), spec)
 	xc := &xclass{}
-    err := HclUnmarshal([]byte(data6), xc, tr, ref)
-    if err != nil {
-        t.Fatal(err)
-    }
-	t.Errorf("%#v", xc)
+    err = Unmarshal(bs, xc, tr, ref)
+    if err != nil { t.Fatal(err) }
+
+	if x.Squares["k1"].SX != xc.Squares["k1"].SX ||
+		x.Squares["k2"].SX != xc.Squares["k2"].SX ||
+		x.Circles["k5"].Radius != xc.Circles["k5"].Radius ||
+		x.Circles["k6"].Radius != xc.Circles["k6"].Radius {
+		t.Errorf("%#v", x.Squares["k1"])
+		t.Errorf("%#v", x.Squares["k2"])
+		t.Errorf("%#v", x.Circles["k5"])
+		t.Errorf("%#v", x.Circles["k6"])
+		t.Errorf("%#v", xc.Squares["k1"])
+		t.Errorf("%#v", xc.Squares["k2"])
+		t.Errorf("%#v", xc.Circles["k5"])
+		t.Errorf("%#v", xc.Circles["k6"])
+	}
 }

@@ -2,8 +2,6 @@ package deth
 
 import (
 	"testing"
-	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 )
 
 func TestHclSimple(t *testing.T) {
@@ -11,7 +9,7 @@ func TestHclSimple(t *testing.T) {
 	radius = 1.234
 `
 	c := new(circle)
-	err := HclUnmarshal([]byte(data1), c, nil, nil)
+	err := Unmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +18,7 @@ func TestHclSimple(t *testing.T) {
 	}
 }
 
-func TestHclShape(t *testing.T) {
+func TestHclShape1(t *testing.T) {
 	data1 := `
 	name = "peter shape"
 	shape {
@@ -32,14 +30,13 @@ func TestHclShape(t *testing.T) {
 	ref := map[string]interface{}{"circle": c}
 	endpoint, err := NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
-	err = HclUnmarshal([]byte(data1), g, endpoint, ref)
+	err = Unmarshal([]byte(data1), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if g.Name != "peter shape" || g.Shape.(*circle).Radius != 1.234 {
 		t.Errorf("%#v", g)
 	}
-//	marshal(g)
 
 	data2 := `
 	name = "peter shape"
@@ -53,19 +50,21 @@ func TestHclShape(t *testing.T) {
 	ref = map[string]interface{}{"circle": c, "square": s}
 	endpoint, err = NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
-	err = HclUnmarshal([]byte(data2), g, endpoint, ref)
+	err = Unmarshal([]byte(data2), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if g.Name != "peter shape" || g.Shape.(*square).SX != 5 {
 		t.Errorf("%#v", g)
 	}
+}
 
+func TestHclShape2(t *testing.T) {
 	data4 := `
 	name = "peter drawings"
 	drawings {
-		sx=5
-		sy=6
+		sx=55
+		sy=66
 	}
 	drawings {
 		sx=7
@@ -73,24 +72,28 @@ func TestHclShape(t *testing.T) {
 	}
 `
 	p := &picture{}
-	endpoint, err = NewStruct(
+	endpoint, err := NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"square", "square"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = HclUnmarshal([]byte(data4), p, endpoint, ref)
+
+	g := &geo{}
+	s := &square{}
+	c := &circle{}
+	ref := map[string]interface{}{"geo": g, "circle": c, "square": s}
+	err = Unmarshal([]byte(data4), p, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 	drawings := p.Drawings
 	if p.Name != "peter drawings" ||
-		drawings[0].(*square).SX != 5 ||
+		drawings[0].(*square).SX != 55 ||
 		drawings[1].(*square).SX != 7 {
 		t.Errorf("%#v", drawings[0].(*square))
 		t.Errorf("%#v", drawings[1].(*square))
 	}
-//	marshal(p)
 
 	data5 := `
     name = "peter drawings"
@@ -112,7 +115,7 @@ func TestHclShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref["moresquare"] = &moresquare{}
-	err = HclUnmarshal([]byte(data5), p, endpoint, ref)
+	err = Unmarshal([]byte(data5), p, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +128,6 @@ func TestHclShape(t *testing.T) {
 		t.Errorf("%#v", drawings[0].(*moresquare))
 		t.Errorf("%#v", drawings[1].(*moresquare))
 	}
-//	marshal(p)
 
 	bs, err := marshal(drawings[0].(*moresquare), true)
 	if err != nil { t.Fatal(err) }
@@ -156,7 +158,7 @@ func TestHash(t *testing.T) {
 			"Shapes": []string{"square", "square"}})
 			//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
-	err = HclUnmarshal([]byte(data3), g, endpoint, ref)
+	err = Unmarshal([]byte(data3), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,12 +169,6 @@ func TestHash(t *testing.T) {
 		t.Errorf("%#v", shapes["obj5"].(*square))
 		t.Errorf("%#v", shapes["obj7"].(*square))
 	}
-t.Errorf("%#v", shapes)
-marshal(g)
-
-	f := hclwrite.NewEmptyFile()
-	gohcl.EncodeIntoBody(shapes, f.Body())
-	t.Errorf("%s", f.Bytes())
 }
 
 func TestHclChild(t *testing.T) {
@@ -198,7 +194,7 @@ brand {
 	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
 
 	c := new(child)
-	err = HclUnmarshal([]byte(data1), c, endpoint, ref)
+	err = Unmarshal([]byte(data1), c, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}

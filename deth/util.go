@@ -61,49 +61,44 @@ func rname() string {
 	return fmt.Sprintf("%d.hcl", rand.Int())
 }
 
-/*
-func marshal(object interface{}, is_label ...bool) ([]byte, error) {
-	f := hclwrite.NewEmptyFile()
-	gohcl.EncodeIntoBody(object, f.Body())
-	if is_label == nil || is_label[0] == false {
-		return f.Bytes(), nil
-	}
-
-	str := strings.ReplaceAll(string(f.Bytes()), "\n", "\n\t")
-	str = "{\n\t" + str[0:len(str)-1] + "}\n"
-	arr := getLabels(object)
-	if arr == nil {
-		return []byte(str), nil
-	}
-	return []byte(strings.Join(arr, " ") + " " + str), nil
-}
-
-func getLabels(current interface{}) []string {
-	t := reflect.TypeOf(current).Elem()
-	n := t.NumField()
-
-	oriValue := reflect.ValueOf(current).Elem()
-
-	var labels []string
-	for i := 0; i < n; i++ {
-		field := t.Field(i)
-		_, tag_type := tag2tag(field.Tag, field.Type.Kind(), false)
-		if strings.ToLower(tag_type[1]) == "label" {
-			oriField := oriValue.Field(i)
-			labels = append(labels, oriField.Interface().(string))
-		}
-	}
-
-	return labels
-}
-*/
-
 func hcltag(tag reflect.StructTag) []byte {
 	two := strings.SplitN(tag.Get("hcl"), ",", 2)
 	return []byte(two[0])
 }
 
 func unplain(bs []byte, object interface{}, labels ...string) error {
+/* arr is empty, so the following comment code  does not work
+    t := reflect.TypeOf(object).Elem()
+    n := t.NumField()
+    oriValue := reflect.ValueOf(object).Elem()
+
+    ref  := make(map[string]interface{})
+    spec := make(map[string]interface{})
+
+    for i := 0; i < n; i++ {
+        field := t.Field(i)
+        rawField := oriValue.Field(i)   
+        if field.Type.Kind() != reflect.Map {
+            continue
+        }
+        var arr []string
+        iter := rawField.MapRange()
+        for iter.Next() {
+            //k := iter.Key()
+            v := iter.Value()
+            s := v.Type().String()
+            arr = append(arr, s)
+            ref[s] = reflect.New(v.Type().Elem()).Elem().Addr().Interface()
+        }
+        spec[field.Name] = arr
+	}
+	if len(spec) != 0 {
+    	tr, err := NewStruct(t.Name(), spec)
+		if err != nil { return nil }
+		return Unmarshal(bs, object, tr, ref, labels...)
+	}
+*/
+
 	err := hclsimple.Decode(rname(), bs, nil, object)
 	if err != nil { return err }
 	addLables(object, labels...)

@@ -1,80 +1,86 @@
 package deth
 
 import (
+//"github.com/k0kubun/pp/v3"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-//	"github.com/hashicorp/hcl/v2/hclwrite"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	"reflect"
 	"strings"
 	"unicode"
 )
 
-// HclUnmarshal unmarshals HCL data with interfaces determined by Determined.
+// Unmarshal unmarshals HCL data with interfaces determined by Determined.
 //
 //   - dat: Hcl data
 //   - current: object as interface
 //   - endpoint: Determined
 //   - ref: struct map, with key being string name and value pointer to struct
 //   - optional label_values: fields' values of labels
-func HclUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
+func Unmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
+fmt.Printf("start unmarshal .... %s\nspec ...%s\n\n", dat, endpoint.String())
 	if endpoint == nil {
-fmt.Printf("STOP 1\n")
+fmt.Printf("stop 1\n")
 		return unplain(dat, current, label_values...)
 	}
 	objectMap := endpoint.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
-fmt.Printf("STOP 2 endpoint: %s\n data: %s\n current %#v\n", endpoint.String(), dat, current)
+fmt.Printf("stop 2\n")
 		return unplain(dat, current, label_values...)
 	}
 
+	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line:1,Column:1})
+	if diags.HasErrors() { return diags }
+//pp.Println(file.Body)
+
 	t := reflect.TypeOf(current).Elem()
+	oriValue := reflect.ValueOf(&current).Elem()
+	tmp := reflect.New(oriValue.Elem().Type()).Elem()
+	tmp.Set(oriValue.Elem())
+
 	n := t.NumField()
 
-	tag_types  := make(map[string][2]string) // field name to hcl tag type
 	var newFields []reflect.StructField
-	found := false
+	tagref := make(map[string]bool)
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
 		name := field.Name
 		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
 			return fmt.Errorf("missing tag for %s", name)
 		}
-		_, ok := objectMap[name]
-		tag, tag_type := tag2tag(field.Tag, field.Type.Kind(), ok)
-		if tag_type[1] != "" {
-			tag_types[name] = tag_type
-		}
-		if ok {
-			newField := reflect.StructField{Name: name, Tag: tag}
-			var victimBody hcl.Body
-			newField.Type = reflect.TypeOf(&victimBody).Elem()
-			newFields = append(newFields, newField)
-			found = true
+		if _, ok := objectMap[name]; ok {
+			two := tag2(field.Tag)
+			tagref[two[0]] = true
 		} else {
 			newFields = append(newFields, field)
 		}
 	}
-	if found == false {
-fmt.Printf("STOP 3\n")
+	if newFields != nil && len(newFields) == n {
+fmt.Printf("stop 3\n")
 		return unplain(dat, current, label_values...)
 	}
 
+	body := &hclsyntax.Body{
+		Attributes: file.Body.(*hclsyntax.Body).Attributes,
+		SrcRange: file.Body.(*hclsyntax.Body).SrcRange,	
+		EndRange: file.Body.(*hclsyntax.Body).EndRange}
+	blockref := make(map[string][]*hclsyntax.Block)
+	for _, block := range file.Body.(*hclsyntax.Body).Blocks {
+		if tagref[block.Type] {
+			blockref[block.Type] = append(blockref[block.Type], block)
+		} else {
+			body.Blocks = append(body.Blocks, block)
+		}
+	}
 	newType := reflect.StructOf(newFields)
+	//raw := reflect.New(newType).Elem().Addr().Interface()
 	raw := reflect.New(newType).Interface()
-fmt.Printf("1001: %s\n", dat)
-	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line:1,Column:1})
-	if diags.HasErrors() { return diags }
-	diags = gohcl.DecodeBody(file.Body, nil, raw)
+fmt.Printf("1001: %#v\n", raw)
+	diags = gohcl.DecodeBody(body, nil, raw)
 	if diags.HasErrors() { return diags }
 	rawValue := reflect.ValueOf(raw).Elem()
 fmt.Printf("33333: %#v\n", rawValue)
-
-	oriValue := reflect.ValueOf(&current).Elem()
-	tmp := reflect.New(oriValue.Elem().Type()).Elem()
-	tmp.Set(oriValue.Elem())
 
 	m := 0
 	if label_values != nil {
@@ -82,27 +88,31 @@ fmt.Printf("33333: %#v\n", rawValue)
 	}
 	k := 0
 
+	j := 0
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
 		fieldType := field.Type
-		fieldName := field.Name
+		name := field.Name
+		two := tag2(field.Tag)
 		f := tmp.Elem().Field(i)
-		rawField := rawValue.Field(i)
-fmt.Printf("44444444: %T=> %#v\n", rawField, rawField)
-		result, ok := objectMap[fieldName]
-		tag_type := tag_types[fieldName]
+		result, ok := objectMap[name]
 		if ok {
-			body := rawField.Interface().(*hclsyntax.Body)
-//debugBody(body, file)
+			two := tag2(field.Tag)
+			blocks := blockref[two[0]]
+//pp.Println(blocks) 
+//x, _, _ := getBlockBytes(blocks  file)
+fmt.Printf("AAAA %s=>%#v\n", name, objectMap)
+fmt.Printf("BBB %s\n", result.String())
 			if x := result.GetListStruct(); x != nil {
+fmt.Printf("x %#v\n", x.GetListFields())
 				nextListStructs := x.GetListFields()
 				n := len(nextListStructs)
 				if n == 0 {
-					return fmt.Errorf("missing list struct for %s", fieldName)
+					return fmt.Errorf("missing list struct for %s", name)
 				}
 
 				var fSlice, fMap reflect.Value
-				if tag_type[1]=="hash" {
+				if fieldType.Kind()==reflect.Map {
 					fMap = reflect.MakeMapWithSize(fieldType, n)
 				} else {
 					fSlice = reflect.MakeSlice(fieldType, n, n)
@@ -110,25 +120,27 @@ fmt.Printf("44444444: %T=> %#v\n", rawField, rawField)
 				for k := 0; k < n; k++ {
 					nextStruct := nextListStructs[k]
 					trial := ref[nextStruct.ClassName]
+fmt.Printf("1111 %#v\n", ref)
+fmt.Printf("2222 bbbbbb %s, %s=>%v\n", nextStruct.String(), nextStruct.ClassName, trial)
 					if trial == nil {
-						return protoimpl.X.NewError("ref not found for %s", fieldName)
+						return fmt.Errorf("ref not found for %s", name)
 					}
 					trial = clone(trial)
-					s, labels, err := getBytes(body.Blocks[k], file)
+					s, labels, err := getBlockBytes(blocks[k], file)
 					if err != nil {
 						return err
 					}
-					err = HclUnmarshal(s, trial, nextStruct, ref, labels...)
+					err = Unmarshal(s, trial, nextStruct, ref, labels...)
 					if err != nil {
 						return err
 					}
-					if tag_type[1]=="hash" {
+					if fieldType.Kind()==reflect.Map {
 						fMap.SetMapIndex(reflect.ValueOf(labels[0]), reflect.ValueOf(trial))
 					} else {
 						fSlice.Index(k).Set(reflect.ValueOf(trial))
 					}
 				}
-				if tag_type[1]=="hash" {
+				if fieldType.Kind()==reflect.Map {
 					f.Set(fMap)
 				} else {
 					f.Set(fSlice)
@@ -136,15 +148,15 @@ fmt.Printf("44444444: %T=> %#v\n", rawField, rawField)
 			} else if x := result.GetSingleStruct(); x != nil {
 				trial := ref[x.ClassName]
 				if trial == nil {
-					return protoimpl.X.NewError("class ref not found for %s", x.ClassName)
+					return fmt.Errorf("class ref not found for %s", x.ClassName)
 				}
-fmt.Printf("1111 bbbbbb %#v\n", trial)
+fmt.Printf("3111 bbbbbb %#v\n", trial)
 				trial = clone(trial)
-				s, labels, err := getBytes(body.Blocks[0], file)
+				s, labels, err := getBlockBytes(blocks[0], file)
 				if err != nil {
 					return err
 				}
-				err = HclUnmarshal(s, trial, x, ref, labels...)
+				err = Unmarshal(s, trial, x, ref, labels...)
 				if err != nil {
 					return err
 				}
@@ -154,11 +166,13 @@ fmt.Printf("1111 bbbbbb %#v\n", trial)
 					f.Set(reflect.ValueOf(trial).Elem())
 				}
 			}
-		} else if unicode.IsUpper([]rune(fieldName)[0]) {
-			if strings.ToLower(tag_type[1]) == "label" && k<m {
+		} else if unicode.IsUpper([]rune(name)[0]) {
+			if strings.ToLower(two[1]) == "label" && k<m {
 				f.Set(reflect.ValueOf(label_values[k]))
 				k++
 			} else {
+				rawField := rawValue.Field(j)
+				j++
 				f.Set(rawField)
 			}
 		}
@@ -189,14 +203,23 @@ fmt.Printf("801 %s\n", bs)
 	fmt.Printf("707 range %#v\n", x.SrcRange.String())
 }
 
-func getBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
-	if block == nil {
-		return nil, nil, protoimpl.X.NewError("block not found")
+func getBodyBytes(body *hclsyntax.Body, file *hcl.File) ([]byte, []string, error) {
+	if body == nil {
+		return nil, nil, fmt.Errorf("body not found")
 	}
-
+	rng1 := body.SrcRange
+	rng2 := body.EndRange
+	bs := file.Bytes[rng1.Start.Byte:rng2.Start.Byte]
+fmt.Printf("801 %s\n", bs)
+	return bs, nil, nil
+}
+func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
+	if block == nil {
+		return nil, nil, fmt.Errorf("block not found")
+	}
 	rng1 := block.OpenBraceRange
 	rng2 := block.CloseBraceRange
 	bs := file.Bytes[rng1.End.Byte:rng2.Start.Byte]
-fmt.Printf("801 %s\n", bs)
+fmt.Printf("802 %s\n", bs)
 	return bs, block.Labels, nil
 }

@@ -9,12 +9,12 @@ func TestMHclSimple(t *testing.T) {
 	radius = 1.0
 `
 	c := new(circle)
-	err := HclUnmarshal([]byte(data1), c, nil, nil)
+	err := Unmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	bs, err := HclMarshal(c)
+	bs, err := Marshal(c)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != "radius = 1\n" {
 		t.Errorf("%s", bs)
@@ -29,17 +29,17 @@ arr2 = [123, 4356]
 arr3 = [true, false, true]
 `
 	c := new(circlemore)
-	err := HclUnmarshal([]byte(data1), c, nil, nil)
+	err := Unmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	bs, err := HclMarshal(c)
+	bs, err := Marshal(c)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != `radius = 1
-        arr1   = ["abc", "def"]
-        arr2   = [123, 4356]
-        arr3   = [true, false, true]
+arr1   = ["abc", "def"]
+arr2   = [123, 4356]
+arr3   = [true, false, true]
 ` {
 		t.Errorf("'%s'", bs)
 	}
@@ -57,11 +57,11 @@ func TestMHclShape(t *testing.T) {
 	ref := map[string]interface{}{"circle": c}
 	endpoint, err := NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
-	err = HclUnmarshal([]byte(data1), g, endpoint, ref)
+	err = Unmarshal([]byte(data1), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bs, err := HclMarshal(g)
+	bs, err := Marshal(g)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != `name = "peter shape"
 shape {
@@ -84,9 +84,9 @@ shape {
 	ref = map[string]interface{}{"circle": c, "square": s}
 	endpoint, err = NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
-	err = HclUnmarshal([]byte(data2), g, endpoint, ref)
+	err = Unmarshal([]byte(data2), g, endpoint, ref)
 	if err != nil { t.Fatal(err) }
-	bs, err = HclMarshal(g)
+	bs, err = Marshal(g)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != `name = "peter shape"
 shape {
@@ -116,11 +116,11 @@ shape {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = HclUnmarshal([]byte(data4), p, endpoint, ref)
+	err = Unmarshal([]byte(data4), p, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bs, err = HclMarshal(p)
+	bs, err = Marshal(p)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != `name = "peter drawings"
 drawings {
@@ -157,10 +157,10 @@ drawings {
 		t.Fatal(err)
 	}
 	ref["moresquare"] = &moresquare{}
-	err = HclUnmarshal([]byte(data5), p, endpoint, ref)
+	err = Unmarshal([]byte(data5), p, endpoint, ref)
 	if err != nil { t.Fatal(err) }
 
-	bs, err = HclMarshal(p)
+	bs, err = Marshal(p)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != `name = "peter drawings"
 drawings abc1 def1 {
@@ -196,12 +196,12 @@ func TestMHash(t *testing.T) {
 			"Shapes": []string{"square", "square"}})
 			//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
-	err = HclUnmarshal([]byte(data3), g, endpoint, ref)
+	err = Unmarshal([]byte(data3), g, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	bs, err := HclMarshal(g)
+	bs, err := Marshal(g)
 	if err != nil { t.Fatal(err) }
 	if string(bs) != `name = "peter shapes"
 shapes obj5 {
@@ -242,29 +242,27 @@ brand {
 	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
 
 	c := new(child)
-	err = HclUnmarshal([]byte(data1), c, endpoint, ref)
+	err = Unmarshal([]byte(data1), c, endpoint, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	bs, err := HclMarshal(c)
+	bs, err := Marshal(c)
 	if err != nil { t.Fatal(err) }
-	if string(bs) != `
+	if string(bs) != `age = 5
 brand {
-
-  geo {
-    name = "peter shape"
-
-    shape {
-      radius = 1
-    }
-  }
-
-  toy_name = "roblox"
-  price    = 99.9000015258789
+	toy_name = "roblox"
+	price    = 99.9000015258789
+	geo {
+		name = "peter shape"
+		shape {
+			radius = 1
+		}
+		
+	}
+	
 }
 
-age = 5
 ` {
 		t.Errorf("'%s'", bs)
     }

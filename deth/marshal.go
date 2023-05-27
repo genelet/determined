@@ -1,21 +1,24 @@
 package deth
 
 import (
+"fmt"
+//"github.com/k0kubun/pp/v3"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"reflect"
 	"strings"
 )
 
-// HclMarshal marshals object into HCL string
+// Marshal marshals object into HCL string
 //   - current: object as interface
-func HclMarshal(current interface{}) ([]byte, error) {
+func Marshal(current interface{}) ([]byte, error) {
 	return marshal(current, false)
 }
 
 func marshal(current interface{}, is ...bool) ([]byte, error) {
+fmt.Printf("\nstart ....... %T %#v\n", current, current)
 	var t reflect.Type
-	oriValue := reflect.ValueOf(current).Elem()
+	var oriValue reflect.Value
 	switch current.(type) {
 	case interface{}:
 		t = reflect.TypeOf(current).Elem()
@@ -34,6 +37,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		pass := false
 		switch field.Type.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Struct:
+				pass = true
 		case reflect.Slice:
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
@@ -67,11 +71,33 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		oriField := oriValue.Field(i)
 		pass := false
 		switch field.Type.Kind() {
-		case reflect.Interface, reflect.Pointer, reflect.Struct:
+		case reflect.Interface:
+fmt.Printf("interface %s ....... %v\n", field.Name, field.Type.Kind())
+fmt.Printf("interface %s ....... %T\n", field.Name, oriField)
 			newCurrent := oriField.Interface()
 			bs, err := marshal(newCurrent, true)
 			if err != nil { return nil, err }
 			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})	
+fmt.Printf("interface %s=>%s", field.Name, bs)
+			pass = true	
+		case reflect.Pointer:
+fmt.Printf("pointer %s ....... %v\n", field.Name, field.Type.Kind())
+fmt.Printf("pointer %s ....... %T\n", field.Name, oriField)
+			newCurrent := oriField.Interface()
+			bs, err := marshal(newCurrent, true)
+			if err != nil { return nil, err }
+			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})	
+fmt.Printf("pointer %s=>%s", field.Name, bs)
+			pass = true	
+		case reflect.Struct:
+fmt.Printf("struct %s ....... %v\n", field.Name, field.Type.Kind())
+fmt.Printf("struct %s ....... %T %#v\n", field.Name, oriField, oriField)
+			newCurrent := oriField.Addr().Interface()
+			bs, err := marshal(newCurrent, true)
+			if err != nil { return nil, err }
+			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})	
+fmt.Printf("struct %s=>%s", field.Name, bs)
+			pass = true	
 		case reflect.Slice:
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
@@ -114,8 +140,10 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 
 	f := hclwrite.NewEmptyFile()
 	// use tmp.Addr().Interface() as the constructed object
+fmt.Printf("before %#v\n", tmp.Addr().Interface())
     gohcl.EncodeIntoBody(tmp.Addr().Interface(), f.Body())
 	bs := f.Bytes()
+fmt.Printf("after %s\n", bs)
 
 	blank := []byte(" ")
 	nl := []byte("\n")
