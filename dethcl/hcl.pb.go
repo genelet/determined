@@ -4,7 +4,7 @@
 // 	protoc        v3.12.4
 // source: proto/hcl.proto
 
-package deth
+package dethcl
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

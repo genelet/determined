@@ -1,8 +1,4 @@
-package deth
-
-import (
-//	"encoding/json"
-)
+package dethcl
 
 type inter interface {
 	Area() float32
@@ -61,17 +57,17 @@ type geo struct {
 }
 
 type geometry struct {
-	Name   string       `json:"name" hcl:"name"`
+	Name   string           `json:"name" hcl:"name"`
 	Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`
 }
 
 type picture struct {
-	Name     string `json:"name" hcl:"name"`
-	Drawings []inter    `json:"drawings" hcl:"drawings,block"`
+	Name     string   `json:"name" hcl:"name"`
+	Drawings []inter  `json:"drawings" hcl:"drawings,block"`
 }
 
 type toy struct {
-	Geo     geo  `json:"geo" hcl:"geo,block"`
+	Geo     geo     `json:"geo" hcl:"geo,block"`
 	ToyName string  `json:"toy_name" hcl:"toy_name"`
 	Price   float32 `json:"price" hcl:"price"`
 }

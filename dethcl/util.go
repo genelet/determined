@@ -1,4 +1,4 @@
-package deth
+package dethcl
 
 import (
 	"fmt"

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package determined;
 
-option go_package = "./deth";
+option go_package = "./dethcl";
 
 message Struct {
   string className = 1;

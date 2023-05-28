@@ -1,4 +1,4 @@
-package deth
+package dethcl
 
 import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -96,24 +96,3 @@ func newListStruct(v [][2]interface{}) (*ListStruct, error) {
 	}
 	return &ListStruct{ListFields: x}, nil
 }
-
-/*
-func mapListStruct(sf reflect.StructField, rv reflect.Value) *ListStruct {
-	if sf.Type.Kind() != reflect.Map {
-		return nil
-	}
-	iter := rv.MapRange()
-	for iter.Next() {
-		k := iter.Key()
-		v := iter.Value()
-	..
-}
-	var err error
-	x := make([]*Struct, len(v))
-	for i, u := range v {
-		x[i], err = newSingleStruct(u)
-		if err != nil { return nil, err }
-	}
-	return &ListStruct{ListFields: x}, nil
-}
-*/

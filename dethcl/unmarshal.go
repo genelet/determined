@@ -1,7 +1,6 @@
-package deth
+package dethcl
 
 import (
-//"github.com/k0kubun/pp/v3"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -18,21 +17,60 @@ import (
 //   - endpoint: Determined
 //   - ref: struct map, with key being string name and value pointer to struct
 //   - optional label_values: fields' values of labels
-func Unmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
-fmt.Printf("start unmarshal .... %s\nspec ...%s\n\n", dat, endpoint.String())
+func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
+	if rest == nil {
+		return unplain(dat, current)
+	}
+
+	var endpoint *Struct
+	var ref map[string]interface{}
+	var label_values []string
+	var ok bool
+
+	switch t := rest[0].(type) {
+	case *Struct:
+		endpoint = t
+		if len(rest)<2 {
+			return fmt.Errorf("missing object reference")
+		}
+		ref, ok = rest[1].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("wrong object reference")
+		}
+		if len(rest) > 2 {
+			for i:=2; i<len(rest); i++ {
+				v, ok := rest[i-2].(string)
+				if !ok {
+					return fmt.Errorf("label is not string")
+				}
+				label_values = append(label_values, v)
+			}
+		}
+	case string:
+		for _, item := range rest {
+			v, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("label is not string")
+			}
+			label_values = append(label_values, v)
+		}
+	default:
+		return fmt.Errorf("wrong input data type")	
+	}
+	return unmarshal(dat, current, endpoint, ref, label_values...)
+}
+
+func unmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
 	if endpoint == nil {
-fmt.Printf("stop 1\n")
 		return unplain(dat, current, label_values...)
 	}
 	objectMap := endpoint.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
-fmt.Printf("stop 2\n")
 		return unplain(dat, current, label_values...)
 	}
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line:1,Column:1})
 	if diags.HasErrors() { return diags }
-//pp.Println(file.Body)
 
 	t := reflect.TypeOf(current).Elem()
 	oriValue := reflect.ValueOf(&current).Elem()
@@ -57,7 +95,6 @@ fmt.Printf("stop 2\n")
 		}
 	}
 	if newFields != nil && len(newFields) == n {
-fmt.Printf("stop 3\n")
 		return unplain(dat, current, label_values...)
 	}
 
@@ -76,11 +113,9 @@ fmt.Printf("stop 3\n")
 	newType := reflect.StructOf(newFields)
 	//raw := reflect.New(newType).Elem().Addr().Interface()
 	raw := reflect.New(newType).Interface()
-fmt.Printf("1001: %#v\n", raw)
 	diags = gohcl.DecodeBody(body, nil, raw)
 	if diags.HasErrors() { return diags }
 	rawValue := reflect.ValueOf(raw).Elem()
-fmt.Printf("33333: %#v\n", rawValue)
 
 	m := 0
 	if label_values != nil {
@@ -99,12 +134,7 @@ fmt.Printf("33333: %#v\n", rawValue)
 		if ok {
 			two := tag2(field.Tag)
 			blocks := blockref[two[0]]
-//pp.Println(blocks) 
-//x, _, _ := getBlockBytes(blocks  file)
-fmt.Printf("AAAA %s=>%#v\n", name, objectMap)
-fmt.Printf("BBB %s\n", result.String())
 			if x := result.GetListStruct(); x != nil {
-fmt.Printf("x %#v\n", x.GetListFields())
 				nextListStructs := x.GetListFields()
 				n := len(nextListStructs)
 				if n == 0 {
@@ -120,8 +150,6 @@ fmt.Printf("x %#v\n", x.GetListFields())
 				for k := 0; k < n; k++ {
 					nextStruct := nextListStructs[k]
 					trial := ref[nextStruct.ClassName]
-fmt.Printf("1111 %#v\n", ref)
-fmt.Printf("2222 bbbbbb %s, %s=>%v\n", nextStruct.String(), nextStruct.ClassName, trial)
 					if trial == nil {
 						return fmt.Errorf("ref not found for %s", name)
 					}
@@ -130,7 +158,7 @@ fmt.Printf("2222 bbbbbb %s, %s=>%v\n", nextStruct.String(), nextStruct.ClassName
 					if err != nil {
 						return err
 					}
-					err = Unmarshal(s, trial, nextStruct, ref, labels...)
+					err = unmarshal(s, trial, nextStruct, ref, labels...)
 					if err != nil {
 						return err
 					}
@@ -150,13 +178,12 @@ fmt.Printf("2222 bbbbbb %s, %s=>%v\n", nextStruct.String(), nextStruct.ClassName
 				if trial == nil {
 					return fmt.Errorf("class ref not found for %s", x.ClassName)
 				}
-fmt.Printf("3111 bbbbbb %#v\n", trial)
 				trial = clone(trial)
 				s, labels, err := getBlockBytes(blocks[0], file)
 				if err != nil {
 					return err
 				}
-				err = Unmarshal(s, trial, x, ref, labels...)
+				err = unmarshal(s, trial, x, ref, labels...)
 				if err != nil {
 					return err
 				}
@@ -183,36 +210,6 @@ fmt.Printf("3111 bbbbbb %#v\n", trial)
 	return nil
 }
 
-func debugBody(x *hclsyntax.Body, file *hcl.File) {
-	fmt.Printf("700 Body %v\n", x)
-	for k, v := range x.Attributes {
-		c, d := v.Expr.Value(nil)
-		fmt.Printf("701 Attr %s => %s => %#v\n", k, v.Name, v.Expr)
-		fmt.Printf("702 ctyValue %#v => %s => %#v\n", c, c.GoString(), d)
-	}
-   	for _, block := range x.Blocks {
-		fmt.Printf("703 block %#v\n", block)
-				rng1 := block.OpenBraceRange
-				rng2 := block.CloseBraceRange
-				bs := file.Bytes[rng1.End.Byte:rng2.Start.Byte]
-fmt.Printf("801 %s\n", bs)
-	}
-	fmt.Printf("704 range start %#v\n", x.SrcRange.Start)
-	fmt.Printf("705 range end %#v\n", x.SrcRange.End)
-	fmt.Printf("706 filename %#v\n", x.SrcRange.Filename)
-	fmt.Printf("707 range %#v\n", x.SrcRange.String())
-}
-
-func getBodyBytes(body *hclsyntax.Body, file *hcl.File) ([]byte, []string, error) {
-	if body == nil {
-		return nil, nil, fmt.Errorf("body not found")
-	}
-	rng1 := body.SrcRange
-	rng2 := body.EndRange
-	bs := file.Bytes[rng1.Start.Byte:rng2.Start.Byte]
-fmt.Printf("801 %s\n", bs)
-	return bs, nil, nil
-}
 func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
 	if block == nil {
 		return nil, nil, fmt.Errorf("block not found")
@@ -220,6 +217,5 @@ func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, er
 	rng1 := block.OpenBraceRange
 	rng2 := block.CloseBraceRange
 	bs := file.Bytes[rng1.End.Byte:rng2.Start.Byte]
-fmt.Printf("802 %s\n", bs)
 	return bs, block.Labels, nil
 }
