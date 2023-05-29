@@ -8,9 +8,8 @@ import (
 )
 
 // Marshal marshals object into HCL string
-//   - current: object as interface
-func Marshal(current interface{}) ([]byte, error) {
-	return marshal(current, false)
+func Marshal(object interface{}) ([]byte, error) {
+	return marshal(object, false)
 }
 
 func marshal(current interface{}, is ...bool) ([]byte, error) {

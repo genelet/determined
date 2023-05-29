@@ -12,12 +12,12 @@ import (
 //	╠══════════════════╪═══════════════════╣
 //	║ string           │ ending Struct     ║
 //	║ [2]interface{}   │ SingleStruct      ║
-//  ║                  │                   ║
+//	║                  │                   ║
 //	║ []string         │ ending ListStruct ║
 //	║ [][2]interface{} │ ListStruct        ║
-//  ║                  │                   ║
-//  ║ *Struct          │ SingleStruct      ║
-//  ║ []*Struct        │ ListStruct        ║
+//	║                  │                   ║
+//	║ *Struct          │ SingleStruct      ║
+//	║ []*Struct        │ ListStruct        ║
 //	╚══════════════════╧═══════════════════╝
 func NewValue(v interface{}) (*Value, error) {
 	switch t := v.(type) {

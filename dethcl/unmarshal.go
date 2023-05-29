@@ -10,12 +10,12 @@ import (
 	"unicode"
 )
 
-// Unmarshal unmarshals HCL data with interfaces determined by Determined.
+// Unmarshal decodes HCL data with interfaces determined by Determined.
 //
 //   - dat: Hcl data
 //   - current: object as interface
-//   - endpoint: Determined
-//   - ref: struct map, with key being string name and value pointer to struct
+//   - optional endpoint: Determined
+//   - optional ref: map, with key being string name, and value referenced value
 //   - optional label_values: fields' values of labels
 func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 	if rest == nil {

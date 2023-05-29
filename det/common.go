@@ -13,14 +13,14 @@ import (
 //	║ string                    │ ending SingleStruct value    ║
 //	║ []string                  │ ending ListStruct value      ║
 //	║ map[string]string         │ ending MapStruct value       ║
-//  ║                           │                              ║
+//	║                           │                              ║
 //	║ [2]interface{}            │ SingleStruct value           ║
 //	║ [][2]interface{}          │ ListStruct value             ║
 //	║ map[string][2]interface{} │ MapStruct value              ║
-//  ║                           │                              ║
-//  ║ *Struct                   │ SingleStruct                 ║
-//  ║ []*Struct                 │ ListStruct                   ║
-//  ║ map[string]*Struct        │ MapStruct                    ║
+//	║                           │                              ║
+//	║ *Struct                   │ SingleStruct                 ║
+//	║ []*Struct                 │ ListStruct                   ║
+//	║ map[string]*Struct        │ MapStruct                    ║
 //	╚═══════════════════════════╧══════════════════════════════╝
 func NewValue(v interface{}) (*Value, error) {
 	switch t := v.(type) {
