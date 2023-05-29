@@ -5,7 +5,7 @@ import (
 )
 
 func TestCommonString(t *testing.T) {
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"TheString888": "Circle",
 			"TheString":    [2]interface{}{"Circle"},
@@ -24,7 +24,7 @@ func TestCommonString(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fields := endpoint.GetFields()
+	fields := spec.GetFields()
 	if fields["TheString888"].String() != fields["TheString"].String() {
 		t.Errorf("%s", fields["TheString888"].String())
 		t.Errorf("%s", fields["TheString"].String())
@@ -40,7 +40,7 @@ func TestCommonString(t *testing.T) {
 }
 
 func TestCommonStruct(t *testing.T) {
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"Shape": [2]interface{}{
 				"Class1", map[string]interface{}{"Field1": "Circle"}},
@@ -49,20 +49,20 @@ func TestCommonStruct(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	shapeFields := endpoint.GetFields()
+	shapeFields := spec.GetFields()
 	shapeEndpoint := shapeFields["Shape"].GetSingleStruct()
 	field1Fields := shapeEndpoint.GetFields()
 	field1Endpoint := field1Fields["Field1"].GetSingleStruct()
-	if endpoint.ClassName != "Geo" ||
+	if spec.ClassName != "Geo" ||
 		shapeEndpoint.ClassName != "Class1" ||
 		field1Endpoint.ClassName != "Circle" {
-		t.Errorf("shape endpoint: %s", shapeEndpoint.String())
-		t.Errorf("field 1 endpoint: %s", field1Endpoint.String())
+		t.Errorf("shape spec: %s", shapeEndpoint.String())
+		t.Errorf("field 1 spec: %s", field1Endpoint.String())
 	}
 }
 
 func TestCommonMap(t *testing.T) {
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"HashShapes": map[string][2]interface{}{
 				"x1": [2]interface{}{
@@ -74,20 +74,20 @@ func TestCommonMap(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	shapeFields := endpoint.GetFields()
+	shapeFields := spec.GetFields()
 	shapeEndpoint := shapeFields["HashShapes"].GetMapStruct().GetMapFields()["x1"]
 	field1Fields := shapeEndpoint.GetFields()
 	field1Endpoint := field1Fields["Field4"].GetSingleStruct()
-	if endpoint.ClassName != "Geo" ||
+	if spec.ClassName != "Geo" ||
 		shapeEndpoint.ClassName != "Class5" ||
 		field1Endpoint.ClassName != "Circle" {
-		t.Errorf("shape endpoint: %s", shapeEndpoint.String())
-		t.Errorf("field 1 endpoint: %s", field1Endpoint.String())
+		t.Errorf("shape spec: %s", shapeEndpoint.String())
+		t.Errorf("field 1 spec: %s", field1Endpoint.String())
 	}
 }
 
 func TestCommonList(t *testing.T) {
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"ListShapes": [][2]interface{}{
 				{"Class2", map[string]interface{}{"Field3": "Circle"}},
@@ -97,14 +97,14 @@ func TestCommonList(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	shapeFields := endpoint.GetFields()
+	shapeFields := spec.GetFields()
 	shapeEndpoint := shapeFields["ListShapes"].GetListStruct().GetListFields()[1]
 	field1Fields := shapeEndpoint.GetFields()
 	field1Endpoint := field1Fields["Field5"].GetSingleStruct()
-	if endpoint.ClassName != "Geo" ||
+	if spec.ClassName != "Geo" ||
 		shapeEndpoint.ClassName != "Class3" ||
 		field1Endpoint.ClassName != "Circle" {
-		t.Errorf("shape endpoint: %s", shapeEndpoint.String())
-		t.Errorf("field 1 endpoint: %s", field1Endpoint.String())
+		t.Errorf("shape spec: %s", shapeEndpoint.String())
+		t.Errorf("field 1 spec: %s", field1Endpoint.String())
 	}
 }

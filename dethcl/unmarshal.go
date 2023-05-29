@@ -14,7 +14,7 @@ import (
 //
 //   - dat: Hcl data
 //   - current: object as interface
-//   - optional endpoint: Determined
+//   - optional spec: Determined
 //   - optional ref: map, with key being string name, and value referenced value
 //   - optional label_values: fields' values of labels
 func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
@@ -22,14 +22,14 @@ func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 		return unplain(dat, current)
 	}
 
-	var endpoint *Struct
+	var spec *Struct
 	var ref map[string]interface{}
 	var label_values []string
 	var ok bool
 
 	switch t := rest[0].(type) {
 	case *Struct:
-		endpoint = t
+		spec = t
 		if len(rest)<2 {
 			return fmt.Errorf("missing object reference")
 		}
@@ -57,14 +57,14 @@ func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 	default:
 		return fmt.Errorf("wrong input data type")	
 	}
-	return unmarshal(dat, current, endpoint, ref, label_values...)
+	return unmarshal(dat, current, spec, ref, label_values...)
 }
 
-func unmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}, label_values ...string) error {
-	if endpoint == nil {
+func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error {
+	if spec == nil {
 		return unplain(dat, current, label_values...)
 	}
-	objectMap := endpoint.GetFields()
+	objectMap := spec.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
 		return unplain(dat, current, label_values...)
 	}

@@ -31,6 +31,32 @@ func TestClone(t *testing.T) {
 	}
 }
 
+/*
+func TestZeroMap(t *testing.T) {
+	x := new(xclass)
+	bs := `
+		name = "xclass name"
+		squares k1 {
+			sx = 1
+			sy = 2
+		}
+		squares k2 {
+			sx = 3
+			sy = 4
+		}
+		circles k5 {
+			radius = 5.6
+		}
+		circles k6 {
+			radius = 6.7
+		}
+`
+    err := unplain([]byte(bs), x)
+    if err != nil { t.Fatal(err) }
+	t.Errorf("%#v", x)
+}
+*/
+
 func TestTag(t *testing.T) {
 	old := reflect.StructTag(`json:"shapes" hcl:"shapes,block"`)
 	tag, two := tag2tag(old, reflect.Struct, true)

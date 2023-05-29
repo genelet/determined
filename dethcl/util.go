@@ -67,35 +67,31 @@ func hcltag(tag reflect.StructTag) []byte {
 }
 
 func unplain(bs []byte, object interface{}, labels ...string) error {
-/* arr is empty, so the following comment code  does not work
+/* we may make unplan(bs, object, ref, labels...) working with the hack
     t := reflect.TypeOf(object).Elem()
-    n := t.NumField()
-    oriValue := reflect.ValueOf(object).Elem()
-
-    ref  := make(map[string]interface{})
     spec := make(map[string]interface{})
 
-    for i := 0; i < n; i++ {
+	if ref != nil {
+    for i := 0; i < t.NumField(); i++ {
         field := t.Field(i)
-        rawField := oriValue.Field(i)   
-        if field.Type.Kind() != reflect.Map {
+		typ := field.Type
+        if typ.Kind() != reflect.Map || typ.Key().Kind() != reflect.String {
             continue
         }
-        var arr []string
-        iter := rawField.MapRange()
-        for iter.Next() {
-            //k := iter.Key()
-            v := iter.Value()
-            s := v.Type().String()
-            arr = append(arr, s)
-            ref[s] = reflect.New(v.Type().Elem()).Elem().Addr().Interface()
-        }
-        spec[field.Name] = arr
+		// typ.String() == `map[string]*dethcl.circle`
+		for k, v := range ref {
+			mapTyp := reflect.MapOf(reflect.TypeOf(string), reflect.TypeOf(v))
+			if typ.Assignable.(mapTyp) {
+				objectName = k
+			}
+		}
+		spec[field.Name] = []string{objectName}
 	}
 	if len(spec) != 0 {
     	tr, err := NewStruct(t.Name(), spec)
 		if err != nil { return nil }
-		return Unmarshal(bs, object, tr, ref, labels...)
+		return unmarshal(bs, object, tr, ref, labels...)
+	}
 	}
 */
 

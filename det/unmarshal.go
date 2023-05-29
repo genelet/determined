@@ -12,13 +12,13 @@ import (
 //
 //   - dat: JSON data
 //   - current: object as interface
-//   - endpoint: Determined
+//   - spec: Determined
 //   - ref: struct map, with key being string name and value pointer to struct
-func JsonUnmarshal(dat []byte, current interface{}, endpoint *Struct, ref map[string]interface{}) error {
-	if endpoint == nil {
+func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error {
+	if spec == nil {
 		return json.Unmarshal(dat, current)
 	}
-	objectMap := endpoint.GetFields()
+	objectMap := spec.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
 		return json.Unmarshal(dat, current)
 	}

@@ -55,9 +55,9 @@ func TestMHclShape(t *testing.T) {
 	g := &geo{}
 	c := &circle{}
 	ref := map[string]interface{}{"circle": c}
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
-	err = Unmarshal([]byte(data1), g, endpoint, ref)
+	err = Unmarshal([]byte(data1), g, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,9 +82,9 @@ shape {
 	g = &geo{}
 	s := &square{}
 	ref = map[string]interface{}{"circle": c, "square": s}
-	endpoint, err = NewStruct(
+	spec, err = NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
-	err = Unmarshal([]byte(data2), g, endpoint, ref)
+	err = Unmarshal([]byte(data2), g, spec, ref)
 	if err != nil { t.Fatal(err) }
 	bs, err = Marshal(g)
 	if err != nil { t.Fatal(err) }
@@ -110,13 +110,13 @@ shape {
 	}
 `
 	p := &picture{}
-	endpoint, err = NewStruct(
+	spec, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"square", "square"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = Unmarshal([]byte(data4), p, endpoint, ref)
+	err = Unmarshal([]byte(data4), p, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,14 +150,14 @@ drawings {
 `
 
 	p = &picture{}
-	endpoint, err = NewStruct(
+	spec, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"moresquare", "moresquare"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ref["moresquare"] = &moresquare{}
-	err = Unmarshal([]byte(data5), p, endpoint, ref)
+	err = Unmarshal([]byte(data5), p, spec, ref)
 	if err != nil { t.Fatal(err) }
 
 	bs, err = Marshal(p)
@@ -191,12 +191,12 @@ func TestMHash(t *testing.T) {
 	}
 `
 	g := &geometry{}
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"geometry", map[string]interface{}{
 			"Shapes": []string{"square", "square"}})
 			//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
-	err = Unmarshal([]byte(data3), g, endpoint, ref)
+	err = Unmarshal([]byte(data3), g, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +233,7 @@ brand {
 	}
 }
 `
-	endpoint, err := NewStruct(
+	spec, err := NewStruct(
 		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{
@@ -242,7 +242,7 @@ brand {
 	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
 
 	c := new(child)
-	err = Unmarshal([]byte(data1), c, endpoint, ref)
+	err = Unmarshal([]byte(data1), c, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
