@@ -53,9 +53,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		default:
 		}
 		if !pass {
-			if _, ok := field.Tag.Lookup("hcl"); ok {
-				newFields = append(newFields, field)
-			}
+			newFields = append(newFields, field)
 		}
 	}
 
@@ -134,6 +132,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 			hcl := tag2(fieldTag)
 			if hcl[1] == "label" {
 				labels = append(labels, oriField.Interface().(string))
+				k++
 				continue
 			}
 			tmp.Field(k).Set(oriValue.Field(i))

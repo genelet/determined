@@ -87,7 +87,6 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	}
 	k := 0
 
-	j := 0
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
 		name := field.Name
@@ -164,9 +163,9 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 			if strings.ToLower(two[1]) == "label" && k < m {
 				f.Set(reflect.ValueOf(label_values[k]))
 			} else {
-				rawField := rawValue.Field(j)
-				j++
+				rawField := rawValue.Field(k)
 				f.Set(rawField)
+				k++
 			}
 		}
 	}
