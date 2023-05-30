@@ -30,7 +30,7 @@ func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 	switch t := rest[0].(type) {
 	case *Struct:
 		spec = t
-		if len(rest)<2 {
+		if len(rest) < 2 {
 			return fmt.Errorf("missing object reference")
 		}
 		ref, ok = rest[1].(map[string]interface{})
@@ -38,7 +38,7 @@ func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 			return fmt.Errorf("wrong object reference")
 		}
 		if len(rest) > 2 {
-			for i:=2; i<len(rest); i++ {
+			for i := 2; i < len(rest); i++ {
 				v, ok := rest[i-2].(string)
 				if !ok {
 					return fmt.Errorf("label is not string")
@@ -55,7 +55,7 @@ func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 			label_values = append(label_values, v)
 		}
 	default:
-		return fmt.Errorf("wrong input data type")	
+		return fmt.Errorf("wrong input data type")
 	}
 	return unmarshal(dat, current, spec, ref, label_values...)
 }
@@ -69,8 +69,10 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 		return unplain(dat, current, label_values...)
 	}
 
-	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line:1,Column:1})
-	if diags.HasErrors() { return diags }
+	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return diags
+	}
 
 	t := reflect.TypeOf(current).Elem()
 	oriValue := reflect.ValueOf(&current).Elem()
@@ -100,8 +102,8 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 
 	body := &hclsyntax.Body{
 		Attributes: file.Body.(*hclsyntax.Body).Attributes,
-		SrcRange: file.Body.(*hclsyntax.Body).SrcRange,	
-		EndRange: file.Body.(*hclsyntax.Body).EndRange}
+		SrcRange:   file.Body.(*hclsyntax.Body).SrcRange,
+		EndRange:   file.Body.(*hclsyntax.Body).EndRange}
 	blockref := make(map[string][]*hclsyntax.Block)
 	for _, block := range file.Body.(*hclsyntax.Body).Blocks {
 		if tagref[block.Type] {
@@ -114,7 +116,9 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	//raw := reflect.New(newType).Elem().Addr().Interface()
 	raw := reflect.New(newType).Interface()
 	diags = gohcl.DecodeBody(body, nil, raw)
-	if diags.HasErrors() { return diags }
+	if diags.HasErrors() {
+		return diags
+	}
 	rawValue := reflect.ValueOf(raw).Elem()
 
 	m := 0
@@ -142,7 +146,7 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 				}
 
 				var fSlice, fMap reflect.Value
-				if fieldType.Kind()==reflect.Map {
+				if fieldType.Kind() == reflect.Map {
 					fMap = reflect.MakeMapWithSize(fieldType, n)
 				} else {
 					fSlice = reflect.MakeSlice(fieldType, n, n)
@@ -162,13 +166,13 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 					if err != nil {
 						return err
 					}
-					if fieldType.Kind()==reflect.Map {
+					if fieldType.Kind() == reflect.Map {
 						fMap.SetMapIndex(reflect.ValueOf(labels[0]), reflect.ValueOf(trial))
 					} else {
 						fSlice.Index(k).Set(reflect.ValueOf(trial))
 					}
 				}
-				if fieldType.Kind()==reflect.Map {
+				if fieldType.Kind() == reflect.Map {
 					f.Set(fMap)
 				} else {
 					f.Set(fSlice)
@@ -194,7 +198,7 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 				}
 			}
 		} else if unicode.IsUpper([]rune(name)[0]) {
-			if strings.ToLower(two[1]) == "label" && k<m {
+			if strings.ToLower(two[1]) == "label" && k < m {
 				f.Set(reflect.ValueOf(label_values[k]))
 				k++
 			} else {

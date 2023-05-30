@@ -16,8 +16,8 @@ func (self *square) Area() float32 {
 type moresquare struct {
 	Morename1 string `json:"morename1", hcl:"morename1,label"`
 	Morename2 string `json:"morename2", hcl:"morename2,label"`
-	SX int `json:"sx" hcl:"sx"`
-	SY int `json:"sy" hcl:"sy"`
+	SX        int    `json:"sx" hcl:"sx"`
+	SY        int    `json:"sy" hcl:"sy"`
 }
 
 func (self *moresquare) Area() float32 {
@@ -33,10 +33,10 @@ func (self *circle) Area() float32 {
 }
 
 type circlemore struct {
-	Radius float32 `json:"radius" hcl:"radius"`
-	Arr1 []string `json:"arr1" hcl:"arr1,attr"`
-	Arr2 []int32 `json:"arr2" hcl:"arr2,attr"`
-	Arr3 []bool `json:"arr3" hcl:"arr3,attr"`
+	Radius float32  `json:"radius" hcl:"radius"`
+	Arr1   []string `json:"arr1" hcl:"arr1,attr"`
+	Arr2   []int32  `json:"arr2" hcl:"arr2,attr"`
+	Arr3   []bool   `json:"arr3" hcl:"arr3,attr"`
 }
 
 func (self *circlemore) Area() float32 {
@@ -62,8 +62,8 @@ type geometry struct {
 }
 
 type picture struct {
-	Name     string   `json:"name" hcl:"name"`
-	Drawings []inter  `json:"drawings" hcl:"drawings,block"`
+	Name     string  `json:"name" hcl:"name"`
+	Drawings []inter `json:"drawings" hcl:"drawings,block"`
 }
 
 type toy struct {
@@ -78,6 +78,5 @@ func (self *toy) ImportPrice(rate float32) float32 {
 
 type child struct {
 	Brand *toy `json:"brand" hcl:"brand,block"`
-	Age int `json:"age" hcl:"age"`
+	Age   int  `json:"age" hcl:"age"`
 }
-

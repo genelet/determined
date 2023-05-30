@@ -17,10 +17,10 @@ func TestCommonString(t *testing.T) {
 		panic(err)
 	}
 	fields := spec.GetFields()
-	if strings.ReplaceAll(fields["TheString0"].String()," ", "") != "single_struct:{className:\"Circle\"}" {
+	if strings.ReplaceAll(fields["TheString0"].String(), " ", "") != "single_struct:{className:\"Circle\"}" {
 		t.Errorf("%#v", fields["TheString0"].String())
 	}
-	if strings.ReplaceAll(fields["TheList0"].String()," ", "") != "list_struct:{list_fields:{className:\"CircleClass1\"}list_fields:{className:\"CircleClass2\"}}" {
+	if strings.ReplaceAll(fields["TheList0"].String(), " ", "") != "list_struct:{list_fields:{className:\"CircleClass1\"}list_fields:{className:\"CircleClass2\"}}" {
 		t.Errorf("%#v", fields["TheList0"].String())
 	}
 }
@@ -31,7 +31,7 @@ func TestCommonStruct(t *testing.T) {
 			"Shape1": [2]interface{}{
 				"Class1", map[string]interface{}{"Field1": "Circle1"}},
 			"Shape2": [2]interface{}{
-				"Class2", map[string]interface{}{"Field2": []string{"Circle2","Circle3"}}},
+				"Class2", map[string]interface{}{"Field2": []string{"Circle2", "Circle3"}}},
 		},
 	)
 	if err != nil {
@@ -85,38 +85,40 @@ func TestCommonList(t *testing.T) {
 }
 
 type xclass struct {
-    Name   string              `json:"name" hcl:"name"`
-    Squares map[string]*square `json:"squares" hcl:"squares"`
-    Circles map[string]*circle `json:"circles" hcl:"circles"`
+	Name    string             `json:"name" hcl:"name"`
+	Squares map[string]*square `json:"squares" hcl:"squares"`
+	Circles map[string]*circle `json:"circles" hcl:"circles"`
 }
 
 func TestMapList(t *testing.T) {
 	x := &xclass{Name: "xclass name",
-			Squares: map[string]*square{
-				"k1": &square{SX: 1, SY: 2}, "k2": &square{SX: 3, SY: 4}},
-			Circles: map[string]*circle{
-				"k5": &circle{5.6}, "k6": &circle{6.7}}}
+		Squares: map[string]*square{
+			"k1": &square{SX: 1, SY: 2}, "k2": &square{SX: 3, SY: 4}},
+		Circles: map[string]*circle{
+			"k5": &circle{5.6}, "k6": &circle{6.7}}}
 	bs, err := Marshal(x)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	typ := reflect.TypeOf(x).Elem()
-    n := typ.NumField()
+	n := typ.NumField()
 	oriValue := reflect.ValueOf(x).Elem()
 
-	ref  := make(map[string]interface{})
+	ref := make(map[string]interface{})
 	spec := make(map[string]interface{})
 
 	for i := 0; i < n; i++ {
 		field := typ.Field(i)
-		rawField := oriValue.Field(i)	
+		rawField := oriValue.Field(i)
 		if field.Type.Kind() != reflect.Map {
 			continue
 		}
 		var arr []string
 		iter := rawField.MapRange()
-    	for iter.Next() {
-        	//k := iter.Key()
-        	v := iter.Value()
+		for iter.Next() {
+			//k := iter.Key()
+			v := iter.Value()
 			s := v.Type().String()
 			arr = append(arr, s)
 			ref[s] = reflect.New(v.Type().Elem()).Elem().Addr().Interface()
@@ -126,8 +128,10 @@ func TestMapList(t *testing.T) {
 
 	tr, err := NewStruct(typ.Name(), spec)
 	xc := &xclass{}
-    err = Unmarshal(bs, xc, tr, ref)
-    if err != nil { t.Fatal(err) }
+	err = Unmarshal(bs, xc, tr, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if x.Squares["k1"].SX != xc.Squares["k1"].SX ||
 		x.Squares["k2"].SX != xc.Squares["k2"].SX ||

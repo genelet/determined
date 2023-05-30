@@ -18,7 +18,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 	switch current.(type) {
 	case interface{}:
 		t = reflect.TypeOf(current).Elem()
-		oriValue = reflect.ValueOf(current).Elem()		
+		oriValue = reflect.ValueOf(current).Elem()
 	default:
 		t = reflect.TypeOf(&current).Elem()
 		oriValue = reflect.ValueOf(&current).Elem()
@@ -33,7 +33,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		pass := false
 		switch field.Type.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Struct:
-				pass = true
+			pass = true
 		case reflect.Slice:
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
@@ -70,25 +70,31 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		case reflect.Interface, reflect.Pointer:
 			newCurrent := oriField.Interface()
 			bs, err := marshal(newCurrent, true)
-			if err != nil { return nil, err }
-			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})	
-			pass = true	
+			if err != nil {
+				return nil, err
+			}
+			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
+			pass = true
 		case reflect.Struct:
 			newCurrent := oriField.Addr().Interface()
 			bs, err := marshal(newCurrent, true)
-			if err != nil { return nil, err }
-			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})	
-			pass = true	
+			if err != nil {
+				return nil, err
+			}
+			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
+			pass = true
 		case reflect.Slice:
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
-				pass = true	
+				pass = true
 				n := oriField.Len()
-				for i:=0; i<n; i++ {
+				for i := 0; i < n; i++ {
 					item := oriField.Index(i)
 					bs, err := marshal(item.Interface(), true)
-					if err != nil { return nil, err }
-					outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})	
+					if err != nil {
+						return nil, err
+					}
+					outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
 				}
 			default:
 			}
@@ -101,7 +107,9 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 					k := iter.Key()
 					v := iter.Value()
 					bs, err := marshal(v.Interface(), true)
-					if err != nil { return nil, err }
+					if err != nil {
+						return nil, err
+					}
 					outliers = append(outliers, [3][]byte{hcltag(fieldTag), []byte(k.String()), bs})
 				}
 			default:
@@ -121,7 +129,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 
 	f := hclwrite.NewEmptyFile()
 	// use tmp.Addr().Interface() as the constructed object
-    gohcl.EncodeIntoBody(tmp.Addr().Interface(), f.Body())
+	gohcl.EncodeIntoBody(tmp.Addr().Interface(), f.Body())
 	bs := f.Bytes()
 
 	blank := []byte(" ")
@@ -138,13 +146,13 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 	}
 
 	if is == nil || is[0] == false {
-        return bs, nil
-    }
+		return bs, nil
+	}
 
 	str := strings.ReplaceAll(string(bs), "\n", "\n\t")
-    str = "{\n\t" + str[0:len(str)-1] + "}\n"
-    if labels == nil {
-        return []byte(str), nil
-    }
-    return []byte(strings.Join(labels, " ") + " " + str), nil
+	str = "{\n\t" + str[0:len(str)-1] + "}\n"
+	if labels == nil {
+		return []byte(str), nil
+	}
+	return []byte(strings.Join(labels, " ") + " " + str), nil
 }

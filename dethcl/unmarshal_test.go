@@ -130,7 +130,9 @@ func TestHclShape2(t *testing.T) {
 	}
 
 	bs, err := marshal(drawings[0].(*moresquare), true)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `abc1 def1 {
 	sx = 5
 	sy = 6
@@ -156,7 +158,7 @@ func TestHash(t *testing.T) {
 	spec, err := NewStruct(
 		"geometry", map[string]interface{}{
 			"Shapes": []string{"square", "square"}})
-			//"Shapes": []string{"square", "square"}})
+	//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
 	err = Unmarshal([]byte(data3), g, spec, ref)
 	if err != nil {

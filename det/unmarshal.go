@@ -24,6 +24,10 @@ func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string
 	}
 
 	t := reflect.TypeOf(current).Elem()
+	oriValue := reflect.ValueOf(&current).Elem()
+	tmp := reflect.New(oriValue.Elem().Type()).Elem()
+	tmp.Set(oriValue.Elem())
+
 	n := t.NumField()
 
 	var newFields []reflect.StructField
@@ -39,7 +43,11 @@ func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string
 			if result.GetMapStruct() != nil {
 				newField.Type = reflect.TypeOf(map[string]json.RawMessage{})
 			} else if result.GetListStruct() != nil {
-				newField.Type = reflect.TypeOf([]json.RawMessage{})
+				if field.Type.Kind() == reflect.Map {
+					newField.Type = reflect.TypeOf(map[string]json.RawMessage{})
+				} else {
+					newField.Type = reflect.TypeOf([]json.RawMessage{})
+				}
 			} else {
 				newField.Type = reflect.TypeOf(json.RawMessage{})
 			}
@@ -61,22 +69,19 @@ func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string
 	}
 	rawValue := reflect.ValueOf(raw).Elem()
 
-	oriValue := reflect.ValueOf(&current).Elem()
-	tmp := reflect.New(oriValue.Elem().Type()).Elem()
-	tmp.Set(oriValue.Elem())
-
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
 		fieldType := field.Type
+		name := field.Name
 		f := tmp.Elem().Field(i)
 		rawField := rawValue.Field(i)
-		result, ok := objectMap[field.Name]
+		result, ok := objectMap[name]
 		if ok {
 			if x := result.GetMapStruct(); x != nil {
 				nextMapStructs := x.GetMapFields()
 				nSmaller := len(nextMapStructs)
 				if nSmaller == 0 {
-					return fmt.Errorf("missing map struct for %s", field.Name)
+					return fmt.Errorf("missing map struct for %s", name)
 				}
 				var first *Struct
 				for _, first = range nextMapStructs {
@@ -104,29 +109,54 @@ func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string
 				}
 				f.Set(fMap)
 			} else if x := result.GetListStruct(); x != nil {
+				n := rawField.Len()
+
 				nextListStructs := x.GetListFields()
 				nSmaller := len(nextListStructs)
 				if nSmaller == 0 {
 					return fmt.Errorf("missing list struct for %s", field.Name)
 				}
-
-				n := rawField.Len()
-				fSlice := reflect.MakeSlice(fieldType, n, n)
 				first := nextListStructs[0]
+
+				var fSlice, fMap reflect.Value
+				var keys []reflect.Value
+				if fieldType.Kind() == reflect.Map {
+					keys = rawField.MapKeys()
+					fMap = reflect.MakeMapWithSize(fieldType, n)
+				} else {
+					fSlice = reflect.MakeSlice(fieldType, n, n)
+				}
+
 				for k := 0; k < n; k++ {
-					v := rawField.Index(k)
+					var key, v reflect.Value
+					if fieldType.Kind() == reflect.Map {
+						key = keys[k]
+						v = rawField.MapIndex(key)
+					} else {
+						v = rawField.Index(k)
+					}
+
 					nextStruct := first
 					if k < nSmaller {
 						nextStruct = nextListStructs[k]
 					}
+
 					trial := clone(ref[nextStruct.ClassName])
 					err := JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
 					if err != nil {
 						return err
 					}
-					fSlice.Index(k).Set(reflect.ValueOf(trial))
+					if fieldType.Kind() == reflect.Map {
+						fMap.SetMapIndex(key, reflect.ValueOf(trial))
+					} else {
+						fSlice.Index(k).Set(reflect.ValueOf(trial))
+					}
 				}
-				f.Set(fSlice)
+				if fieldType.Kind() == reflect.Map {
+					f.Set(fMap)
+				} else {
+					f.Set(fSlice)
+				}
 			} else if x := result.GetSingleStruct(); x != nil {
 				trial := ref[x.ClassName]
 				if trial == nil {

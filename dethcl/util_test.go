@@ -1,8 +1,8 @@
 package dethcl
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func TestClone(t *testing.T) {
@@ -86,15 +86,14 @@ type some struct {
 	L1 string `json:"l1" hcl:"l1,label"`
 	L2 string `json:"l2" hcl:"l2,label"`
 	L3 string `json:"l3" hcl:"l3,label"`
-    SX int `json:"sx" hcl:"sx"`
-    SY int `json:"sy" hcl:"sy"`
+	SX int    `json:"sx" hcl:"sx"`
+	SY int    `json:"sy" hcl:"sy"`
 }
 
 func TestAddLabels(t *testing.T) {
-	v := &some{SX:1, SY:2}
+	v := &some{SX: 1, SY: 2}
 	addLables(v, "a1", "b1", "c1")
 	if v.L1 != "a1" || v.L2 != "b1" || v.L3 != "c1" || v.SX != 1 || v.SY != 2 {
-		t.Errorf("%#v", v)	
+		t.Errorf("%#v", v)
 	}
 }
-

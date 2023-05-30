@@ -50,22 +50,6 @@ func TestJsonSimple(t *testing.T) {
 	}
 }
 
-/*
-func TestHclSimple(t *testing.T) {
-	data1 := `
-	radius = 1.234
-`
-	c := new(Circle)
-	err := HclUnmarshal([]byte(data1), c, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c.Radius != 1.234 {
-		t.Errorf("%#v", c)
-	}
-}
-*/
-
 type Geo struct {
 	Name  string `json:"name" hcl:"name"`
 	Shape I      `json:"shape" hcl:"shape,remain"`
@@ -79,6 +63,33 @@ type Geometry struct {
 type Picture struct {
 	Name     string `json:"name" hcl:"name"`
 	Drawings []I    `json:"drawings" hcl:"drawings,remain"`
+}
+
+func TestSliceForMap(t *testing.T) {
+	data3 := `{
+	"name": "peter shapes",
+	"shapes": {
+		"obj5" : { "sx":5, "sy":6 },
+		"obj7" : { "sx":7, "sy":8 }
+	}
+}`
+	geometry := &Geometry{}
+	spec, err := NewStruct(
+		"Geometry", map[string]interface{}{
+			"Shapes": []string{
+				"Square"}}) // in case of key is unknown, use slice
+	ref := map[string]interface{}{"Circle": new(Circle), "Square": new(Square)}
+	err = JsonUnmarshal([]byte(data3), geometry, spec, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shapes := geometry.Shapes
+	if geometry.Name != "peter shapes" ||
+		shapes["obj5"].(*Square).SX != 5 ||
+		shapes["obj7"].(*Square).SX != 7 {
+		t.Errorf("%#v", shapes["obj5"].(*Square))
+		t.Errorf("%#v", shapes["obj7"].(*Square))
+	}
 }
 
 func TestJsonShape(t *testing.T) {
@@ -239,7 +250,7 @@ type Adult struct {
 	Toys     []*Toy `json:"toys", hcl:"toys,block"`
 	Family   bool   `json:"family" hcl:"family"`
 	Lastname string `json:"lastname" hcl:"lastname"`
-	spec *Struct
+	spec     *Struct
 	ref      map[string]interface{}
 }
 

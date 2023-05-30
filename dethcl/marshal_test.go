@@ -15,7 +15,9 @@ func TestMHclSimple(t *testing.T) {
 	}
 
 	bs, err := Marshal(c)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != "radius = 1\n" {
 		t.Errorf("%s", bs)
 	}
@@ -35,7 +37,9 @@ arr3 = [true, false, true]
 	}
 
 	bs, err := Marshal(c)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `radius = 1
 arr1   = ["abc", "def"]
 arr2   = [123, 4356]
@@ -62,7 +66,9 @@ func TestMHclShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	bs, err := Marshal(g)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `name = "peter shape"
 shape {
 	radius = 1
@@ -71,7 +77,7 @@ shape {
 ` {
 		t.Errorf("'%s'", bs)
 	}
-	
+
 	data2 := `
 	name = "peter shape"
 	shape {
@@ -85,9 +91,13 @@ shape {
 	spec, err = NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
 	err = Unmarshal([]byte(data2), g, spec, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	bs, err = Marshal(g)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `name = "peter shape"
 shape {
 	sx = 5
@@ -121,7 +131,9 @@ shape {
 		t.Fatal(err)
 	}
 	bs, err = Marshal(p)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `name = "peter drawings"
 drawings {
 	sx = 5
@@ -135,7 +147,7 @@ drawings {
 
 ` {
 		t.Errorf("'%s'", bs)
-    }
+	}
 
 	data5 := `
     name = "peter drawings"
@@ -158,10 +170,14 @@ drawings {
 	}
 	ref["moresquare"] = &moresquare{}
 	err = Unmarshal([]byte(data5), p, spec, ref)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	bs, err = Marshal(p)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `name = "peter drawings"
 drawings abc1 def1 {
 	sx = 5
@@ -175,7 +191,7 @@ drawings abc2 def2 {
 
 ` {
 		t.Errorf("'%s'", bs)
-    }
+	}
 }
 
 func TestMHash(t *testing.T) {
@@ -194,7 +210,7 @@ func TestMHash(t *testing.T) {
 	spec, err := NewStruct(
 		"geometry", map[string]interface{}{
 			"Shapes": []string{"square", "square"}})
-			//"Shapes": []string{"square", "square"}})
+	//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
 	err = Unmarshal([]byte(data3), g, spec, ref)
 	if err != nil {
@@ -202,7 +218,9 @@ func TestMHash(t *testing.T) {
 	}
 
 	bs, err := Marshal(g)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `name = "peter shapes"
 shapes obj5 {
 	sx = 5
@@ -216,7 +234,7 @@ shapes obj7 {
 
 ` {
 		t.Errorf("'%s'", bs)
-    }
+	}
 }
 
 func TestMHclChild(t *testing.T) {
@@ -248,7 +266,9 @@ brand {
 	}
 
 	bs, err := Marshal(c)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(bs) != `age = 5
 brand {
 	toy_name = "roblox"
@@ -265,5 +285,5 @@ brand {
 
 ` {
 		t.Errorf("'%s'", bs)
-    }
+	}
 }
