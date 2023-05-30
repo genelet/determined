@@ -9,7 +9,7 @@ func TestMHclSimple(t *testing.T) {
 	radius = 1.0
 `
 	c := new(circle)
-	err := Unmarshal([]byte(data1), c)
+	err := Unmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ arr2 = [123, 4356]
 arr3 = [true, false, true]
 `
 	c := new(circlemore)
-	err := Unmarshal([]byte(data1), c)
+	err := Unmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

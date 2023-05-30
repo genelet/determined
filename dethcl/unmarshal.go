@@ -10,51 +10,6 @@ import (
 	"unicode"
 )
 
-/*
-func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
-	if rest == nil {
-		return unplain(dat, current)
-	}
-
-	var spec *Struct
-	var ref map[string]interface{}
-	var label_values []string
-	var ok bool
-
-	switch t := rest[0].(type) {
-	case *Struct:
-		spec = t
-		if len(rest) < 2 {
-			return fmt.Errorf("missing object reference")
-		}
-		ref, ok = rest[1].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("wrong object reference")
-		}
-		if len(rest) > 2 {
-			for i := 2; i < len(rest); i++ {
-				v, ok := rest[i-2].(string)
-				if !ok {
-					return fmt.Errorf("label is not string")
-				}
-				label_values = append(label_values, v)
-			}
-		}
-	case string:
-		for _, item := range rest {
-			v, ok := item.(string)
-			if !ok {
-				return fmt.Errorf("label is not string")
-			}
-			label_values = append(label_values, v)
-		}
-	default:
-		return fmt.Errorf("wrong input data type")
-	}
-	return unmarshal(dat, current, spec, ref, label_values...)
-}
-*/
-
 // Unmarshal decodes HCL data with interfaces determined by Determined.
 //
 //   - dat: Hcl data
@@ -88,6 +43,9 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
 		name := field.Name
+		if !unicode.IsUpper([]rune(name)[0]) {
+			continue
+		}
 		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
 			return fmt.Errorf("missing tag for %s", name)
 		}
@@ -132,8 +90,11 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	j := 0
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
-		fieldType := field.Type
 		name := field.Name
+		if !unicode.IsUpper([]rune(name)[0]) {
+			continue
+		}
+		fieldType := field.Type
 		two := tag2(field.Tag)
 		f := tmp.Elem().Field(i)
 		result, ok := objectMap[name]
@@ -199,10 +160,9 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 					f.Set(reflect.ValueOf(trial).Elem())
 				}
 			}
-		} else if unicode.IsUpper([]rune(name)[0]) {
+		} else {
 			if strings.ToLower(two[1]) == "label" && k < m {
 				f.Set(reflect.ValueOf(label_values[k]))
-				k++
 			} else {
 				rawField := rawValue.Field(j)
 				j++

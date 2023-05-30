@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"reflect"
 	"strings"
+	"unicode"
 )
 
 // Marshal marshals object into HCL string
@@ -29,6 +30,9 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
+		if !unicode.IsUpper([]rune(field.Name)[0]) {
+			continue
+		}
 		oriField := oriValue.Field(i)
 		pass := false
 		switch field.Type.Kind() {
@@ -63,6 +67,9 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 	k := 0
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
+		if !unicode.IsUpper([]rune(field.Name)[0]) {
+			continue
+		}
 		fieldTag := field.Tag
 		oriField := oriValue.Field(i)
 		pass := false
@@ -84,10 +91,13 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
 			pass = true
 		case reflect.Slice:
+			n := oriField.Len()
+			if n < 1 {
+				continue
+			}
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
 				pass = true
-				n := oriField.Len()
 				for i := 0; i < n; i++ {
 					item := oriField.Index(i)
 					bs, err := marshal(item.Interface(), true)
@@ -99,6 +109,10 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 			default:
 			}
 		case reflect.Map:
+			n := oriField.Len()
+			if n < 1 {
+				continue
+			}
 			switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
 				pass = true

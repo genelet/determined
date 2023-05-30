@@ -9,7 +9,7 @@ func TestHclSimple(t *testing.T) {
 	radius = 1.234
 `
 	c := new(circle)
-	err := Unmarshal([]byte(data1), c)
+	err := Unmarshal([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
