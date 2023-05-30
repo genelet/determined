@@ -90,7 +90,7 @@ func unplain(bs []byte, object interface{}, labels ...string) error {
 	   	if len(spec) != 0 {
 	       	tr, err := NewStruct(t.Name(), spec)
 	   		if err != nil { return nil }
-	   		return unmarshal(bs, object, tr, ref, labels...)
+	   		return Unmarshal(bs, object, tr, ref, labels...)
 	   	}
 	   	}
 	*/

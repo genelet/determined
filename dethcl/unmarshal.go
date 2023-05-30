@@ -10,13 +10,7 @@ import (
 	"unicode"
 )
 
-// Unmarshal decodes HCL data with interfaces determined by Determined.
-//
-//   - dat: Hcl data
-//   - current: object as interface
-//   - optional spec: Determined
-//   - optional ref: map, with key being string name, and value referenced value
-//   - optional label_values: fields' values of labels
+/*
 func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 	if rest == nil {
 		return unplain(dat, current)
@@ -59,8 +53,16 @@ func Unmarshal(dat []byte, current interface{}, rest ...interface{}) error {
 	}
 	return unmarshal(dat, current, spec, ref, label_values...)
 }
+*/
 
-func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error {
+// Unmarshal decodes HCL data with interfaces determined by Determined.
+//
+//   - dat: Hcl data
+//   - current: object as interface
+//   - spec: Determined
+//   - ref: map, with key being string name, and value referenced value
+//   - optional label_values: fields' values of labels
+func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error {
 	if spec == nil {
 		return unplain(dat, current, label_values...)
 	}
@@ -162,7 +164,7 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 					if err != nil {
 						return err
 					}
-					err = unmarshal(s, trial, nextStruct, ref, labels...)
+					err = Unmarshal(s, trial, nextStruct, ref, labels...)
 					if err != nil {
 						return err
 					}
@@ -187,7 +189,7 @@ func unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 				if err != nil {
 					return err
 				}
-				err = unmarshal(s, trial, x, ref, labels...)
+				err = Unmarshal(s, trial, x, ref, labels...)
 				if err != nil {
 					return err
 				}
