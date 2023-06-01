@@ -106,7 +106,6 @@ func TestHclShape2(t *testing.T) {
         sy=8
     }
 `
-
 	p = &picture{}
 	spec, err = NewStruct(
 		"Picture", map[string]interface{}{
@@ -129,14 +128,21 @@ func TestHclShape2(t *testing.T) {
 		t.Errorf("%#v", drawings[1].(*moresquare))
 	}
 
-	bs, err := marshal(drawings[0].(*moresquare), true)
+	bs, err := Marshal(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `abc1 def1 {
-	sx = 5
-	sy = 6
+	if string(bs) != `name = "peter drawings"
+drawings abc1 def1 {
+  sx = 5
+  sy = 6
 }
+
+drawings abc2 def2 {
+  sx = 7
+  sy = 8
+}
+
 ` {
 		t.Errorf("%s", bs)
 	}

@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"reflect"
 	"strings"
-	"unicode"
 )
 
 // Marshal marshals object into HCL string
@@ -25,117 +24,41 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		oriValue = reflect.ValueOf(&current).Elem()
 	}
 
-	n := t.NumField()
-	var newFields []reflect.StructField
-
-	for i := 0; i < n; i++ {
-		field := t.Field(i)
-		if !unicode.IsUpper([]rune(field.Name)[0]) {
-			continue
-		}
-		oriField := oriValue.Field(i)
-		pass := false
-		switch field.Type.Kind() {
-		case reflect.Interface, reflect.Pointer, reflect.Struct:
-			pass = true
-		case reflect.Slice:
-			switch oriField.Index(0).Kind() {
-			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
-				pass = true
-			default:
-			}
-		case reflect.Map:
-			switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
-			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
-				pass = true
-			default:
-			}
-		default:
-		}
-		if !pass {
-			newFields = append(newFields, field)
-		}
+	newFields, err := getFields(t, oriValue)
+	if err != nil {
+		return nil, err
 	}
 
-	newType := reflect.StructOf(newFields)
+	var plains []reflect.StructField
+	for _, mField := range newFields {
+		if !mField.out {
+			plains = append(plains, mField.field)
+		}
+	}
+	newType := reflect.StructOf(plains)
 	tmp := reflect.New(newType).Elem()
 	var outliers [][3][]byte
 	var labels []string
 
 	k := 0
-	for i := 0; i < n; i++ {
-		field := t.Field(i)
-		if !unicode.IsUpper([]rune(field.Name)[0]) {
-			continue
-		}
-		fieldTag := field.Tag
-		oriField := oriValue.Field(i)
-		pass := false
-		switch field.Type.Kind() {
-		case reflect.Interface, reflect.Pointer:
-			newCurrent := oriField.Interface()
-			bs, err := marshal(newCurrent, true)
+	for _, mField := range newFields {
+		field := mField.field
+		oriField := mField.value
+		if mField.out {
+			outlier, err := getOutlier(field, oriField)
 			if err != nil {
 				return nil, err
 			}
-			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
-			pass = true
-		case reflect.Struct:
-			newCurrent := oriField.Addr().Interface()
-			bs, err := marshal(newCurrent, true)
-			if err != nil {
-				return nil, err
-			}
-			outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
-			pass = true
-		case reflect.Slice:
-			n := oriField.Len()
-			if n < 1 {
-				continue
-			}
-			switch oriField.Index(0).Kind() {
-			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
-				pass = true
-				for i := 0; i < n; i++ {
-					item := oriField.Index(i)
-					bs, err := marshal(item.Interface(), true)
-					if err != nil {
-						return nil, err
-					}
-					outliers = append(outliers, [3][]byte{hcltag(fieldTag), nil, bs})
-				}
-			default:
-			}
-		case reflect.Map:
-			n := oriField.Len()
-			if n < 1 {
-				continue
-			}
-			switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
-			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
-				pass = true
-				iter := oriField.MapRange()
-				for iter.Next() {
-					k := iter.Key()
-					v := iter.Value()
-					bs, err := marshal(v.Interface(), true)
-					if err != nil {
-						return nil, err
-					}
-					outliers = append(outliers, [3][]byte{hcltag(fieldTag), []byte(k.String()), bs})
-				}
-			default:
-			}
-		default:
-		}
-		if !pass {
+			outliers = append(outliers, outlier...)
+		} else {
+			fieldTag := field.Tag
 			hcl := tag2(fieldTag)
 			if hcl[1] == "label" {
 				labels = append(labels, oriField.Interface().(string))
 				k++
 				continue
 			}
-			tmp.Field(k).Set(oriValue.Field(i))
+			tmp.Field(k).Set(oriField)
 			k++
 		}
 	}
@@ -158,12 +81,12 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 		bs = append(bs, nl...)
 	}
 
-	if is == nil || is[0] == false {
+	if is == nil || is[0] == false || bs == nil {
 		return bs, nil
 	}
 
-	str := strings.ReplaceAll(string(bs), "\n", "\n\t")
-	str = "{\n\t" + str[0:len(str)-1] + "}\n"
+	str := strings.ReplaceAll(string(bs), "\n", "\n  ")
+	str = "{\n  " + str[0:len(str)-2] + "}\n"
 	if labels == nil {
 		return []byte(str), nil
 	}

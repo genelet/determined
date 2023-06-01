@@ -71,7 +71,7 @@ func TestMHclShape(t *testing.T) {
 	}
 	if string(bs) != `name = "peter shape"
 shape {
-	radius = 1
+  radius = 1
 }
 
 ` {
@@ -100,8 +100,8 @@ shape {
 	}
 	if string(bs) != `name = "peter shape"
 shape {
-	sx = 5
-	sy = 6
+  sx = 5
+  sy = 6
 }
 
 ` {
@@ -136,13 +136,13 @@ shape {
 	}
 	if string(bs) != `name = "peter drawings"
 drawings {
-	sx = 5
-	sy = 6
+  sx = 5
+  sy = 6
 }
 
 drawings {
-	sx = 7
-	sy = 8
+  sx = 7
+  sy = 8
 }
 
 ` {
@@ -180,13 +180,13 @@ drawings {
 	}
 	if string(bs) != `name = "peter drawings"
 drawings abc1 def1 {
-	sx = 5
-	sy = 6
+  sx = 5
+  sy = 6
 }
 
 drawings abc2 def2 {
-	sx = 7
-	sy = 8
+  sx = 7
+  sy = 8
 }
 
 ` {
@@ -223,13 +223,24 @@ func TestMHash(t *testing.T) {
 	}
 	if string(bs) != `name = "peter shapes"
 shapes obj5 {
-	sx = 5
-	sy = 6
+  sx = 5
+  sy = 6
 }
 
 shapes obj7 {
-	sx = 7
-	sy = 8
+  sx = 7
+  sy = 8
+}
+
+` && string(bs) != `name = "peter shapes"
+shapes obj7 {
+  sx = 7
+  sy = 8
+}
+
+shapes obj5 {
+  sx = 5
+  sy = 6
 }
 
 ` {
@@ -271,16 +282,16 @@ brand {
 	}
 	if string(bs) != `age = 5
 brand {
-	toy_name = "roblox"
-	price    = 99.9000015258789
-	geo {
-		name = "peter shape"
-		shape {
-			radius = 1
-		}
-		
-	}
-	
+  toy_name = "roblox"
+  price    = 99.9000015258789
+  geo {
+    name = "peter shape"
+    shape {
+      radius = 1
+    }
+    
+  }
+  
 }
 
 ` {

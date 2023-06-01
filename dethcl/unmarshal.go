@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"reflect"
 	"strings"
-	"unicode"
 )
 
 // Unmarshal decodes HCL data with interfaces determined by Determined.
@@ -32,34 +31,15 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	}
 
 	t := reflect.TypeOf(current).Elem()
-	oriValue := reflect.ValueOf(&current).Elem()
-	tmp := reflect.New(oriValue.Elem().Type()).Elem()
-	tmp.Set(oriValue.Elem())
-
-	n := t.NumField()
-
-	var newFields []reflect.StructField
-	tagref := make(map[string]bool)
-	for i := 0; i < n; i++ {
-		field := t.Field(i)
-		name := field.Name
-		if !unicode.IsUpper([]rune(name)[0]) {
-			continue
-		}
-		if unicode.IsUpper([]rune(name)[0]) && field.Tag == "" {
-			return fmt.Errorf("missing tag for %s", name)
-		}
-		if _, ok := objectMap[name]; ok {
-			two := tag2(field.Tag)
-			tagref[two[0]] = true
-		} else {
-			newFields = append(newFields, field)
-		}
+	newFields, origTypes, err := loopFields(t, objectMap)
+	if err != nil {
+		return err
 	}
-	if newFields != nil && len(newFields) == n {
+	if len(origTypes) == 0 {
 		return unplain(dat, current, label_values...)
 	}
 
+	tagref := getTagref(origTypes)
 	body := &hclsyntax.Body{
 		Attributes: file.Body.(*hclsyntax.Body).Attributes,
 		SrcRange:   file.Body.(*hclsyntax.Body).SrcRange,
@@ -72,6 +52,7 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 			body.Blocks = append(body.Blocks, block)
 		}
 	}
+
 	newType := reflect.StructOf(newFields)
 	//raw := reflect.New(newType).Elem().Addr().Interface()
 	raw := reflect.New(newType).Interface()
@@ -81,91 +62,92 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	}
 	rawValue := reflect.ValueOf(raw).Elem()
 
+	oriValue := reflect.ValueOf(&current).Elem()
+	tmp := reflect.New(oriValue.Elem().Type()).Elem()
+	tmp.Set(oriValue.Elem())
+
 	m := 0
 	if label_values != nil {
 		m = len(label_values)
 	}
 	k := 0
-
-	for i := 0; i < n; i++ {
-		field := t.Field(i)
+	for _, field := range newFields {
 		name := field.Name
-		if !unicode.IsUpper([]rune(name)[0]) {
-			continue
-		}
-		fieldType := field.Type
 		two := tag2(field.Tag)
-		f := tmp.Elem().Field(i)
-		result, ok := objectMap[name]
-		if ok {
-			two := tag2(field.Tag)
-			blocks := blockref[two[0]]
-			if x := result.GetListStruct(); x != nil {
-				nextListStructs := x.GetListFields()
-				n := len(nextListStructs)
-				if n == 0 {
-					return fmt.Errorf("missing list struct for %s", name)
-				}
+		f := tmp.Elem().FieldByName(name)
+		if strings.ToLower(two[1]) == "label" && k < m {
+			f.Set(reflect.ValueOf(label_values[k]))
+		} else {
+			rawField := rawValue.Field(k)
+			f.Set(rawField)
+			k++
+		}
+	}
 
-				var fSlice, fMap reflect.Value
-				if fieldType.Kind() == reflect.Map {
-					fMap = reflect.MakeMapWithSize(fieldType, n)
-				} else {
-					fSlice = reflect.MakeSlice(fieldType, n, n)
-				}
-				for k := 0; k < n; k++ {
-					nextStruct := nextListStructs[k]
-					trial := ref[nextStruct.ClassName]
-					if trial == nil {
-						return fmt.Errorf("ref not found for %s", name)
-					}
-					trial = clone(trial)
-					s, labels, err := getBlockBytes(blocks[k], file)
-					if err != nil {
-						return err
-					}
-					err = Unmarshal(s, trial, nextStruct, ref, labels...)
-					if err != nil {
-						return err
-					}
-					if fieldType.Kind() == reflect.Map {
-						fMap.SetMapIndex(reflect.ValueOf(labels[0]), reflect.ValueOf(trial))
-					} else {
-						fSlice.Index(k).Set(reflect.ValueOf(trial))
-					}
-				}
-				if fieldType.Kind() == reflect.Map {
-					f.Set(fMap)
-				} else {
-					f.Set(fSlice)
-				}
-			} else if x := result.GetSingleStruct(); x != nil {
-				trial := ref[x.ClassName]
+	for _, field := range origTypes {
+		name := field.Name
+		typ := field.Type
+		f := tmp.Elem().FieldByName(name)
+		two := tag2(field.Tag)
+		blocks := blockref[two[0]]
+		result := objectMap[name]
+		if x := result.GetListStruct(); x != nil {
+			nextListStructs := x.GetListFields()
+			n := len(nextListStructs)
+			if n == 0 {
+				return fmt.Errorf("missing list struct for %s", name)
+			}
+
+			var fSlice, fMap reflect.Value
+			if typ.Kind() == reflect.Map {
+				fMap = reflect.MakeMapWithSize(typ, n)
+			} else {
+				fSlice = reflect.MakeSlice(typ, n, n)
+			}
+			for k := 0; k < n; k++ {
+				nextStruct := nextListStructs[k]
+				trial := ref[nextStruct.ClassName]
 				if trial == nil {
-					return fmt.Errorf("class ref not found for %s", x.ClassName)
+					return fmt.Errorf("ref not found for %s", name)
 				}
 				trial = clone(trial)
-				s, labels, err := getBlockBytes(blocks[0], file)
+				s, labels, err := getBlockBytes(blocks[k], file)
 				if err != nil {
 					return err
 				}
-				err = Unmarshal(s, trial, x, ref, labels...)
+				err = Unmarshal(s, trial, nextStruct, ref, labels...)
 				if err != nil {
 					return err
 				}
-				if f.Kind() == reflect.Interface || f.Kind() == reflect.Ptr {
-					f.Set(reflect.ValueOf(trial))
+				if typ.Kind() == reflect.Map {
+					fMap.SetMapIndex(reflect.ValueOf(labels[0]), reflect.ValueOf(trial))
 				} else {
-					f.Set(reflect.ValueOf(trial).Elem())
+					fSlice.Index(k).Set(reflect.ValueOf(trial))
 				}
 			}
-		} else {
-			if strings.ToLower(two[1]) == "label" && k < m {
-				f.Set(reflect.ValueOf(label_values[k]))
+			if typ.Kind() == reflect.Map {
+				f.Set(fMap)
 			} else {
-				rawField := rawValue.Field(k)
-				f.Set(rawField)
-				k++
+				f.Set(fSlice)
+			}
+		} else if x := result.GetSingleStruct(); x != nil {
+			trial := ref[x.ClassName]
+			if trial == nil {
+				return fmt.Errorf("class ref not found for %s", x.ClassName)
+			}
+			trial = clone(trial)
+			s, labels, err := getBlockBytes(blocks[0], file)
+			if err != nil {
+				return err
+			}
+			err = Unmarshal(s, trial, x, ref, labels...)
+			if err != nil {
+				return err
+			}
+			if f.Kind() == reflect.Interface || f.Kind() == reflect.Ptr {
+				f.Set(reflect.ValueOf(trial))
+			} else {
+				f.Set(reflect.ValueOf(trial).Elem())
 			}
 		}
 	}
