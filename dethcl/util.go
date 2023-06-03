@@ -43,7 +43,15 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 		tcontent := two[0]
 		if tcontent == "" {
 			switch typ.Kind() {
-			case reflect.Interface, reflect.Pointer, reflect.Struct:
+			case reflect.Ptr:
+				mfs, err := getFields(typ.Elem(), oriField.Elem())
+				if err != nil {
+					return nil, err
+				}
+				for _, v := range mfs {
+					newFields = append(newFields, v)
+				}
+			case reflect.Struct:
 				mfs, err := getFields(typ, oriField)
 				if err != nil {
 					return nil, err
@@ -59,22 +67,27 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 			continue
 		}
 		pass := false
-		switch field.Type.Kind() {
+		switch typ.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Struct:
 			pass = true
 		case reflect.Slice:
+			if oriField.Len() == 0 { continue }
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
 				pass = true
 			default:
 			}
 		case reflect.Map:
+			if oriField.Len() == 0 { continue }
 			switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
 				pass = true
 			default:
 			}
 		default:
+			if oriField.IsValid() && oriField.IsZero() {
+				continue
+			}
 		}
 		newFields = append(newFields, &marshalField{field, oriField, pass})
 	}
@@ -99,6 +112,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 		if err != nil {
 			return nil, err
 		}
+		if bs == nil { return nil, nil }
 		empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
 	case reflect.Slice:
 		n := oriField.Len()
@@ -113,6 +127,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 				if err != nil {
 					return nil, err
 				}
+				if bs == nil { continue }
 				empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
 			}
 		default:
@@ -132,6 +147,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 				if err != nil {
 					return empty, err
 				}
+				if bs == nil { continue }
 				empty = append(empty, [3][]byte{hcltag(fieldTag), []byte(k.String()), bs})
 			}
 		default:
@@ -150,6 +166,8 @@ func getTagref(origTypes []reflect.StructField) map[string]bool {
 	return tagref
 }
 
+// newFields for normal fields which can be decoded withe gohcl
+// origTypes for interface which needs decoded individually as body
 func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructField, []reflect.StructField, error) {
 	var newFields []reflect.StructField
 	var origTypes []reflect.StructField
@@ -164,7 +182,9 @@ func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructFi
 		tcontent := two[0]
 		if tcontent == "" {
 			switch typ.Kind() {
-			case reflect.Interface, reflect.Pointer, reflect.Struct:
+			case reflect.Interface:
+				continue
+			case reflect.Pointer, reflect.Struct:
 				deeps, deepTypes, err := loopFields(field.Type, objectMap)
 				if err != nil {
 					return nil, nil, err
@@ -185,6 +205,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructFi
 		if _, ok := objectMap[name]; ok {
 			origTypes = append(origTypes, field)
 		} else {
+			field.Tag = addOptional(field.Tag)
 			newFields = append(newFields, field)
 		}
 	}
@@ -203,6 +224,16 @@ func tag2(old reflect.StructTag) [2]string {
 		}
 	}
 	return [2]string{}
+}
+
+func addOptional(old reflect.StructTag) reflect.StructTag {
+	two := tag2(old)
+	if two[0] == "" {
+		return reflect.StructTag(two[0])
+	} else if two[1] == "" {
+		two[1] = "optional"
+	} 
+	return reflect.StructTag("hcl:\"" + two[0] + "," + two[1] + "\"")
 }
 
 func tag2tag(old reflect.StructTag, kind reflect.Kind, ok bool) (reflect.StructTag, [2]string) {

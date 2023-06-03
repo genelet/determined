@@ -71,16 +71,16 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 		m = len(label_values)
 	}
 	k := 0
-	for _, field := range newFields {
+	for i, field := range newFields {
 		name := field.Name
 		two := tag2(field.Tag)
 		f := tmp.Elem().FieldByName(name)
 		if strings.ToLower(two[1]) == "label" && k < m {
 			f.Set(reflect.ValueOf(label_values[k]))
-		} else {
-			rawField := rawValue.Field(k)
-			f.Set(rawField)
 			k++
+		} else {
+			rawField := rawValue.Field(i)
+			f.Set(rawField)
 		}
 	}
 
@@ -95,7 +95,7 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 			nextListStructs := x.GetListFields()
 			n := len(nextListStructs)
 			if n == 0 {
-				return fmt.Errorf("missing list struct for %s", name)
+				continue
 			}
 
 			var fSlice, fMap reflect.Value
