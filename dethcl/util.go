@@ -71,14 +71,18 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 		case reflect.Interface, reflect.Pointer, reflect.Struct:
 			pass = true
 		case reflect.Slice:
-			if oriField.Len() == 0 { continue }
+			if oriField.Len() == 0 {
+				continue
+			}
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
 				pass = true
 			default:
 			}
 		case reflect.Map:
-			if oriField.Len() == 0 { continue }
+			if oriField.Len() == 0 {
+				continue
+			}
 			switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
 				pass = true
@@ -112,7 +116,9 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 		if err != nil {
 			return nil, err
 		}
-		if bs == nil { return nil, nil }
+		if bs == nil {
+			return nil, nil
+		}
 		empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
 	case reflect.Slice:
 		n := oriField.Len()
@@ -127,7 +133,9 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 				if err != nil {
 					return nil, err
 				}
-				if bs == nil { continue }
+				if bs == nil {
+					continue
+				}
 				empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
 			}
 		default:
@@ -147,7 +155,9 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 				if err != nil {
 					return empty, err
 				}
-				if bs == nil { continue }
+				if bs == nil {
+					continue
+				}
 				empty = append(empty, [3][]byte{hcltag(fieldTag), []byte(k.String()), bs})
 			}
 		default:
@@ -168,7 +178,7 @@ func getTagref(origTypes []reflect.StructField) map[string]bool {
 
 // newFields for normal fields which can be decoded withe gohcl
 // origTypes for interface which needs decoded individually as body
-func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructField, []reflect.StructField, error) {
+func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, error) {
 	var newFields []reflect.StructField
 	var origTypes []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
@@ -178,14 +188,26 @@ func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructFi
 		if !unicode.IsUpper([]rune(name)[0]) {
 			continue
 		}
-		two := tag2(field.Tag)
-		tcontent := two[0]
+		tcontent := (tag2(field.Tag))[0]
+		if tcontent == `-` || (len(tcontent) >= 2 && tcontent[len(tcontent)-2:] == `,-`) {
+			continue
+		}
+		if _, ok := objectMap[name]; ok {
+			origTypes = append(origTypes, field)
+			continue
+		}
 		if tcontent == "" {
 			switch typ.Kind() {
 			case reflect.Interface:
 				continue
 			case reflect.Pointer, reflect.Struct:
-				deeps, deepTypes, err := loopFields(field.Type, objectMap)
+				var deeps, deepTypes []reflect.StructField
+				var err error
+				if typ.Kind() == reflect.Pointer {
+					deeps, deepTypes, err = loopFields(field.Type.Elem(), objectMap, ref)
+				} else {
+					deeps, deepTypes, err = loopFields(field.Type, objectMap, ref)
+				}
 				if err != nil {
 					return nil, nil, err
 				}
@@ -198,12 +220,21 @@ func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructFi
 			default:
 			}
 			continue
-		}
-		if tcontent == `-` || (len(tcontent) >= 2 && tcontent[len(tcontent)-2:] == `,-`) {
-			continue
-		}
-		if _, ok := objectMap[name]; ok {
+		} else if typ.Kind() == reflect.Map { // for non-interface map
+			eType := typ.Elem()
+			s := eType.String()
+			if eType.Kind() == reflect.Pointer || eType.Kind() == reflect.Interface {
+				ref[s] = reflect.New(eType.Elem()).Interface()
+			} else {
+				ref[s] = reflect.New(eType).Interface()
+			}
+			v, err := NewValue([]string{s})
+			if err != nil {
+				return nil, nil, err
+			}
+			objectMap[field.Name] = v
 			origTypes = append(origTypes, field)
+			continue
 		} else {
 			field.Tag = addOptional(field.Tag)
 			newFields = append(newFields, field)
@@ -232,7 +263,7 @@ func addOptional(old reflect.StructTag) reflect.StructTag {
 		return reflect.StructTag(two[0])
 	} else if two[1] == "" {
 		two[1] = "optional"
-	} 
+	}
 	return reflect.StructTag("hcl:\"" + two[0] + "," + two[1] + "\"")
 }
 
@@ -266,33 +297,34 @@ func hcltag(tag reflect.StructTag) []byte {
 }
 
 func unplain(bs []byte, object interface{}, labels ...string) error {
-	/* we may make unplan(bs, object, ref, labels...) working with the hack
-	       t := reflect.TypeOf(object).Elem()
-	       spec := make(map[string]interface{})
-
-	   	if ref != nil {
-	       for i := 0; i < t.NumField(); i++ {
-	           field := t.Field(i)
-	   		typ := field.Type
-	           if typ.Kind() != reflect.Map || typ.Key().Kind() != reflect.String {
-	               continue
-	           }
-	   		// typ.String() == `map[string]*dethcl.circle`
-	   		for k, v := range ref {
-	   			mapTyp := reflect.MapOf(reflect.TypeOf(string), reflect.TypeOf(v))
-	   			if typ.Assignable.(mapTyp) {
-	   				objectName = k
-	   			}
-	   		}
-	   		spec[field.Name] = []string{objectName}
-	   	}
-	   	if len(spec) != 0 {
-	       	tr, err := NewStruct(t.Name(), spec)
-	   		if err != nil { return nil }
-	   		return Unmarshal(bs, object, tr, ref, labels...)
-	   	}
-	   	}
-	*/
+	// start to investigate map of non-interface
+	// see the same code in loopFields
+	t := reflect.TypeOf(object).Elem()
+	spec := make(map[string]interface{})
+	ref := make(map[string]interface{})
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		typ := field.Type
+		if typ.Kind() != reflect.Map {
+			continue
+		}
+		eType := typ.Elem()
+		s := eType.String()
+		if eType.Kind() == reflect.Pointer || eType.Kind() == reflect.Interface {
+			ref[s] = reflect.New(eType.Elem()).Interface()
+		} else {
+			ref[s] = reflect.New(eType).Interface()
+		}
+		spec[field.Name] = []string{s}
+	}
+	if len(spec) != 0 {
+		tr, err := NewStruct(t.Name(), spec)
+		if err != nil {
+			return nil
+		}
+		return Unmarshal(bs, object, tr, ref, labels...)
+	}
+	// end map of non-interface
 
 	err := hclsimple.Decode(rname(), bs, nil, object)
 	if err != nil {

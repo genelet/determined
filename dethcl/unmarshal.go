@@ -31,7 +31,7 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 	}
 
 	t := reflect.TypeOf(current).Elem()
-	newFields, origTypes, err := loopFields(t, objectMap)
+	newFields, origTypes, err := loopFields(t, objectMap, ref)
 	if err != nil {
 		return err
 	}
@@ -93,10 +93,13 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 		result := objectMap[name]
 		if x := result.GetListStruct(); x != nil {
 			nextListStructs := x.GetListFields()
-			n := len(nextListStructs)
-			if n == 0 {
+			nSmaller := len(nextListStructs)
+			if nSmaller == 0 {
 				continue
 			}
+			first := nextListStructs[0]
+
+			n := len(blocks)
 
 			var fSlice, fMap reflect.Value
 			if typ.Kind() == reflect.Map {
@@ -105,7 +108,10 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 				fSlice = reflect.MakeSlice(typ, n, n)
 			}
 			for k := 0; k < n; k++ {
-				nextStruct := nextListStructs[k]
+				nextStruct := first
+				if k < nSmaller {
+					nextStruct = nextListStructs[k]
+				}
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
 					return fmt.Errorf("ref not found for %s", name)
@@ -119,10 +125,20 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 				if err != nil {
 					return err
 				}
+				knd := typ.Elem().Kind() // units' kind in hash or array
 				if typ.Kind() == reflect.Map {
-					fMap.SetMapIndex(reflect.ValueOf(labels[0]), reflect.ValueOf(trial))
+					strKey := reflect.ValueOf(labels[0])
+					if knd == reflect.Interface || knd == reflect.Ptr {
+						fMap.SetMapIndex(strKey, reflect.ValueOf(trial))
+					} else {
+						fMap.SetMapIndex(strKey, reflect.ValueOf(trial).Elem())
+					}
 				} else {
-					fSlice.Index(k).Set(reflect.ValueOf(trial))
+					if knd == reflect.Interface || knd == reflect.Ptr {
+						fSlice.Index(k).Set(reflect.ValueOf(trial))
+					} else {
+						fSlice.Index(k).Set(reflect.ValueOf(trial).Elem())
+					}
 				}
 			}
 			if typ.Kind() == reflect.Map {

@@ -66,6 +66,39 @@ type picture struct {
 	Drawings []inter `json:"drawings" hcl:"drawings,block"`
 }
 
+type X7 struct {
+	Many int    `json:"many" hcl:"many,optional"`
+	Why  string `json:"why" hcl:"why,optional"`
+}
+
+type X8 struct {
+	Number int    `json:"number" hcl:"number,optional"`
+	What   string `json:"what" hcl:"what,optional"`
+}
+
+type frame0 struct {
+	FrameName   string         `json:"fname" hcl:"fname,label"`
+	Description string         `json:"description" hcl:"description,optional"`
+	Y7          *X7            `json:"y6" hcl:"y7,block"`
+	Y10         []*X7          `json:"y10" hcl:"y10,block"`
+	Y11         map[string]*X7 `json:"y11" hcl:"y11,block"`
+	Y12         map[string]X7  `json:"y12" hcl:"y12,block"`
+}
+type frame struct {
+	FrameName   string          `json:"fname" hcl:"fname,label"`
+	Description string          `json:"description" hcl:"description,optional"`
+	X1          *geo            `json:"x1" hcl:"x1,block"`
+	X2          geo             `json:"x2" hcl:"x2,block"`
+	X3          []*geo          `json:"x3" hcl:"x3,block"`
+	X4          []geo           `json:"x4" hcl:"x4,block"`
+	X5          map[string]*geo `json:"x5" hcl:"x5,block"`
+	X6          map[string]geo  `json:"x6" hcl:"x6,block"`
+	Y7          *X7             `json:"y6" hcl:"y7,block"`
+	X8
+	Y10 []*X7          `json:"y10" hcl:"y10,block"`
+	Y11 map[string]*X7 `json:"y10" hcl:"y11,block"`
+}
+
 type toy struct {
 	Geo     geo     `json:"geo" hcl:"geo,block"`
 	ToyName string  `json:"toy_name" hcl:"toy_name"`
