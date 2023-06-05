@@ -77,12 +77,15 @@ type X8 struct {
 }
 
 type frame0 struct {
-	FrameName   string         `json:"fname" hcl:"fname,label"`
-	Description string         `json:"description" hcl:"description,optional"`
-	Y7          *X7            `json:"y6" hcl:"y7,block"`
-	Y10         []*X7          `json:"y10" hcl:"y10,block"`
-	Y11         map[string]*X7 `json:"y11" hcl:"y11,block"`
-	Y12         map[string]X7  `json:"y12" hcl:"y12,block"`
+	FrameName   string            `json:"fname" hcl:"fname,label"`
+	Description string            `json:"description" hcl:"description,optional"`
+	Y7          *X7               `json:"y6" hcl:"y7,block"`
+	Y10         []*X7             `json:"y10" hcl:"y10,block"`
+	Y11         map[string]*X7    `json:"y11" hcl:"y11,optional"`
+	Y12         map[string]X7     `json:"y12" hcl:"y12,optional"`
+	Y13         map[string]string `json:"y13" hcl:"y13,optional"`
+	Y14         map[string]int    `json:"y14" hcl:"y14,optional"`
+	Y15         map[string]bool   `json:"y15" hcl:"y15,optional"`
 }
 type frame struct {
 	FrameName   string          `json:"fname" hcl:"fname,label"`
@@ -96,7 +99,7 @@ type frame struct {
 	Y7          *X7             `json:"y6" hcl:"y7,block"`
 	X8
 	Y10 []*X7          `json:"y10" hcl:"y10,block"`
-	Y11 map[string]*X7 `json:"y10" hcl:"y11,block"`
+	Y11 map[string]*X7 `json:"y10" hcl:"y11,optional"`
 }
 
 type toy struct {

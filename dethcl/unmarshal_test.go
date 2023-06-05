@@ -210,13 +210,25 @@ y12 k9 {
   many = 9
   why = "new year day"
 }
+y13 = {
+  str131 = "la"
+  str132 = "nyc"
+}
+y14 = {
+  str141 = 141
+  str142 = 142
+}
+y15 = {
+  str151 = true
+  str152 = false
+}
 `
 	f0 := new(frame0)
 	err := Unmarshal([]byte(data1), f0, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(f0.Y10) != 2 || len(f0.Y11) != 2 || len(f0.Y12) != 2 {
+	if len(f0.Y10) != 2 || len(f0.Y11) != 2 || len(f0.Y12) != 2 || len(f0.Y13) != 2 || len(f0.Y14) != 2 || len(f0.Y15) != 2 {
 		t.Errorf("%#v", f0)
 	}
 }

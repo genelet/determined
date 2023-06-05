@@ -1,7 +1,6 @@
 package dethcl
 
 import (
-	"reflect"
 	"testing"
 )
 
@@ -28,57 +27,6 @@ func TestClone(t *testing.T) {
 	obj.Y = 456
 	if obj1.Y == obj.Y {
 		t.Errorf("%#v => %#v\n", obj, obj1)
-	}
-}
-
-/*
-func TestZeroMap(t *testing.T) {
-	x := new(xclass)
-	bs := `
-		name = "xclass name"
-		squares k1 {
-			sx = 1
-			sy = 2
-		}
-		squares k2 {
-			sx = 3
-			sy = 4
-		}
-		circles k5 {
-			radius = 5.6
-		}
-		circles k6 {
-			radius = 6.7
-		}
-`
-    err := unplain([]byte(bs), x)
-    if err != nil { t.Fatal(err) }
-	t.Errorf("%#v", x)
-}
-*/
-
-func TestTag(t *testing.T) {
-	old := reflect.StructTag(`json:"shapes" hcl:"shapes,block"`)
-	tag, two := tag2tag(old, reflect.Struct, true)
-	if string(tag) != `hcl:"shapes,remain"` || two[0] != `shapes` || two[1] != `block` {
-		t.Errorf("%s => %#v", tag, two)
-	}
-
-	tag, two = tag2tag(old, reflect.Struct, false)
-	if string(tag) != `json:"shapes" hcl:"shapes,block"` || two[0] != `shapes` || two[1] != `block` {
-		t.Errorf("%s => %#v", tag, two)
-	}
-
-	old = reflect.StructTag(`json:"shapes" hcl:"shapes,label"`)
-	tag, two = tag2tag(old, reflect.Struct, false)
-	if string(tag) != `json:"shapes" hcl:"shapes,label"` || two[0] != `shapes` || two[1] != `label` {
-		t.Errorf("%s => %#v", tag, two)
-	}
-
-	old = reflect.StructTag(`json:"shapes"`)
-	tag, two = tag2tag(old, reflect.Struct, false)
-	if string(tag) != `json:"shapes"` || two[0] != "" || two[1] != "" {
-		t.Errorf("%s => %#v", tag, two)
 	}
 }
 
