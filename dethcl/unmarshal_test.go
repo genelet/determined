@@ -9,7 +9,7 @@ func TestHclSimple(t *testing.T) {
 	radius = 1.234
 `
 	c := new(circle)
-	err := Unmarshal([]byte(data1), c, nil, nil)
+	err := UnmarshalSpec([]byte(data1), c, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestHclShape1(t *testing.T) {
 	ref := map[string]interface{}{"circle": c}
 	spec, err := NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
-	err = Unmarshal([]byte(data1), g, spec, ref)
+	err = UnmarshalSpec([]byte(data1), g, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestHclShape1(t *testing.T) {
 	ref = map[string]interface{}{"circle": c, "square": s}
 	spec, err = NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
-	err = Unmarshal([]byte(data2), g, spec, ref)
+	err = UnmarshalSpec([]byte(data2), g, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestHclShape2(t *testing.T) {
 	s := &square{}
 	c := &circle{}
 	ref := map[string]interface{}{"geo": g, "circle": c, "square": s}
-	err = Unmarshal([]byte(data4), p, spec, ref)
+	err = UnmarshalSpec([]byte(data4), p, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestHclShape2(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref["moresquare"] = &moresquare{}
-	err = Unmarshal([]byte(data5), p, spec, ref)
+	err = UnmarshalSpec([]byte(data5), p, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestHash(t *testing.T) {
 			"Shapes": []string{"square", "square"}})
 	//"Shapes": []string{"square", "square"}})
 	ref := map[string]interface{}{"square": new(square)}
-	err = Unmarshal([]byte(data3), g, spec, ref)
+	err = UnmarshalSpec([]byte(data3), g, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ y15 = {
 }
 `
 	f0 := new(frame0)
-	err := Unmarshal([]byte(data1), f0, nil, nil)
+	err := UnmarshalSpec([]byte(data1), f0, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +355,7 @@ y11 k7 {
 	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "frame": &frame{}}
 
 	f := new(frame)
-	err = Unmarshal([]byte(data1), f, spec, ref)
+	err = UnmarshalSpec([]byte(data1), f, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +397,7 @@ brand {
 	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
 
 	c := new(child)
-	err = Unmarshal([]byte(data1), c, spec, ref)
+	err = UnmarshalSpec([]byte(data1), c, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}

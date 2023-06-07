@@ -9,8 +9,18 @@ import (
 )
 
 // Marshal marshals object into HCL string
-func Marshal(object interface{}) ([]byte, error) {
-	return marshal(object, false)
+func Marshal(current interface{}) ([]byte, error) {
+	rv := reflect.ValueOf(current)
+	if rv.IsValid() && rv.IsZero() {
+		return nil, nil
+	}
+
+	switch rv.Kind() {
+	case reflect.Pointer, reflect.Struct:
+		return marshal(current, false)
+	default:
+	}
+	return encode(current)
 }
 
 func marshal(current interface{}, is ...bool) ([]byte, error) {

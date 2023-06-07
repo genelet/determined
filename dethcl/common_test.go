@@ -128,7 +128,7 @@ func TestMapList(t *testing.T) {
 
 	tr, err := NewStruct(typ.Name(), spec)
 	xc := &xclass{}
-	err = Unmarshal(bs, xc, tr, ref)
+	err = UnmarshalSpec(bs, xc, tr, ref)
 	if err != nil {
 		t.Fatal(err)
 	}

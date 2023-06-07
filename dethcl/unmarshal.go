@@ -11,14 +11,58 @@ import (
 	"unicode"
 )
 
-// Unmarshal decodes HCL data with interfaces determined by Determined.
+// Unmarshal decodes HCL data
 //
 //   - dat: Hcl data
-//   - current: object as interface
-//   - spec: Determined
-//   - ref: map, with key being string name, and value referenced value
+//   - current: pointer of struct, []interface{} or map[string]interface{}
 //   - optional label_values: fields' values of labels
-func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error {
+func Unmarshal(dat []byte, current interface{}, labels ...string) error {
+	rv := reflect.ValueOf(current)
+	if rv.Kind() != reflect.Pointer {
+		return fmt.Errorf("non-pointer or nil data")
+	}
+	rv = rv.Elem()
+	switch rv.Kind() {
+	case reflect.Struct:
+		return UnmarshalSpec(dat, current, nil, nil, labels...)
+	case reflect.Map:
+		x := current.(*map[string]interface{})
+		obj, err := decodeMap(dat)
+		if err != nil {
+			return err
+		}
+		for k, v := range obj {
+			(*x)[k] = v
+		}
+	case reflect.Slice:
+		x := current.(*[]interface{})
+		obj, err := decodeSlice(dat)
+		if err != nil {
+			return err
+		}
+		for _, v := range obj {
+			*x = append(*x, v)
+		}
+	default:
+		return fmt.Errorf("data type %v not supported", rv.Kind())
+	}
+	return nil
+}
+
+// UnmarshalSpec decodes HCL struct data with interface specifications.
+//
+//   - dat: Hcl data
+//   - current: object as pointer
+//   - spec: Determined for data specs
+//   - ref: object map, with key object name and value new object
+//   - optional label_values: fields' values of labels
+func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error {
+	t := reflect.TypeOf(current)
+	if t.Kind() != reflect.Pointer {
+		return fmt.Errorf("non-pointer or nil data")
+	}
+	t = t.Elem()
+
 	if spec == nil {
 		return unplain(dat, current, label_values...)
 	}
@@ -32,7 +76,6 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 		return diags
 	}
 
-	t := reflect.TypeOf(current).Elem()
 	newFields, origTypes, err := loopFields(t, objectMap, ref)
 	if err != nil {
 		return err
@@ -123,7 +166,7 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 				if err != nil {
 					return err
 				}
-				err = Unmarshal(s, trial, nextStruct, ref, labels...)
+				err = UnmarshalSpec(s, trial, nextStruct, ref, labels...)
 				if err != nil {
 					return err
 				}
@@ -158,7 +201,7 @@ func Unmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]int
 			if err != nil {
 				return err
 			}
-			err = Unmarshal(s, trial, x, ref, labels...)
+			err = UnmarshalSpec(s, trial, x, ref, labels...)
 			if err != nil {
 				return err
 			}
@@ -297,7 +340,7 @@ func unplain(bs []byte, object interface{}, labels ...string) error {
 		if err != nil {
 			return nil
 		}
-		return Unmarshal(bs, object, tr, ref, labels...)
+		return UnmarshalSpec(bs, object, tr, ref, labels...)
 	}
 	// end map of non-interface
 
