@@ -15,7 +15,7 @@ import (
 //
 //   - dat: Hcl data
 //   - current: pointer of struct, []interface{} or map[string]interface{}
-//   - optional label_values: fields' values of labels
+//   - optional labels: field values of labels
 func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 	rv := reflect.ValueOf(current)
 	if rv.Kind() != reflect.Pointer {
@@ -55,8 +55,8 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - current: object as pointer
 //   - spec: Determined for data specs
 //   - ref: object map, with key object name and value new object
-//   - optional label_values: fields' values of labels
-func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error {
+//   - optional labels: field values of labels
+func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
 	t := reflect.TypeOf(current)
 	if t.Kind() != reflect.Pointer {
 		return fmt.Errorf("non-pointer or nil data")
@@ -64,11 +64,11 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 	t = t.Elem()
 
 	if spec == nil {
-		return unplain(dat, current, label_values...)
+		return unplain(dat, current, labels...)
 	}
 	objectMap := spec.GetFields()
 	if objectMap == nil || len(objectMap) == 0 {
-		return unplain(dat, current, label_values...)
+		return unplain(dat, current, labels...)
 	}
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
@@ -81,7 +81,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 		return err
 	}
 	if len(origTypes) == 0 {
-		return unplain(dat, current, label_values...)
+		return unplain(dat, current, labels...)
 	}
 
 	tagref := getTagref(origTypes)
@@ -112,8 +112,8 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 	tmp.Set(oriValue.Elem())
 
 	m := 0
-	if label_values != nil {
-		m = len(label_values)
+	if labels != nil {
+		m = len(labels)
 	}
 	k := 0
 	for i, field := range newFields {
@@ -121,7 +121,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 		two := tag2(field.Tag)
 		f := tmp.Elem().FieldByName(name)
 		if strings.ToLower(two[1]) == "label" && k < m {
-			f.Set(reflect.ValueOf(label_values[k]))
+			f.Set(reflect.ValueOf(labels[k]))
 			k++
 		} else {
 			rawField := rawValue.Field(i)
@@ -352,11 +352,11 @@ func unplain(bs []byte, object interface{}, labels ...string) error {
 	return nil
 }
 
-func addLables(current interface{}, label_values ...string) {
-	if label_values == nil {
+func addLables(current interface{}, labels ...string) {
+	if labels == nil {
 		return
 	}
-	m := len(label_values)
+	m := len(labels)
 	k := 0
 
 	t := reflect.TypeOf(current).Elem()
@@ -371,7 +371,7 @@ func addLables(current interface{}, label_values ...string) {
 		f := tmp.Elem().Field(i)
 		two := tag2(field.Tag)
 		if strings.ToLower(two[1]) == "label" && k < m {
-			f.Set(reflect.ValueOf(label_values[k]))
+			f.Set(reflect.ValueOf(labels[k]))
 			k++
 		}
 	}
