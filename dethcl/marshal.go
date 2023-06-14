@@ -26,9 +26,12 @@ func Marshal(current interface{}) ([]byte, error) {
 func marshal(current interface{}, is ...bool) ([]byte, error) {
 	t := reflect.TypeOf(current)
 	oriValue := reflect.ValueOf(current)
-	if t.Kind() == reflect.Pointer || t.Kind() == reflect.Interface {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 		oriValue = oriValue.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return Marshal(current)
 	}
 
 	newFields, err := getFields(t, oriValue)
@@ -44,7 +47,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 	}
 	newType := reflect.StructOf(plains)
 	tmp := reflect.New(newType).Elem()
-	var outliers [][3][]byte
+	var outliers []*marshalOut
 	var labels []string
 
 	k := 0
@@ -78,13 +81,17 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 	blank := []byte(" ")
 	nl := []byte("\n")
 	for _, item := range outliers {
-		bs = append(bs, (item[0])...)
+		bs = append(bs, (item.b0)...)
 		bs = append(bs, blank...)
-		if item[1] != nil {
-			bs = append(bs, (item[1])...)
+		if item.encode {
+			bs = append(bs, ([]byte("="))...)
 			bs = append(bs, blank...)
 		}
-		bs = append(bs, (item[2])...)
+		if item.b1 != nil {
+			bs = append(bs, (item.b1)...)
+			bs = append(bs, blank...)
+		}
+		bs = append(bs, (item.b2)...)
 		bs = append(bs, nl...)
 	}
 
@@ -174,8 +181,15 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 	return newFields, nil
 }
 
-func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte, error) {
-	var empty [][3][]byte
+type marshalOut struct {
+	b0     []byte
+	b1     []byte
+	b2     []byte
+	encode bool
+}
+
+func getOutlier(field reflect.StructField, oriField reflect.Value) ([]*marshalOut, error) {
+	var empty []*marshalOut
 	fieldTag := field.Tag
 	typ := field.Type
 
@@ -189,7 +203,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 		if bs == nil {
 			return nil, nil
 		}
-		empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
+		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 	case reflect.Struct:
 		newCurrent := oriField.Addr().Interface()
 		bs, err := marshal(newCurrent, true)
@@ -199,14 +213,25 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 		if bs == nil {
 			return nil, nil
 		}
-		empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
+		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 	case reflect.Slice:
 		n := oriField.Len()
 		if n < 1 {
 			return nil, nil
 		}
-		switch oriField.Index(0).Kind() {
-		case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
+		first := oriField.Index(0)
+		var isLoop bool
+		switch first.Kind() {
+		case reflect.Pointer, reflect.Struct:
+			isLoop = true
+		case reflect.Interface:
+			if first.Elem().Kind() == reflect.Pointer || first.Elem().Kind() == reflect.Struct {
+				isLoop = true
+			}
+		default:
+		}
+
+		if isLoop {
 			for i := 0; i < n; i++ {
 				item := oriField.Index(i)
 				bs, err := marshal(item.Interface(), true)
@@ -216,17 +241,33 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 				if bs == nil {
 					continue
 				}
-				empty = append(empty, [3][]byte{hcltag(fieldTag), nil, bs})
+				empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 			}
-		default:
+		} else {
+			bs, err := encode(oriField.Interface())
+			if err != nil {
+				return nil, err
+			}
+			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, true})
 		}
 	case reflect.Map:
 		n := oriField.Len()
 		if n < 1 {
 			return nil, nil
 		}
-		switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
-		case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
+		first := oriField.MapIndex(oriField.MapKeys()[0])
+		var isLoop bool
+		switch first.Kind() {
+		case reflect.Pointer, reflect.Struct:
+			isLoop = true
+		case reflect.Interface:
+			if first.Elem().Kind() == reflect.Pointer || first.Elem().Kind() == reflect.Struct {
+				isLoop = true
+			}
+		default:
+		}
+
+		if isLoop {
 			iter := oriField.MapRange()
 			for iter.Next() {
 				k := iter.Key()
@@ -240,9 +281,14 @@ func getOutlier(field reflect.StructField, oriField reflect.Value) ([][3][]byte,
 				if bs == nil {
 					continue
 				}
-				empty = append(empty, [3][]byte{hcltag(fieldTag), []byte(k.String()), bs})
+				empty = append(empty, &marshalOut{hcltag(fieldTag), []byte(k.String()), bs, false})
 			}
-		default:
+		} else {
+			bs, err := encode(oriField.Interface())
+			if err != nil {
+				return nil, err
+			}
+			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, true})
 		}
 	default:
 	}

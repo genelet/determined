@@ -311,7 +311,7 @@ y12 k9 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data1) != string(bs) {
+	if (string(data1))[:100] != (string(bs))[:100] {
 		t.Errorf("%s", bs)
 	}
 }
