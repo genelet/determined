@@ -179,12 +179,12 @@ drawings {
 		t.Fatal(err)
 	}
 	if string(bs) != `name = "peter drawings"
-drawings abc1 def1 {
+drawings "abc1" "def1" {
   sx = 5
   sy = 6
 }
 
-drawings abc2 def2 {
+drawings "abc2" "def2" {
   sx = 7
   sy = 8
 }

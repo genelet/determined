@@ -104,7 +104,7 @@ func marshal(current interface{}, is ...bool) ([]byte, error) {
 	if labels == nil {
 		return []byte(str), nil
 	}
-	return []byte(strings.Join(labels, " ") + " " + str), nil
+	return []byte("\"" + strings.Join(labels, "\" \"") + "\" " + str), nil
 }
 
 type marshalField struct {
