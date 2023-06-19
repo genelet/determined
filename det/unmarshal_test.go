@@ -2,9 +2,10 @@ package det
 
 import (
 	"encoding/json"
-	"google.golang.org/protobuf/encoding/protojson"
 	"strings"
 	"testing"
+
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type I interface {
@@ -247,7 +248,7 @@ type Child1 struct {
 }
 
 type Adult struct {
-	Toys     []*Toy `json:"toys", hcl:"toys,block"`
+	Toys     []*Toy `json:"toys" hcl:"toys,block"`
 	Family   bool   `json:"family" hcl:"family"`
 	Lastname string `json:"lastname" hcl:"lastname"`
 	spec     *Struct

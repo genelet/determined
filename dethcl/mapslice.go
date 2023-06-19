@@ -2,12 +2,13 @@ package dethcl
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
-	"reflect"
-	"strings"
 )
 
 func encode(current interface{}, level ...int) ([]byte, error) {
@@ -110,7 +111,7 @@ func getValFromExpression(file *hcl.File, item hclsyntax.Expression) (interface{
 			err := gocty.FromCtyValue(val, &v)
 			return v, err
 		} else {
-			panic(fmt.Errorf("type %v is not string", typ))
+			return nil, fmt.Errorf("template for type %v not implemented", typ)
 		}
 	case *hclsyntax.LiteralValueExpr:
 		val := typ.Val
@@ -128,7 +129,7 @@ func getValFromExpression(file *hcl.File, item hclsyntax.Expression) (interface{
 			err := gocty.FromCtyValue(val, &v)
 			return v, err
 		default:
-			panic(fmt.Errorf("not primitive %#v", val))
+			return nil, fmt.Errorf("primitive value %#v not implementned", val)
 		}
 	case *hclsyntax.TupleConsExpr: // array
 		rng := typ.SrcRange
@@ -139,7 +140,6 @@ func getValFromExpression(file *hcl.File, item hclsyntax.Expression) (interface{
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
 		return decodeMap(bs)
 	default:
-		panic(fmt.Errorf("unknow type %v", typ))
 	}
-	return nil, nil
+	return nil, fmt.Errorf("unknow type %T", item)
 }

@@ -1,0 +1,172 @@
+syntax = "proto3";
+package sqlast;
+
+option go_package = "dethcl";
+
+message Pos {
+    int64 line = 1;
+    int64 column = 2;
+    int64 offset = 3;
+}
+
+message Range {
+    string filename = 1;
+    Pos start = 2;
+    Pos end = 3;
+}
+
+message Expression {
+    oneof ExpressionClause {
+        ObjectConsExpr objectConsExprItem = 1;
+        ObjectConsKeyExpr objectConsKeyExprItem = 2;
+        ScopeTraversalExpr scopeTravesalExprItem = 3;
+        TemplateExpr templateExprItem = 4;
+        LiteralValueExpr literalValueExprItem = 5;
+        FunctionCallExpr functionCallExprItem = 6;
+        BinaryOpExpr binaryOpExpr = 7;
+        TupleConsExpr tupleConsExprItem = 8;
+    }
+}
+
+message Attribute {
+    string name = 1;
+    Expression expr = 2;
+    Range srcRange = 3;
+    Range nameRange = 4;
+    Range equalsRange = 5;
+}
+
+message Block {
+    string type = 1;
+    repeated string labels = 2;
+    Body bodyItem = 3;
+    Range typeRange = 4;
+    repeated Range labelRanges = 5;
+    Range OpenBraceRange = 6;
+    Range CloseBraceRange = 7;
+}
+
+message Body {
+    map<string, Attribute> attributes = 1;
+    repeated Block blocks = 2;
+    Range srcRange = 3;
+    Range endRange = 4;
+}
+
+message File {
+    Body bodyItem = 1;
+    bytes bytesItem = 2;
+}
+
+
+
+message ObjectConsItem {
+    Expression keyExpr = 1;
+    Expression valueExpr = 2;
+}
+
+message ObjectConsExpr {
+    repeated ObjectConsItem items = 1;
+    Range srcRange = 2;
+    Range openRange = 3;
+}
+
+message ObjectConsKeyExpr {
+    Expression wrapped = 1;
+    bool forceNonLiteral = 2;
+}
+
+message TraverseRoot {
+    string name = 1;
+    Range srcRange = 2;
+}
+
+message TraverseAttr {
+    string name = 1;
+    Range srcRange = 2;
+}
+
+message TraverseIndex {
+    CtyValue key = 1;
+    Range srcRange = 2;
+}
+
+message TraverseSplat {
+    Traversal each = 1;
+    Range srcRange = 2;
+}
+
+message Traverser {
+    oneof TraverserClause {
+        TraverseRoot traverseRootItem = 1;
+        TraverseAttr traverseAttrItem = 2;
+        TraverseSplat traverseSplatItem = 3;
+        TraverseIndex traverseIndexItem = 4;
+    }
+}
+
+message Traversal {
+    repeated Traverser traversers = 1;
+}
+
+message ScopeTraversalExpr {
+    Expression source = 1;
+    Traversal traversalItem = 2;
+    Range srcRange = 3;
+}
+
+message TemplateExpr {
+    repeated Expression parts = 1;
+    Range srcRange = 2;
+}
+
+message LiteralValueExpr {
+    CtyValue val = 1;
+    Range srcRange = 2;
+}
+
+message FunctionCallExpr {
+    string name = 1;
+    repeated Expression args = 2;
+    bool expandFinal = 3;
+    Range nameRange = 4;
+    Range openParenRange = 5;
+    Range closeParenRange = 6;
+}
+
+message BinaryOpExpr {
+    Expression lhs = 1;
+    Operation op = 2;
+    Expression rhs = 3;
+    Range srcRange = 4;    
+}
+
+message Parameter {
+    string name = 1;
+    string description = 2;
+    CtyType type = 3;
+    bool allowNull = 4;
+    bool allowUnknown = 5;
+    bool allowDynamicType = 6;
+    bool allowMarked = 7;
+}
+
+message Spec {
+    string Description = 1;
+    repeated Parameter Params = 2;
+    Parameter varParam = 3;
+    CtyType type = 4;
+//    RefinementBuilder refineResult = 5;
+//    ImplFunc impl = 6;
+}
+
+message Operation {
+    Spec function = 1;
+    CtyType type = 2;
+}
+
+message TupleConsExpr {
+    repeated Expression exprs = 1;
+    Range srcRange = 2;
+    Range openRange = 3;
+}

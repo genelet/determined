@@ -93,9 +93,9 @@ type xclass struct {
 func TestMapList(t *testing.T) {
 	x := &xclass{Name: "xclass name",
 		Squares: map[string]*square{
-			"k1": &square{SX: 1, SY: 2}, "k2": &square{SX: 3, SY: 4}},
+			"k1": {SX: 1, SY: 2}, "k2": {SX: 3, SY: 4}},
 		Circles: map[string]*circle{
-			"k5": &circle{5.6}, "k6": &circle{6.7}}}
+			"k5": {5.6}, "k6": {6.7}}}
 	bs, err := Marshal(x)
 	if err != nil {
 		t.Fatal(err)

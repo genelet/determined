@@ -14,8 +14,8 @@ func (self *square) Area() float32 {
 }
 
 type moresquare struct {
-	Morename1 string `json:"morename1", hcl:"morename1,label"`
-	Morename2 string `json:"morename2", hcl:"morename2,label"`
+	Morename1 string `json:"morename1" hcl:"morename1,label"`
+	Morename2 string `json:"morename2" hcl:"morename2,label"`
 	SX        int    `json:"sx" hcl:"sx"`
 	SY        int    `json:"sy" hcl:"sy"`
 }
@@ -99,7 +99,7 @@ type frame struct {
 	Y7          *X7             `json:"y6" hcl:"y7,block"`
 	X8
 	Y10 []*X7          `json:"y10" hcl:"y10,block"`
-	Y11 map[string]*X7 `json:"y10" hcl:"y11,optional"`
+	Y11 map[string]*X7 `json:"y11" hcl:"y11,optional"`
 }
 
 type toy struct {

@@ -65,10 +65,8 @@ func TestCommonMap(t *testing.T) {
 	spec, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"HashShapes": map[string][2]interface{}{
-				"x1": [2]interface{}{
-					"Class5", map[string]interface{}{"Field4": "Circle"}},
-				"y1": [2]interface{}{
-					"Class6", map[string]interface{}{"Field5": "Circle"}}},
+				"x1": {"Class5", map[string]interface{}{"Field4": "Circle"}},
+				"y1": {"Class6", map[string]interface{}{"Field5": "Circle"}}},
 		},
 	)
 	if err != nil {
