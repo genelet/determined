@@ -63,9 +63,12 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 	}
 	t = t.Elem()
 
-	objectMap := make(map[string]*Value)
+	var objectMap map[string]*Value
 	if spec != nil {
 		objectMap = spec.GetFields()
+	}
+	if objectMap == nil {
+		objectMap = make(map[string]*Value)
 	}
 	if ref == nil {
 		ref = make(map[string]interface{})
