@@ -216,10 +216,14 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 			for i := 0; i < n; i++ {
 				wg.Add(1)
 				i := i
-				go func(k int, kfirst *Struct, knSmaller int, kname string, knextListStructs []*Struct, kfile *hcl.File, kblock *hclsyntax.Block, kref map[string]interface{}, klabels ...string) {
+				nextStruct := first
+				if i < nSmaller {
+					nextStruct = nextListStructs[i]
+				}
+				go func(k int, knextStruct *Struct, kname string, kfile *hcl.File, kblock *hclsyntax.Block, kref map[string]interface{}, klabels ...string) {
 					defer wg.Done()
-					c <- worker(k, kfirst, knSmaller, kname, knextListStructs, kfile, kblock, kref, klabels...)
-				}(i, first, nSmaller, name, nextListStructs, file, blocks[i], ref, labels...)
+					c <- worker(k, knextStruct, kname, kfile, kblock, kref, klabels...)
+				}(i, nextStruct, name, file, blocks[i], ref, labels...)
 			}
 			wg.Wait()
 			for i := 0; i < n; i++ {
@@ -283,11 +287,7 @@ type myTrial struct {
 	err error
 }
 
-func worker(i int, first *Struct, nSmaller int, name string, nextListStructs []*Struct, file *hcl.File, block *hclsyntax.Block, ref map[string]interface{}, labels ...string) myTrial {
-	nextStruct := first
-	if i < nSmaller {
-		nextStruct = nextListStructs[i]
-	}
+func worker(i int, nextStruct *Struct, name string, file *hcl.File, block *hclsyntax.Block, ref map[string]interface{}, labels ...string) myTrial {
 	trial := ref[nextStruct.ClassName]
 	if trial == nil {
 		return myTrial{nil, "", 0, fmt.Errorf("ref not found for %s", name)}
