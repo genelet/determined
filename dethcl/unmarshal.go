@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"reflect"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -203,6 +204,8 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 			first := nextListStructs[0]
 
 			n := len(blocks)
+			var wg sync.WaitGroup
+			c := make(chan myTrial, n)
 
 			var fSlice, fMap reflect.Value
 			if typ.Kind() == reflect.Map {
@@ -210,37 +213,34 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 			} else {
 				fSlice = reflect.MakeSlice(typ, n, n)
 			}
-			for k := 0; k < n; k++ {
-				nextStruct := first
-				if k < nSmaller {
-					nextStruct = nextListStructs[k]
+			for i := 0; i < n; i++ {
+				wg.Add(1)
+				i := i
+				go func(k int, kfirst *Struct, knSmaller int, kname string, knextListStructs []*Struct, kfile *hcl.File, kblock *hclsyntax.Block, kref map[string]interface{}, klabels ...string) {
+					defer wg.Done()
+					c <- worker(k, kfirst, knSmaller, kname, knextListStructs, kfile, kblock, kref, klabels...)
+				}(i, first, nSmaller, name, nextListStructs, file, blocks[i], ref, labels...)
+			}
+			wg.Wait()
+			for i := 0; i < n; i++ {
+				my := <- c
+				if my.err != nil {
+					return my.err
 				}
-				trial := ref[nextStruct.ClassName]
-				if trial == nil {
-					return fmt.Errorf("ref not found for %s", name)
-				}
-				trial = clone(trial)
-				s, labels, err := getBlockBytes(blocks[k], file)
-				if err != nil {
-					return err
-				}
-				err = UnmarshalSpec(s, trial, nextStruct, ref, labels...)
-				if err != nil {
-					return err
-				}
+				k := my.order
 				knd := typ.Elem().Kind() // units' kind in hash or array
 				if typ.Kind() == reflect.Map {
-					strKey := reflect.ValueOf(labels[0])
+					strKey := reflect.ValueOf(my.label0)
 					if knd == reflect.Interface || knd == reflect.Ptr {
-						fMap.SetMapIndex(strKey, reflect.ValueOf(trial))
+						fMap.SetMapIndex(strKey, reflect.ValueOf(my.trial))
 					} else {
-						fMap.SetMapIndex(strKey, reflect.ValueOf(trial).Elem())
+						fMap.SetMapIndex(strKey, reflect.ValueOf(my.trial).Elem())
 					}
 				} else {
 					if knd == reflect.Interface || knd == reflect.Ptr {
-						fSlice.Index(k).Set(reflect.ValueOf(trial))
+						fSlice.Index(k).Set(reflect.ValueOf(my.trial))
 					} else {
-						fSlice.Index(k).Set(reflect.ValueOf(trial).Elem())
+						fSlice.Index(k).Set(reflect.ValueOf(my.trial).Elem())
 					}
 				}
 			}
@@ -274,6 +274,34 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 	oriValue.Set(tmp)
 
 	return nil
+}
+
+type myTrial struct {
+	trial interface{}
+	label0 string
+	order int
+	err error
+}
+
+func worker(i int, first *Struct, nSmaller int, name string, nextListStructs []*Struct, file *hcl.File, block *hclsyntax.Block, ref map[string]interface{}, labels ...string) myTrial {
+	nextStruct := first
+	if i < nSmaller {
+		nextStruct = nextListStructs[i]
+	}
+	trial := ref[nextStruct.ClassName]
+	if trial == nil {
+		return myTrial{nil, "", 0, fmt.Errorf("ref not found for %s", name)}
+	}
+	trial = clone(trial)
+	s, labels, err := getBlockBytes(block, file)
+	if err == nil {
+		err = UnmarshalSpec(s, trial, nextStruct, ref, labels...)
+	}
+	label0 := ""
+	if labels != nil {
+		label0 = labels[0]
+	}
+	return myTrial{trial, label0, i, err}
 }
 
 func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
