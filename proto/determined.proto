@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package determined;
+package det;
 
 option go_package = "./det";
 
