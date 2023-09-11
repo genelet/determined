@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty/gocty"
 	"reflect"
 	"strings"
 	"unicode"
@@ -57,6 +58,22 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - ref: object map, with key object name and value new object
 //   - optional labels: field values of labels
 func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
+	if dat == nil || len(dat) == 0 { return nil }
+
+	if spec != nil && spec.ServiceName != "" {
+		if v, ok := ref[spec.ServiceName]; ok {
+			switch vt := v.(type) {
+			case *hcl.EvalContext:
+				expr, diags := hclsyntax.ParseExpression(dat, "", hcl.Pos{Line: 1, Column: 1, Byte: 0})
+				if diags.HasErrors() { return diags }
+				got, diags := expr.Value(vt)
+				if diags.HasErrors() { return diags }
+				return gocty.FromCtyValue(got, current)	
+			default:
+			}
+		}
+	}
+
 	t := reflect.TypeOf(current)
 	if t.Kind() != reflect.Pointer {
 		return fmt.Errorf("non-pointer or nil data")
@@ -77,15 +94,30 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 	if err != nil {
 		return err
 	}
-	if (oriFields == nil || len(oriFields) == 0) &&
-		(decFields == nil || len(decFields) == 0) {
-		return unplain(dat, current, labels...)
-	}
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return diags
 	}
+
+	var found bool
+	for k, v := range file.Body.(*hclsyntax.Body).Attributes {
+		if ref["attributes"] == nil {
+			ref["attributes"] = make(map[string]interface{})
+		}
+		cv, err := expressionToCty(ref, k, v.Expr)
+		if err != nil { return err }
+		if cv != nil {
+			found = true
+			v.Expr = &hclsyntax.LiteralValueExpr{Val:*cv, SrcRange:v.SrcRange}
+		}
+	}
+
+	if (oriFields == nil || len(oriFields) == 0) &&
+		(decFields == nil || len(decFields) == 0) && !found {
+		return unplain(dat, current, labels...)
+	}
+
 	body := &hclsyntax.Body{
 		SrcRange: file.Body.(*hclsyntax.Body).SrcRange,
 		EndRange: file.Body.(*hclsyntax.Body).EndRange}
