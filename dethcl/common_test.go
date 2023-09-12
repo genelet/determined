@@ -25,36 +25,6 @@ func TestCommonString(t *testing.T) {
 	}
 }
 
-func TestCommonString2(t *testing.T) {
-	spec, err := NewStruct(
-		"Geo", map[string]interface{}{
-			"TheString": [2]string{"Circle1", "service1"},
-			"TheList": [][2]string{
-				[2]string{"Circle2", "service2"},
-				[2]string{"Circle3", "service3"}},
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-	fields := spec.GetFields()
-
-	s := fields["TheString"].GetSingleStruct()
-	slist := fields["TheList"].GetListStruct()
-
-	if s.ClassName != "Circle1" && s.ServiceName != "service1" {
-		t.Errorf("%#v", s.Fields)
-	}
-	s = slist.ListFields[0]
-	if s.ClassName != "Circle2" && s.ServiceName != "service2" {
-		t.Errorf("%#v", s.Fields)
-	}
-	s = slist.ListFields[1]
-	if s.ClassName != "Circle3" && s.ServiceName != "service3" {
-		t.Errorf("%#v", s.Fields)
-	}
-}
-
 func TestCommonStruct(t *testing.T) {
 	spec, err := NewStruct(
 		"Geo", map[string]interface{}{

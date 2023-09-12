@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/zclconf/go-cty/cty/gocty"
 	"reflect"
 	"strings"
 	"unicode"
@@ -62,24 +61,6 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 }
 
 func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
-	if spec != nil && spec.ServiceName != "" {
-		if v, ok := ref[spec.ServiceName]; ok {
-			switch vt := v.(type) {
-			case *hcl.EvalContext:
-				expr, diags := hclsyntax.ParseExpression(dat, "", hcl.Pos{Line: 1, Column: 1, Byte: 0})
-				if diags.HasErrors() {
-					return diags
-				}
-				got, diags := expr.Value(vt)
-				if diags.HasErrors() {
-					return diags
-				}
-				return gocty.FromCtyValue(got, current)
-			default:
-			}
-		}
-	}
-
 	t := reflect.TypeOf(current)
 	if t.Kind() != reflect.Pointer {
 		return fmt.Errorf("non-pointer or nil data")

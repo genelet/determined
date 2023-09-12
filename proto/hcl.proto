@@ -6,8 +6,7 @@ option go_package = "./dethcl";
 
 message Struct {
   string className = 1;
-  string serviceName = 2;
-  map<string, Value> fields = 3;
+  map<string, Value> fields = 2;
 }
 
 message Value {
@@ -16,11 +15,6 @@ message Value {
     Struct single_struct   = 1;
     ListStruct list_struct = 2;
   }
-}
-
-message Eval {
-	map<string, string> variables = 1;
-	map<string, string> functions = 2;
 }
 
 message ListStruct {
