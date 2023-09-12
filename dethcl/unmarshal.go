@@ -67,10 +67,14 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 			switch vt := v.(type) {
 			case *hcl.EvalContext:
 				expr, diags := hclsyntax.ParseExpression(dat, "", hcl.Pos{Line: 1, Column: 1, Byte: 0})
-				if diags.HasErrors() { return diags }
+				if diags.HasErrors() {
+					return diags
+				}
 				got, diags := expr.Value(vt)
-				if diags.HasErrors() { return diags }
-				return gocty.FromCtyValue(got, current)	
+				if diags.HasErrors() {
+					return diags
+				}
+				return gocty.FromCtyValue(got, current)
 			default:
 			}
 		}
@@ -102,19 +106,21 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 		return diags
 	}
 
-	if ref["attributes"] == nil || node == nil {
-		top := NewTree("var")
+	if ref[ATTRIBUTES] == nil || node == nil {
+		top := NewTree(VAR)
 		node = top
-		ref["attributes"] = top
+		ref[ATTRIBUTES] = top
 	}
 
 	var found bool
 	for k, v := range file.Body.(*hclsyntax.Body).Attributes {
 		cv, err := expressionToCty(ref, node, k, v.Expr)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if cv != nil {
 			found = true
-			v.Expr = &hclsyntax.LiteralValueExpr{Val:*cv, SrcRange:v.SrcRange}
+			v.Expr = &hclsyntax.LiteralValueExpr{Val: *cv, SrcRange: v.SrcRange}
 			node.AddItem(k, cv)
 		}
 	}

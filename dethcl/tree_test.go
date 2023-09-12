@@ -10,7 +10,7 @@ func TestTree(t *testing.T) {
 	first.AddNode("second1")
 	second2 := first.AddNode("second2")
 
-	tree := top.FindNode([]string{"firstLevel","second1"})
+	tree := top.FindNode([]string{"firstLevel", "second1"})
 	if tree == nil {
 		t.Fatal("not found")
 	}

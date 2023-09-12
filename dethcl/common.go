@@ -34,14 +34,16 @@ func NewValue(v interface{}) (*Value, error) {
 	case []string:
 		output := make([][2]interface{}, len(t))
 		for k, s := range t {
-            output[k] = [2]interface{}{s}
+			output[k] = [2]interface{}{s}
 		}
 		return NewValue(output)
 
 	// string[2] is treated as ending Struct without fields but service
 	case [2]string:
 		v2, err := newSingleStruct([2]interface{}{t[0], t[1]})
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		return &Value{Kind: &Value_SingleStruct{SingleStruct: v2}}, nil
 	// [][2]string is treated as ending ListStruct without fields but service
 	case [][2]string:

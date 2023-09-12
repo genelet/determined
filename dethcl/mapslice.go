@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
@@ -129,33 +130,28 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 }
 
 func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsyntax.Expression) (*cty.Value, error) {
-    switch t := v.(type) {
-    case *hclsyntax.FunctionCallExpr:
-		var args []interface{}
-		for _, item := range t.Args {
-			v, ok := item.(*hclsyntax.LiteralValueExpr)
-			if !ok {
-				return nil, fmt.Errorf("need to implement %T, case 98", item)
-    		}
-			arg, err := ctyToNative(v.Val)
-			if err != nil { return nil, err }
-			args = append(args, arg)	
-		}
-
-		if ref == nil || ref["functions"] == nil {
+	switch t := v.(type) {
+	case *hclsyntax.FunctionCallExpr:
+		if ref == nil || ref[FUNCTIONS] == nil {
 			return nil, fmt.Errorf("function call is nil for %s", t.Name)
 		}
-		f0, ok := ref["functions"].(map[string]interface{})
-		if !ok { return nil, fmt.Errorf("function not map") }
-		f1, ok := f0[t.Name]
-		if !ok { return nil, fmt.Errorf("function not found") }
-		f, ok := f1.(func(...interface{}) (interface{}, error))
-		if !ok { return nil, fmt.Errorf("function wrong format") }
-		res, err := f(args...)
-		if err != nil { return nil, err }
-
-		cv, err := nativeToCty(res)
-		if err != nil { return nil, err }
+		f, ok := ref[FUNCTIONS].(map[string]function.Function)
+		if !ok {
+			return nil, fmt.Errorf("not map of function")
+		}
+		ctx := &hcl.EvalContext{
+			Functions: f,
+		}
+		if node.Data != nil {
+			ctx.Variables = make(map[string]cty.Value)
+			for k, v := range node.Data {
+				ctx.Variables[k] = *v
+			}
+		}
+		cv, err := t.Value(ctx)
+		if err != nil {
+			return nil, err
+		}
 		return &cv, nil
 	case *hclsyntax.ScopeTraversalExpr:
 		trv := t.AsTraversal()
@@ -178,9 +174,9 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 			names = names[:n-1]
 			n--
 
-			top := ref["attributes"].(*Tree)
+			top := ref[ATTRIBUTES].(*Tree)
 			// check the first one
-			if n != 0 && names[0] == "var" {
+			if n != 0 && names[0] == VAR {
 				names = names[1:]
 				n--
 			}
@@ -189,19 +185,22 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 				return nil, fmt.Errorf("node %s not found", trv.RootName())
 			}
 		}
-		cv := some.Data[name]
-		return cv, nil
-    case *hclsyntax.TemplateExpr:
+		return some.Data[name], nil
+	case *hclsyntax.TemplateExpr:
 		if t.IsStringLiteral() {
 			cv, diags := t.Value(nil)
-			if diags.HasErrors() { return nil, (diags.Errs())[0] }
+			if diags.HasErrors() {
+				return nil, (diags.Errs())[0]
+			}
 			return &cv, nil
 		} else {
-		// multiple expressions as Parts
+			// multiple expressions as Parts
 			var ss []string
 			for _, p := range t.Parts {
 				c, err := expressionToCty(ref, node, k, p)
-				if err != nil { return nil, err }
+				if err != nil {
+					return nil, err
+				}
 				var cv cty.Value
 				if c == nil {
 					cv = p.(*hclsyntax.LiteralValueExpr).Val
@@ -209,11 +208,15 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 					cv = *c
 				}
 				x, err := ctyToNative(cv)
-				if err != nil { return nil, err }
+				if err != nil {
+					return nil, err
+				}
 				ss = append(ss, x.(string))
 			}
 			cv, err := nativeToCty(strings.Join(ss, ""))
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			return &cv, nil
 		}
 	case *hclsyntax.LiteralValueExpr:
@@ -221,10 +224,25 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 		return &cv, nil
 	case *hclsyntax.TupleConsExpr:
 	case *hclsyntax.ObjectConsExpr:
-    default:
+	case *hclsyntax.ForExpr:
+	case *hclsyntax.BinaryOpExpr:
+		lcty, err := expressionToCty(ref, node, k, t.LHS)
+		if err != nil {
+			return nil, err
+		}
+		rcty, err := expressionToCty(ref, node, k, t.RHS)
+		if err != nil {
+			return nil, err
+		}
+		cv, err := t.Op.Impl.Call([]cty.Value{*lcty, *rcty})
+		if err != nil {
+			return nil, err
+		}
+		return &cv, err
+	default:
 		return nil, fmt.Errorf("need to implement %T case 96", t)
-    }
-    return nil, nil
+	}
+	return nil, nil
 }
 
 func nativeToCty(item interface{}) (cty.Value, error) {

@@ -29,12 +29,14 @@ func TestCommonString2(t *testing.T) {
 	spec, err := NewStruct(
 		"Geo", map[string]interface{}{
 			"TheString": [2]string{"Circle1", "service1"},
-			"TheList":   [][2]string{
+			"TheList": [][2]string{
 				[2]string{"Circle2", "service2"},
 				[2]string{"Circle3", "service3"}},
 		},
 	)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	fields := spec.GetFields()
 
 	s := fields["TheString"].GetSingleStruct()

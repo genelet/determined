@@ -4,10 +4,16 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const (
+	VAR        = "var"
+	ATTRIBUTES = "attributes"
+	FUNCTIONS  = "functions"
+)
+
 type Tree struct {
-	Name string
-	Data map[string]*cty.Value
-	Up *Tree
+	Name  string
+	Data  map[string]*cty.Value
+	Up    *Tree
 	Downs []*Tree
 }
 
@@ -44,7 +50,9 @@ func (self *Tree) DeleteItem(k string) {
 }
 
 func (self *Tree) FindNode(names []string) *Tree {
-	if names == nil || len(names) == 0 { return self }
+	if names == nil || len(names) == 0 {
+		return self
+	}
 	for _, item := range names {
 		for _, down := range self.Downs {
 			if down.Name == item {
