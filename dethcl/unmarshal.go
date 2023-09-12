@@ -58,8 +58,10 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - ref: object map, with key object name and value new object
 //   - optional labels: field values of labels
 func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
-	if dat == nil || len(dat) == 0 { return nil }
+	return unmarshalSpec(nil, dat, current, spec, ref, labels...)
+}
 
+func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
 	if spec != nil && spec.ServiceName != "" {
 		if v, ok := ref[spec.ServiceName]; ok {
 			switch vt := v.(type) {
@@ -100,16 +102,20 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 		return diags
 	}
 
+	if ref["attributes"] == nil || node == nil {
+		top := NewTree("var")
+		node = top
+		ref["attributes"] = top
+	}
+
 	var found bool
 	for k, v := range file.Body.(*hclsyntax.Body).Attributes {
-		if ref["attributes"] == nil {
-			ref["attributes"] = make(map[string]interface{})
-		}
-		cv, err := expressionToCty(ref, k, v.Expr)
+		cv, err := expressionToCty(ref, node, k, v.Expr)
 		if err != nil { return err }
 		if cv != nil {
 			found = true
 			v.Expr = &hclsyntax.LiteralValueExpr{Val:*cv, SrcRange:v.SrcRange}
+			node.AddItem(k, cv)
 		}
 	}
 
@@ -221,6 +227,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 	for _, field := range oriFields {
 		name := field.Name
 		typ := field.Type
+		subNode := node.AddNode(name)
 		f := tmp.Elem().FieldByName(name)
 		two := tag2(field.Tag)
 		blocks := blockref[two[0]]
@@ -258,7 +265,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 				if err != nil {
 					return err
 				}
-				err = UnmarshalSpec(s, trial, nextStruct, ref, labels...)
+				err = unmarshalSpec(subNode, s, trial, nextStruct, ref, labels...)
 				if err != nil {
 					return err
 				}
@@ -293,7 +300,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 			if err != nil {
 				return err
 			}
-			err = UnmarshalSpec(s, trial, x, ref, labels...)
+			err = unmarshalSpec(subNode, s, trial, x, ref, labels...)
 			if err != nil {
 				return err
 			}

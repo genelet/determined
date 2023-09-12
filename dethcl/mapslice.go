@@ -128,7 +128,7 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 	return nil, fmt.Errorf("unknow type %T", item)
 }
 
-func expressionToCty(ref map[string]interface{}, k string, v hclsyntax.Expression) (*cty.Value, error) {
+func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsyntax.Expression) (*cty.Value, error) {
     switch t := v.(type) {
     case *hclsyntax.FunctionCallExpr:
 		var args []interface{}
@@ -156,23 +156,51 @@ func expressionToCty(ref map[string]interface{}, k string, v hclsyntax.Expressio
 
 		cv, err := nativeToCty(res)
 		if err != nil { return nil, err }
-		ref["attributes"].(map[string]interface{})[k] = cv
 		return &cv, nil
 	case *hclsyntax.ScopeTraversalExpr:
-		name := t.AsTraversal().RootName()
-		cv := ref["attributes"].(map[string]interface{})[name].(cty.Value)
-		ref["attributes"].(map[string]interface{})[k] = cv
-		return &cv, nil
+		trv := t.AsTraversal()
+		some := node
+		name := trv.RootName()
+		if !trv.IsRelative() {
+			var names []string
+			for _, item := range trv {
+				switch ty := item.(type) {
+				case hcl.TraverseRoot:
+					names = append(names, ty.Name)
+				case hcl.TraverseAttr:
+					names = append(names, ty.Name)
+				default:
+				}
+			}
+			n := len(names)
+			// the last one is not node but item
+			name = names[n-1]
+			names = names[:n-1]
+			n--
+
+			top := ref["attributes"].(*Tree)
+			// check the first one
+			if n != 0 && names[0] == "var" {
+				names = names[1:]
+				n--
+			}
+			some = top.FindNode(names)
+			if some == nil {
+				return nil, fmt.Errorf("node %s not found", trv.RootName())
+			}
+		}
+		cv := some.Data[name]
+		return cv, nil
     case *hclsyntax.TemplateExpr:
 		if t.IsStringLiteral() {
 			cv, diags := t.Value(nil)
 			if diags.HasErrors() { return nil, (diags.Errs())[0] }
-			ref["attributes"].(map[string]interface{})[k] = cv
+			return &cv, nil
 		} else {
 		// multiple expressions as Parts
 			var ss []string
 			for _, p := range t.Parts {
-				c, err := expressionToCty(ref, k, p)
+				c, err := expressionToCty(ref, node, k, p)
 				if err != nil { return nil, err }
 				var cv cty.Value
 				if c == nil {
@@ -186,11 +214,11 @@ func expressionToCty(ref map[string]interface{}, k string, v hclsyntax.Expressio
 			}
 			cv, err := nativeToCty(strings.Join(ss, ""))
 			if err != nil { return nil, err }
-			ref["attributes"].(map[string]interface{})[k] = cv
 			return &cv, nil
 		}
 	case *hclsyntax.LiteralValueExpr:
-		ref["attributes"].(map[string]interface{})[k] = t.Val
+		cv := t.Val
+		return &cv, nil
 	case *hclsyntax.TupleConsExpr:
 	case *hclsyntax.ObjectConsExpr:
     default:

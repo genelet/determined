@@ -13,13 +13,13 @@ type Slack struct {
 }
 
 type Python struct {
-	Name string `hcl:"python_name,label"`
-    Path string `hcl:"root_dir,attr"`
+	PythonName string `hcl:"python_name,label"`
+    Path string `hcl:"root_dir,optional"`
 }
 
 type Job struct {
-	Name string `hcl:"job_name,label"`
-	Description string `hcl:description,label"`
+	JobName string `hcl:"job_name,label"`
+	Description string `hcl:"description,label"`
 	ProgramPython *Python `hcl:"python,block"`
 	ProgramSlack *Slack `hcl:"slack,block"`
 }
@@ -44,7 +44,7 @@ job check "this is a temporal job" {
 job e2e "running integration tests" {
 
   python "app-e2e.py" {
-    root_dir = TEST_FOLDER
+    root_dir = var.TEST_FOLDER
   }
 
   slack {
@@ -82,10 +82,19 @@ job e2e "running integration tests" {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Errorf("%#v", p)
-for _, j := range p.Jobs {
-	t.Errorf("%#v", j)
-	t.Errorf("%#v", j.ProgramPython)
-	t.Errorf("%#v", j.ProgramSlack)
-}
+	if p.TEST_FOLDER != "__test__"  || len(p.Jobs) != 2 {
+		t.Errorf("%#v", p)
+	}
+	for i, job := range p.Jobs {
+		if i == 0 {
+			if job.JobName != "check" || job.ProgramPython.PythonName != "run.py" {
+				t.Errorf("%#v", job)
+			}
+		}
+		if i == 1 {
+			if job.Description != "running integration tests" || job.ProgramPython.Path != "__test__" {
+				t.Errorf("%#v", job)
+			}
+		}
+	}
 }
