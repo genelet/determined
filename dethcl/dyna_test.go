@@ -1,10 +1,11 @@
 package dethcl
 
 import (
-	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 	"math/rand"
 	"testing"
+
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Slack struct {
@@ -105,6 +106,10 @@ job e2e "running integration tests" {
 			python := job.ProgramPython
 			if python.PythonVersion != 8 {
 				t.Errorf("%#v", python)
+			}
+			slack := job.ProgramSlack
+			if len(slack.Message) != 43 {
+				t.Errorf("%#v", slack)
 			}
 		}
 	}

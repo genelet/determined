@@ -65,3 +65,25 @@ func (self *Tree) FindNode(names []string) *Tree {
 	}
 	return nil
 }
+
+// this type of Variable name is not implemented in ScopeTraversalExpr
+// but could be used in function
+// note: hcl.Traversal.TraverseAbs uses only Variables in Eval
+func (self *Tree) Variables() map[string]cty.Value {
+	output := make(map[string]cty.Value)
+	for k, v := range self.Data {
+		output[self.Name+"."+k] = *v
+		if self.Name == VAR {
+			output[k] = *v
+		}
+	}
+	for _, down := range self.Downs {
+		for k, v := range down.Variables() {
+			output[self.Name+"."+k] = v
+		}
+	}
+	if len(output) == 1 {
+		return nil
+	}
+	return output
+}

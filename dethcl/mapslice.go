@@ -132,21 +132,12 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsyntax.Expression) (*cty.Value, error) {
 	switch t := v.(type) {
 	case *hclsyntax.FunctionCallExpr:
-		if ref == nil || ref[FUNCTIONS] == nil {
+		if ref[FUNCTIONS] == nil {
 			return nil, fmt.Errorf("function call is nil for %s", t.Name)
 		}
-		f, ok := ref[FUNCTIONS].(map[string]function.Function)
-		if !ok {
-			return nil, fmt.Errorf("not map of function")
-		}
 		ctx := &hcl.EvalContext{
-			Functions: f,
-		}
-		if node.Data != nil {
-			ctx.Variables = make(map[string]cty.Value)
-			for k, v := range node.Data {
-				ctx.Variables[k] = *v
-			}
+			Functions: ref[FUNCTIONS].(map[string]function.Function),
+			Variables: ref[ATTRIBUTES].(*Tree).Variables(),
 		}
 		cv, err := t.Value(ctx)
 		if err != nil {
