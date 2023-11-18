@@ -56,7 +56,7 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - current: object as pointer
 //   - spec: Determined for data specs
 //   - ref: object map, with key object name and value new object
-//   - optional labels: field values of labels
+//   - optional labels: values of labels
 func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
 	return unmarshalSpec(nil, dat, current, spec, ref, labels...)
 }
@@ -78,15 +78,12 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 	if ref == nil {
 		ref = make(map[string]interface{})
 	}
-	newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
-	if err != nil {
-		return err
-	}
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return diags
 	}
+	bd := file.Body.(*hclsyntax.Body)
 
 	if ref[ATTRIBUTES] == nil || node == nil {
 		top := NewTree(VAR)
@@ -95,71 +92,32 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 	}
 
 	var found bool
-	for k, v := range file.Body.(*hclsyntax.Body).Attributes {
-		cv, err := expressionToCty(ref, node, k, v.Expr)
+	for k, v := range bd.Attributes {
+		cv, err := expressionToCty(ref, node, v.Expr)
 		if err != nil {
 			return err
 		}
-		if cv != nil {
-			found = true
-			v.Expr = &hclsyntax.LiteralValueExpr{Val: *cv, SrcRange: v.SrcRange}
-			node.AddItem(k, cv)
-		}
+		found = true
+		v.Expr = &hclsyntax.LiteralValueExpr{Val: *cv, SrcRange: v.SrcRange}
+		node.AddItem(k, cv)
 	}
 
-	if (oriFields == nil || len(oriFields) == 0) &&
-		(decFields == nil || len(decFields) == 0) && !found {
+	newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
+	if err != nil {
+		return err
+	}
+	if oriFields == nil && decFields == nil && !found {
 		return unplain(dat, current, labels...)
 	}
 
-	body := &hclsyntax.Body{
-		SrcRange: file.Body.(*hclsyntax.Body).SrcRange,
-		EndRange: file.Body.(*hclsyntax.Body).EndRange}
-
-	tagref := getTagref(oriFields)
-	decref := getTagref(decFields)
-	var attrsdec map[string]*hclsyntax.Attribute
-
-	for k, v := range file.Body.(*hclsyntax.Body).Attributes {
-		if decref[k] {
-			if attrsdec == nil {
-				attrsdec = make(map[string]*hclsyntax.Attribute)
-			}
-			attrsdec[k] = v
-		} else {
-			if body.Attributes == nil {
-				body.Attributes = make(map[string]*hclsyntax.Attribute)
-			}
-			body.Attributes[k] = v
-		}
-	}
-
-	blockref := make(map[string][]*hclsyntax.Block)
-	blockdec := make(map[string][]*hclsyntax.Block)
-	for _, block := range file.Body.(*hclsyntax.Body).Blocks {
-		if tagref[block.Type] {
-			blockref[block.Type] = append(blockref[block.Type], block)
-		} else if decref[block.Type] {
-			// note that map[string[interface{} or []interface{}
-			// will NOT be in block, so blockdec is nil
-			blockdec[block.Type] = append(blockdec[block.Type], block)
-		} else {
-			body.Blocks = append(body.Blocks, block)
-		}
-	}
-
-	newType := reflect.StructOf(newFields)
-	//raw := reflect.New(newType).Elem().Addr().Interface()
-	raw := reflect.New(newType).Interface()
-	diags = gohcl.DecodeBody(body, nil, raw)
+	rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields)
 	if diags.HasErrors() {
 		return diags
 	}
-	rawValue := reflect.ValueOf(raw).Elem()
 
 	oriValue := reflect.ValueOf(&current).Elem()
-	tmp := reflect.New(oriValue.Elem().Type()).Elem()
-	tmp.Set(oriValue.Elem())
+	oriTobe := reflect.New(oriValue.Elem().Type()).Elem()
+	oriTobe.Set(oriValue.Elem())
 
 	m := 0
 	if labels != nil {
@@ -167,9 +125,9 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 	}
 	k := 0
 	for i, field := range newFields {
-		name := field.Name
 		two := tag2(field.Tag)
-		f := tmp.Elem().FieldByName(name)
+		name := field.Name
+		f := oriTobe.Elem().FieldByName(name)
 		if strings.ToLower(two[1]) == "label" && k < m {
 			f.Set(reflect.ValueOf(labels[k]))
 			k++
@@ -180,16 +138,13 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 	}
 
 	for _, field := range decFields {
-		name := field.Name
-		typ := field.Type
-		two := tag2(field.Tag)
-		f := tmp.Elem().FieldByName(name)
 		var bs []byte
 		var err error
-		if attr, ok := attrsdec[two[0]]; ok {
+		tag := (tag2(field.Tag))[0]
+		if attr, ok := decattrs[tag]; ok {
 			bs = file.Bytes[attr.EqualsRange.End.Byte:attr.SrcRange.End.Byte]
-		} else if blkd, ok := blockdec[two[0]]; ok {
-			// this is assumed not to happen
+		} else if blkd, ok := decblock[tag]; ok {
+			// this is not supposed to happen
 			bs, _, err = getBlockBytes(blkd[0], file)
 			if err != nil {
 				return err
@@ -197,6 +152,10 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 		} else {
 			continue
 		}
+
+		name := field.Name
+		typ := field.Type
+		f := oriTobe.Elem().FieldByName(name)
 		if typ.Kind() == reflect.Slice {
 			obj, err := decodeSlice(bs)
 			if err != nil {
@@ -213,15 +172,16 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 	}
 
 	for _, field := range oriFields {
-		name := field.Name
-		typ := field.Type
-		subNode := node.AddNode(name)
-		f := tmp.Elem().FieldByName(name)
-		two := tag2(field.Tag)
-		blocks := blockref[two[0]]
+		tag := (tag2(field.Tag))[0]
+		blocks := oriblock[tag]
 		if blocks == nil || len(blocks) == 0 {
 			continue
 		}
+
+		name := field.Name
+		typ := field.Type
+		f := oriTobe.Elem().FieldByName(name)
+		subNode := node.AddNode(name)
 		result := objectMap[name]
 		if x := result.GetListStruct(); x != nil {
 			nextListStructs := x.GetListFields()
@@ -300,9 +260,54 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 		}
 	}
 
-	oriValue.Set(tmp)
+	oriValue.Set(oriTobe)
 
 	return nil
+}
+
+func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields []reflect.StructField, newFields []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
+
+	oriref := getTagref(oriFields)
+	decref := getTagref(decFields)
+
+	var decattrs map[string]*hclsyntax.Attribute
+	for k, v := range bd.Attributes {
+		if decref[k] {
+			if decattrs == nil {
+				decattrs = make(map[string]*hclsyntax.Attribute)
+			}
+			decattrs[k] = v
+		} else {
+			if body.Attributes == nil {
+				body.Attributes = make(map[string]*hclsyntax.Attribute)
+			}
+			body.Attributes[k] = v
+		}
+	}
+
+	oriblock := make(map[string][]*hclsyntax.Block)
+	decblock := make(map[string][]*hclsyntax.Block)
+	for _, block := range bd.Blocks {
+		// block.Type is the tag string
+		tag := block.Type
+		if oriref[tag] {
+			oriblock[tag] = append(oriblock[tag], block)
+		} else if decref[tag] {
+			decblock[tag] = append(decblock[tag], block)
+		} else {
+			body.Blocks = append(body.Blocks, block)
+		}
+	}
+
+	newType := reflect.StructOf(newFields)
+	raw := reflect.New(newType).Interface()
+	diags := gohcl.DecodeBody(body, nil, raw)
+	if diags.HasErrors() {
+		return reflect.Zero(newType), nil, nil, nil, diags
+	}
+
+	return reflect.ValueOf(raw).Elem(), decattrs, decblock, oriblock, nil
 }
 
 func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
@@ -318,15 +323,15 @@ func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, er
 func getTagref(oriFields []reflect.StructField) map[string]bool {
 	tagref := make(map[string]bool)
 	for _, field := range oriFields {
-		two := tag2(field.Tag)
-		tagref[two[0]] = true
+		tag := (tag2(field.Tag))[0]
+		tagref[tag] = true
 	}
 	return tagref
 }
 
-// newFields for normal fields which can be decoded withe gohcl
-// oriFields for interface which needs decoded individually as body
-// decFields for interface as map[string]interface{} or []interface{}
+// newFields for normal fields, can be decoded withe gohcl
+// oriFields for blocks, decoded individually as body
+// decFields for map[string]interface{} or []interface{}
 func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
 	var newFields []reflect.StructField
 	var oriFields []reflect.StructField
@@ -338,17 +343,16 @@ func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]inte
 		if !unicode.IsUpper([]rune(name)[0]) {
 			continue
 		}
-		two := tag2(field.Tag)
-		mark := two[0]
-		if mark == `-` || (len(mark) >= 2 && mark[len(mark)-2:] == `,-`) {
+		tag := (tag2(field.Tag))[0]
+		if tag == `-` || (len(tag) >= 2 && tag[len(tag)-2:] == `,-`) {
 			continue
 		}
 		if _, ok := objectMap[name]; ok {
-			field.Tag = reflect.StructTag("hcl:\"" + mark + ",block\"")
+			field.Tag = reflect.StructTag("hcl:\"" + tag + ",block\"")
 			oriFields = append(oriFields, field)
 			continue
 		}
-		if mark == "" {
+		if tag == "" {
 			switch typ.Kind() {
 			case reflect.Interface:
 				continue
@@ -386,7 +390,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]inte
 				return nil, nil, nil, err
 			}
 			objectMap[field.Name] = v
-			field.Tag = reflect.StructTag("hcl:\"" + mark + ",block\"")
+			field.Tag = reflect.StructTag("hcl:\"" + tag + ",block\"")
 			oriFields = append(oriFields, field)
 		} else if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map {
 			eType := typ.Elem()
@@ -410,7 +414,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]inte
 				return nil, nil, nil, err
 			}
 			objectMap[field.Name] = v
-			field.Tag = reflect.StructTag("hcl:\"" + mark + ",block\"")
+			field.Tag = reflect.StructTag("hcl:\"" + tag + ",block\"")
 			oriFields = append(oriFields, field)
 			//		} else if typ.Kind()==reflect.Interface {
 			//			field.Tag = addOptional(field.Tag)
@@ -424,8 +428,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]inte
 }
 
 func unplain(bs []byte, object interface{}, labels ...string) error {
-	// start to investigate map of non-interface
-	// see the same code in loopFields
+	// start map of non-interface
 	t := reflect.TypeOf(object).Elem()
 	spec := make(map[string]interface{})
 	ref := make(map[string]interface{})
@@ -477,19 +480,19 @@ func addLables(current interface{}, labels ...string) {
 	n := t.NumField()
 
 	oriValue := reflect.ValueOf(&current).Elem()
-	tmp := reflect.New(oriValue.Elem().Type()).Elem()
-	tmp.Set(oriValue.Elem())
+	oriTobe := reflect.New(oriValue.Elem().Type()).Elem()
+	oriTobe.Set(oriValue.Elem())
 
 	for i := 0; i < n; i++ {
 		field := t.Field(i)
-		f := tmp.Elem().Field(i)
+		f := oriTobe.Elem().Field(i)
 		two := tag2(field.Tag)
 		if strings.ToLower(two[1]) == "label" && k < m {
 			f.Set(reflect.ValueOf(labels[k]))
 			k++
 		}
 	}
-	oriValue.Set(tmp)
+	oriValue.Set(oriTobe)
 }
 
 func addOptional(old reflect.StructTag) reflect.StructTag {

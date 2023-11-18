@@ -129,7 +129,7 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 	return nil, fmt.Errorf("unknow type %T", item)
 }
 
-func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsyntax.Expression) (*cty.Value, error) {
+func expressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Expression) (*cty.Value, error) {
 	switch t := v.(type) {
 	case *hclsyntax.FunctionCallExpr:
 		if ref[FUNCTIONS] == nil {
@@ -188,7 +188,7 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 			// multiple expressions as Parts
 			var ss []string
 			for _, p := range t.Parts {
-				c, err := expressionToCty(ref, node, k, p)
+				c, err := expressionToCty(ref, node, p)
 				if err != nil {
 					return nil, err
 				}
@@ -211,11 +211,11 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 			return &cv, nil
 		}
 	case *hclsyntax.BinaryOpExpr:
-		lcty, err := expressionToCty(ref, node, k, t.LHS)
+		lcty, err := expressionToCty(ref, node, t.LHS)
 		if err != nil {
 			return nil, err
 		}
-		rcty, err := expressionToCty(ref, node, k, t.RHS)
+		rcty, err := expressionToCty(ref, node, t.RHS)
 		if err != nil {
 			return nil, err
 		}
