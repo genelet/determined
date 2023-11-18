@@ -129,6 +129,31 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 	return nil, fmt.Errorf("unknow type %T", item)
 }
 
+func ctyToExpression(cv cty.Value, rng hcl.Range) hclsyntax.Expression {
+	switch cv.Type() {
+	case cty.String, cty.Number, cty.Bool:
+		return &hclsyntax.LiteralValueExpr{Val: cv, SrcRange: rng}
+	case cty.List(cty.String), cty.List(cty.Number), cty.List(cty.Bool):
+		var exprs []hclsyntax.Expression
+		for _, item := range cv.AsValueSlice() {
+			exprs = append(exprs, &hclsyntax.LiteralValueExpr{Val: item, SrcRange: rng})
+		}
+		return &hclsyntax.TupleConsExpr{Exprs: exprs, SrcRange: rng}
+	case cty.Map(cty.String), cty.Map(cty.Number), cty.Map(cty.Bool):
+		var items []hclsyntax.ObjectConsItem
+		for k, item := range cv.AsValueMap() {
+			items = append(items, hclsyntax.ObjectConsItem{
+				KeyExpr:   &hclsyntax.LiteralValueExpr{Val: cty.StringVal(k), SrcRange: rng},
+				ValueExpr: &hclsyntax.LiteralValueExpr{Val: item, SrcRange: rng},
+			})
+		}
+		return &hclsyntax.ObjectConsExpr{Items: items, SrcRange: rng}
+	default:
+	}
+	// just use the default seems to be ok
+	return &hclsyntax.LiteralValueExpr{Val: cv, SrcRange: rng}
+}
+
 func short(t hcl.Expression, ctx *hcl.EvalContext) (cty.Value, error) {
 	cv, diags := t.Value(ctx)
 	if diags.HasErrors() {
@@ -210,6 +235,9 @@ func expressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 			return cty.EmptyObjectVal, err
 		}
 		return t.Op.Impl.Call([]cty.Value{lcty, rcty})
+	case *hclsyntax.ForExpr: // to be implemented
+	case *hclsyntax.IndexExpr: // to be implemented
+	case *hclsyntax.ParenthesesExpr: // to be implemented and so on...
 	default:
 	}
 
