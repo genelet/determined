@@ -2,13 +2,14 @@ package dethcl
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"unicode"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"reflect"
-	"strings"
-	"unicode"
 )
 
 // Unmarshal decodes HCL data

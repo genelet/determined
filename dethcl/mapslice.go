@@ -210,12 +210,6 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 			}
 			return &cv, nil
 		}
-	case *hclsyntax.LiteralValueExpr:
-		cv := t.Val
-		return &cv, nil
-	case *hclsyntax.TupleConsExpr:
-	case *hclsyntax.ObjectConsExpr:
-	case *hclsyntax.ForExpr:
 	case *hclsyntax.BinaryOpExpr:
 		lcty, err := expressionToCty(ref, node, k, t.LHS)
 		if err != nil {
@@ -231,24 +225,19 @@ func expressionToCty(ref map[string]interface{}, node *Tree, k string, v hclsynt
 		}
 		return &cv, err
 	default:
-		return nil, fmt.Errorf("need to implement %T case 96", t)
 	}
-	return nil, nil
+
+	cv, err := v.Value(nil)
+	if err != nil {
+		return nil, err
+	}
+	return &cv, nil
 }
 
 func nativeToCty(item interface{}) (cty.Value, error) {
-	var typ cty.Type
-	switch item.(type) {
-	case int, int32, int64, uint, uint32, int16, uint16, int8, uint8:
-		typ = cty.Number
-	case float64, float32:
-		typ = cty.Number
-	case string, []byte:
-		typ = cty.String
-	case bool:
-		typ = cty.Bool
-	default:
-		return cty.EmptyObjectVal, fmt.Errorf("need to implement %T case 97", item)
+	typ, err := gocty.ImpliedType(item)
+	if err != nil {
+		return cty.EmptyObjectVal, err
 	}
 	return gocty.ToCtyValue(item, typ)
 }
