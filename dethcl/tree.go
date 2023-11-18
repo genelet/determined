@@ -12,13 +12,13 @@ const (
 
 type Tree struct {
 	Name  string
-	Data  map[string]*cty.Value
+	Data  map[string]cty.Value
 	Up    *Tree
 	Downs []*Tree
 }
 
 func NewTree(name string) *Tree {
-	return &Tree{Name: name, Data: make(map[string]*cty.Value)}
+	return &Tree{Name: name, Data: make(map[string]cty.Value)}
 }
 
 func (self *Tree) AddNode(name string) *Tree {
@@ -41,7 +41,7 @@ func (self *Tree) DeleteNode(name string) {
 	}
 }
 
-func (self *Tree) AddItem(k string, v *cty.Value) {
+func (self *Tree) AddItem(k string, v cty.Value) {
 	self.Data[k] = v
 }
 
@@ -72,9 +72,9 @@ func (self *Tree) FindNode(names []string) *Tree {
 func (self *Tree) Variables() map[string]cty.Value {
 	output := make(map[string]cty.Value)
 	for k, v := range self.Data {
-		output[self.Name+"."+k] = *v
+		output[self.Name+"."+k] = v
 		if self.Name == VAR {
-			output[k] = *v
+			output[k] = v
 		}
 	}
 	for _, down := range self.Downs {

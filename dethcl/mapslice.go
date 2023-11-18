@@ -129,21 +129,25 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 	return nil, fmt.Errorf("unknow type %T", item)
 }
 
-func expressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Expression) (*cty.Value, error) {
+func short(t hcl.Expression, ctx *hcl.EvalContext) (cty.Value, error) {
+	cv, diags := t.Value(ctx)
+	if diags.HasErrors() {
+		return cty.EmptyObjectVal, (diags.Errs())[0]
+	}
+	return cv, nil
+}
+
+func expressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Expression) (cty.Value, error) {
 	switch t := v.(type) {
 	case *hclsyntax.FunctionCallExpr:
 		if ref[FUNCTIONS] == nil {
-			return nil, fmt.Errorf("function call is nil for %s", t.Name)
+			return cty.EmptyObjectVal, fmt.Errorf("function call is nil for %s", t.Name)
 		}
 		ctx := &hcl.EvalContext{
 			Functions: ref[FUNCTIONS].(map[string]function.Function),
 			Variables: ref[ATTRIBUTES].(*Tree).Variables(),
 		}
-		cv, err := t.Value(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &cv, nil
+		return short(t, ctx)
 	case *hclsyntax.ScopeTraversalExpr:
 		trv := t.AsTraversal()
 		some := node
@@ -173,65 +177,43 @@ func expressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 			}
 			some = top.FindNode(names)
 			if some == nil {
-				return nil, fmt.Errorf("node %s not found", trv.RootName())
+				return cty.EmptyObjectVal, fmt.Errorf("node %s not found", trv.RootName())
 			}
 		}
 		return some.Data[name], nil
 	case *hclsyntax.TemplateExpr:
 		if t.IsStringLiteral() {
-			cv, diags := t.Value(nil)
-			if diags.HasErrors() {
-				return nil, (diags.Errs())[0]
-			}
-			return &cv, nil
+			return short(t, nil)
 		} else {
-			// multiple expressions as Parts
+			// we may need to enhance the following code to support more complex expressions
 			var ss []string
 			for _, p := range t.Parts {
-				c, err := expressionToCty(ref, node, p)
+				cv, err := expressionToCty(ref, node, p)
 				if err != nil {
-					return nil, err
-				}
-				var cv cty.Value
-				if c == nil {
-					cv = p.(*hclsyntax.LiteralValueExpr).Val
-				} else {
-					cv = *c
+					return cty.EmptyObjectVal, err
 				}
 				x, err := ctyToNative(cv)
 				if err != nil {
-					return nil, err
+					return cty.EmptyObjectVal, err
 				}
 				ss = append(ss, x.(string))
 			}
-			cv, err := nativeToCty(strings.Join(ss, ""))
-			if err != nil {
-				return nil, err
-			}
-			return &cv, nil
+			return nativeToCty(strings.Join(ss, ""))
 		}
 	case *hclsyntax.BinaryOpExpr:
 		lcty, err := expressionToCty(ref, node, t.LHS)
 		if err != nil {
-			return nil, err
+			return cty.EmptyObjectVal, err
 		}
 		rcty, err := expressionToCty(ref, node, t.RHS)
 		if err != nil {
-			return nil, err
+			return cty.EmptyObjectVal, err
 		}
-		cv, err := t.Op.Impl.Call([]cty.Value{*lcty, *rcty})
-		if err != nil {
-			return nil, err
-		}
-		return &cv, err
+		return t.Op.Impl.Call([]cty.Value{lcty, rcty})
 	default:
 	}
 
-	cv, err := v.Value(nil)
-	if err != nil {
-		return nil, err
-	}
-	return &cv, nil
+	return short(v, nil)
 }
 
 func nativeToCty(item interface{}) (cty.Value, error) {
@@ -254,6 +236,38 @@ func ctyToNative(val cty.Value) (interface{}, error) {
 		return v, err
 	case cty.Bool:
 		var v bool
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.List(cty.String):
+		var v []string
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.List(cty.Number):
+		var v []float64
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.List(cty.Bool):
+		var v []bool
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.List(cty.DynamicPseudoType):
+		var v []interface{}
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.Map(cty.String):
+		var v map[string]string
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.Map(cty.Number):
+		var v map[string]float64
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.Map(cty.Bool):
+		var v map[string]bool
+		err := gocty.FromCtyValue(val, &v)
+		return v, err
+	case cty.Map(cty.DynamicPseudoType):
+		var v map[string]interface{}
 		err := gocty.FromCtyValue(val, &v)
 		return v, err
 	default:

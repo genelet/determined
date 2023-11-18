@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Unmarshal decodes HCL data
@@ -98,7 +99,26 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 			return err
 		}
 		found = true
-		v.Expr = &hclsyntax.LiteralValueExpr{Val: *cv, SrcRange: v.SrcRange}
+		switch cv.Type() {
+		case cty.String, cty.Number, cty.Bool:
+			v.Expr = &hclsyntax.LiteralValueExpr{Val: cv, SrcRange: v.SrcRange}
+		case cty.List(cty.String), cty.List(cty.Number), cty.List(cty.Bool):
+			var exprs []hclsyntax.Expression
+			for _, item := range cv.AsValueSlice() {
+				exprs = append(exprs, &hclsyntax.LiteralValueExpr{Val: item, SrcRange: v.SrcRange})
+			}
+			v.Expr = &hclsyntax.TupleConsExpr{Exprs: exprs, SrcRange: v.SrcRange}
+		case cty.Map(cty.String), cty.Map(cty.Number), cty.Map(cty.Bool):
+			var items []hclsyntax.ObjectConsItem
+			for k, item := range cv.AsValueMap() {
+				items = append(items, hclsyntax.ObjectConsItem{
+					KeyExpr:   &hclsyntax.LiteralValueExpr{Val: cty.StringVal(k), SrcRange: v.SrcRange},
+					ValueExpr: &hclsyntax.LiteralValueExpr{Val: item, SrcRange: v.SrcRange},
+				})
+			}
+			v.Expr = &hclsyntax.ObjectConsExpr{Items: items, SrcRange: v.SrcRange}
+		default:
+		}
 		node.AddItem(k, cv)
 	}
 
