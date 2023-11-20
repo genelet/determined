@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	//"log"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
@@ -12,31 +13,34 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
-func encode(current interface{}, level ...int) ([]byte, error) {
+func encode(current interface{}, level int) ([]byte, error) {
 	var str string
+
+	leading := strings.Repeat("  ", level+1)
+	lessLeading := strings.Repeat("  ", level)
 
 	rv := reflect.ValueOf(current)
 	switch rv.Kind() {
 	case reflect.Map:
 		var arr []string
 		for name, item := range current.(map[string]interface{}) {
-			bs, err := Marshal(item)
+			bs, err := mmarshal(item, level+1)
 			if err != nil {
 				return nil, err
 			}
 			arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
 		}
-		str = fmt.Sprintf("{\n%s\n}", strings.Join(arr, ",\n"))
+		str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, ",\n"+leading), lessLeading)
 	case reflect.Slice, reflect.Array:
 		var arr []string
 		for _, item := range current.([]interface{}) {
-			bs, err := Marshal(item)
+			bs, err := mmarshal(item, level+1)
 			if err != nil {
 				return nil, err
 			}
 			arr = append(arr, string(bs))
 		}
-		str = fmt.Sprintf("[\n%s\n]", strings.Join(arr, ",\n"))
+		str = fmt.Sprintf("[\n%s\n%s]", leading+strings.Join(arr, ",\n"+leading), lessLeading)
 	case reflect.String:
 		str = "\"" + rv.String() + "\""
 	case reflect.Bool:

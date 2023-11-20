@@ -1,6 +1,8 @@
 package dethcl
 
 import (
+"os"
+"fmt"
 	"testing"
 )
 
@@ -70,14 +72,20 @@ func TestMHclShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	if string(bs) != `name = "peter shape"
-shape {
+shape   {
   radius = 1
 }
-
+  
 ` {
-		t.Errorf("'%s'", bs)
+f, err := os.Create("/tmp/x")
+if err != nil { panic(err) }
+defer f.Close()
+fmt.Fprintf(f, "%s", bs)
+		t.Errorf("%s", bs)
 	}
+}
 
+func TestMHclMoreShape(t *testing.T) {
 	data2 := `
 	name = "peter shape"
 	shape {
@@ -85,16 +93,17 @@ shape {
     	sy = 6
 	}
 `
-	g = &geo{}
+	g := &geo{}
+	c := &circle{}
 	s := &square{}
-	ref = map[string]interface{}{"circle": c, "square": s}
-	spec, err = NewStruct(
+	ref := map[string]interface{}{"circle": c, "square": s}
+	spec, err := NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
 	err = UnmarshalSpec([]byte(data2), g, spec, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bs, err = Marshal(g)
+	bs, err := Marshal(g)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,20 @@
+name: marcus
+num: 2
+parties:
+    - one
+    - two
+    - - three
+      - four
+    - five: "51"
+      six: 61
+radius: 1
+roads:
+    x: a
+    xy:
+        - ab
+        - true
+    "y": b
+    z:
+        za: aa
+        zb: 3.14
+
