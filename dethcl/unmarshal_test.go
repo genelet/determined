@@ -403,6 +403,37 @@ brand {
 	}
 }
 
+func TestHclChildMore(t *testing.T) {
+	data1 := `
+age = 5
+brand = {
+	toy_name = "roblox"
+	price = 99.9
+	geo = {
+		name = "peter shape"
+		shape = {
+    		radius = 1.234
+		}
+	}
+}
+`
+	spec, err := NewStruct(
+		"child1", map[string]interface{}{
+			"Brand": [2]interface{}{
+				"toy", map[string]interface{}{
+					"Geo": [2]interface{}{
+						"geo", map[string]interface{}{"Shape": "circle"}}}}})
+	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
+
+	c := new(child)
+	err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	str := err.Error()
+	expected := `An argument named "brand" is not expected here.`
+	if str[len(str)-len(expected):] != expected {
+		t.Errorf("'%s'", str[len(str)-len(expected):])
+	}
+}
+
 // treat object as map. add = in front of {}
 func TestHclChildMap(t *testing.T) {
 	data1 := `{
