@@ -23,6 +23,7 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 		return fmt.Errorf("non-pointer or nil data")
 	}
 	rv = rv.Elem()
+
 	switch rv.Kind() {
 	case reflect.Struct:
 		return UnmarshalSpec(dat, current, nil, nil, labels...)
@@ -81,6 +82,8 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
+		fmt.Printf("str: %s\n", dat)
+		fmt.Printf("file: %v\n", diags)
 		return diags
 	}
 	bd := file.Body.(*hclsyntax.Body)

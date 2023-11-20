@@ -1,15 +1,11 @@
 package dethcl
 
 import (
-"os"
-"fmt"
 	"testing"
 )
 
 func TestMHclSimple(t *testing.T) {
-	data1 := `
-	radius = 1.0
-`
+	data1 := `radius = 1.0`
 	c := new(circle)
 	err := UnmarshalSpec([]byte(data1), c, nil, nil)
 	if err != nil {
@@ -20,7 +16,7 @@ func TestMHclSimple(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != "radius = 1\n" {
+	if string(bs) != "  radius = 1" {
 		t.Errorf("%s", bs)
 	}
 }
@@ -42,11 +38,10 @@ arr3 = [true, false, true]
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `radius = 1
-arr1   = ["abc", "def"]
-arr2   = [123, 4356]
-arr3   = [true, false, true]
-` {
+	if string(bs) != `  radius = 1
+  arr1   = ["abc", "def"]
+  arr2   = [123, 4356]
+  arr3   = [true, false, true]` {
 		t.Errorf("'%s'", bs)
 	}
 }
@@ -71,16 +66,10 @@ func TestMHclShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `name = "peter shape"
-shape   {
-  radius = 1
-}
-  
-` {
-f, err := os.Create("/tmp/x")
-if err != nil { panic(err) }
-defer f.Close()
-fmt.Fprintf(f, "%s", bs)
+	if string(bs) != `  name = "peter shape"
+  shape {
+    radius = 1
+  }` {
 		t.Errorf("%s", bs)
 	}
 }
@@ -107,13 +96,11 @@ func TestMHclMoreShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `name = "peter shape"
-shape {
-  sx = 5
-  sy = 6
-}
-
-` {
+	if string(bs) != `  name = "peter shape"
+  shape {
+    sx = 5
+    sy = 6
+  }` {
 		t.Errorf("'%s'", bs)
 	}
 
@@ -143,18 +130,15 @@ shape {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `name = "peter drawings"
-drawings {
-  sx = 5
-  sy = 6
-}
-
-drawings {
-  sx = 7
-  sy = 8
-}
-
-` {
+	if string(bs) != `  name = "peter drawings"
+  drawings {
+    sx = 5
+    sy = 6
+  }
+  drawings {
+    sx = 7
+    sy = 8
+  }` {
 		t.Errorf("'%s'", bs)
 	}
 
@@ -187,18 +171,15 @@ drawings {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `name = "peter drawings"
-drawings "abc1" "def1" {
-  sx = 5
-  sy = 6
-}
-
-drawings "abc2" "def2" {
-  sx = 7
-  sy = 8
-}
-
-` {
+	if string(bs) != `  name = "peter drawings"
+  drawings "abc1" "def1" {
+    sx = 5
+    sy = 6
+  }
+  drawings "abc2" "def2" {
+    sx = 7
+    sy = 8
+  }` {
 		t.Errorf("'%s'", bs)
 	}
 }
@@ -230,83 +211,69 @@ func TestMHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `name = "peter shapes"
-shapes obj5 {
-  sx = 5
-  sy = 6
-}
-
-shapes obj7 {
-  sx = 7
-  sy = 8
-}
-
-` && string(bs) != `name = "peter shapes"
-shapes obj7 {
-  sx = 7
-  sy = 8
-}
-
-shapes obj5 {
-  sx = 5
-  sy = 6
-}
-
-` {
+	if string(bs) != `  name = "peter shapes"
+  shapes obj5 {
+    sx = 5
+    sy = 6
+  }
+  shapes obj7 {
+    sx = 7
+    sy = 8
+  }` && string(bs) != `  name = "peter shapes"
+  shapes obj7 {
+    sx = 7
+    sy = 8
+  }
+  shapes obj5 {
+    sx = 5
+    sy = 6
+  }` {
 		t.Errorf("'%s'", bs)
 	}
 }
 
 func TestMHclOld(t *testing.T) {
-	data1 := `description = "here is detailed description"
-y13 = {
-  str131 = "la"
-  str132 = "nyc"
-}
-y14 = {
-  str141 = 141
-  str142 = 142
-}
-y15 = {
-  str151 = true
-  str152 = false
-}
-y7 {
-  many = 3
-  why  = "national day"
-}
-
-y10 {
-  many = 4
-  why  = "labor day"
-}
-
-y10 {
-  many = 5
-  why  = "holiday day"
-}
-
-y11 k6 {
-  many = 6
-  why  = "memorial day"
-}
-
-y11 k7 {
-  many = 7
-  why  = "new day"
-}
-
-y12 k8 {
-  many = 8
-  why  = "christmas day"
-}
-
-y12 k9 {
-  many = 9
-  why  = "new year day"
-}
-
-`
+	data1 := `  description = "here is detailed description"
+  y13 = {
+    str131 = "la"
+    str132 = "nyc"
+  }
+  y14 = {
+    str141 = 141
+    str142 = 142
+  }
+  y15 = {
+    str151 = true
+    str152 = false
+  }
+  y7 {
+    many = 3
+    why  = "national day"
+  }
+  y10 {
+    many = 4
+    why  = "labor day"
+  }
+  y10 {
+    many = 5
+    why  = "holiday day"
+  }
+  y11 k6 {
+    many = 6
+    why  = "memorial day"
+  }
+  y11 k7 {
+    many = 7
+    why  = "new day"
+  }
+  y12 k8 {
+    many = 8
+    why  = "christmas day"
+  }
+  y12 k9 {
+    many = 9
+    why  = "new year day"
+  }`
 	f0 := new(frame0)
 	err := UnmarshalSpec([]byte(data1), f0, nil, nil)
 	if err != nil {
@@ -513,21 +480,17 @@ brand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `age = 5
-brand {
-  toy_name = "roblox"
-  price    = 99.9000015258789
-  geo {
-    name = "peter shape"
-    shape {
-      radius = 1
+	if string(bs) != `  age = 5
+  brand {
+    toy_name = "roblox"
+    price    = 99.9000015258789
+    geo {
+      name = "peter shape"
+      shape {
+        radius = 1
+      }
     }
-    
-  }
-  
-}
-
-` {
+  }` {
 		t.Errorf("'%s'", bs)
 	}
 }

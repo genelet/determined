@@ -101,11 +101,13 @@ func marshal(current interface{}, level int, is ...bool) ([]byte, error) {
 		lines = append(lines, line)
 	}
 	if len(lines) > 0 {
-		str += strings.Join(lines, ",\n"+leading)
+		str += strings.Join(lines, "\n"+leading)
 	}
 
 	str = strings.TrimRight(str, " \t\n\r")
-	str = fmt.Sprintf("{\n%s\n%s}", str, lessLeading)
+	if level > 0 { // not root
+		str = fmt.Sprintf("{\n%s\n%s}", str, lessLeading)
+	}
 	if is == nil || is[0] == false || bs == nil {
 		return []byte(str), nil
 	}

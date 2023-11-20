@@ -132,18 +132,15 @@ func TestHclShape2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bs) != `name = "peter drawings"
-drawings "abc1" "def1" {
-  sx = 5
-  sy = 6
-}
-
-drawings "abc2" "def2" {
-  sx = 7
-  sy = 8
-}
-
-` {
+	if string(bs) != `  name = "peter drawings"
+  drawings "abc1" "def1" {
+    sx = 5
+    sy = 6
+  }
+  drawings "abc2" "def2" {
+    sx = 7
+    sy = 8
+  }` {
 		t.Errorf("%s", bs)
 	}
 }
@@ -402,6 +399,33 @@ brand {
 		t.Fatal(err)
 	}
 	if c.Age != 5 || c.Brand.Geo.Shape.(*circle).Radius != 1.234 {
+		t.Errorf("%#v", c)
+	}
+}
+
+// treat object as map. add = in front of {}
+func TestHclChildMap(t *testing.T) {
+	data1 := `{
+age = 5
+brand = {
+	toy_name = "roblox"
+	price = 99.9
+	geo = {
+		name = "peter shape"
+		shape = {
+    		radius = 1.234
+		}
+	}
+}
+}`
+
+	c := map[string]interface{}{}
+	err := Unmarshal([]byte(data1), &c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c["age"].(float64) != 5 || c["brand"].(map[string]interface{})["geo"].(map[string]interface{})["shape"].(map[string]interface{})["radius"].(float64) != 1.234 {
 		t.Errorf("%#v", c)
 	}
 }
