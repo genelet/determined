@@ -82,8 +82,6 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
-		fmt.Printf("str: %s\n", dat)
-		fmt.Printf("file: %v\n", diags)
 		return diags
 	}
 	bd := file.Body.(*hclsyntax.Body)
