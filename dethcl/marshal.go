@@ -107,7 +107,12 @@ func marshal(current interface{}, level int, is ...bool) ([]byte, error) {
 	str = strings.TrimRight(str, " \t\n\r")
 	if level > 0 { // not root
 		str = fmt.Sprintf("{\n%s\n%s}", str, lessLeading)
+		if labels != nil {
+			str = "\"" + strings.Join(labels, "\" \"") + "\" " + str
+		}
 	}
+	return []byte(str), nil
+/*
 	if is == nil || is[0] == false || bs == nil {
 		return []byte(str), nil
 	}
@@ -116,6 +121,7 @@ func marshal(current interface{}, level int, is ...bool) ([]byte, error) {
 		return []byte(str), nil
 	}
 	return []byte("\"" + strings.Join(labels, "\" \"") + "\" " + str), nil
+*/
 }
 
 type marshalField struct {
