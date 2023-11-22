@@ -23,13 +23,13 @@ func mmarshal(current interface{}, level int) ([]byte, error) {
 
 	switch rv.Kind() {
 	case reflect.Pointer, reflect.Struct:
-		return marshal(current, level, false)
+		return marshal(current, level)
 	default:
 	}
 	return encode(current, level)
 }
 
-func marshal(current interface{}, level int, is ...bool) ([]byte, error) {
+func marshal(current interface{}, level int) ([]byte, error) {
 	leading := strings.Repeat("  ", level+1)
 	lessLeading := strings.Repeat("  ", level)
 
@@ -112,16 +112,6 @@ func marshal(current interface{}, level int, is ...bool) ([]byte, error) {
 		}
 	}
 	return []byte(str), nil
-/*
-	if is == nil || is[0] == false || bs == nil {
-		return []byte(str), nil
-	}
-
-	if labels == nil {
-		return []byte(str), nil
-	}
-	return []byte("\"" + strings.Join(labels, "\" \"") + "\" " + str), nil
-*/
 }
 
 type marshalField struct {
@@ -213,7 +203,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 	switch typ.Kind() {
 	case reflect.Interface, reflect.Pointer:
 		newCurrent := oriField.Interface()
-		bs, err := marshal(newCurrent, level+1, true)
+		bs, err := marshal(newCurrent, level+1)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +213,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 	case reflect.Struct:
 		newCurrent := oriField.Addr().Interface()
-		bs, err := marshal(newCurrent, level+1, true)
+		bs, err := marshal(newCurrent, level+1)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +242,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 			newlevel := level + 1
 			for i := 0; i < n; i++ {
 				item := oriField.Index(i)
-				bs, err := marshal(item.Interface(), newlevel, true)
+				bs, err := marshal(item.Interface(), newlevel)
 				if err != nil {
 					return nil, err
 				}
@@ -293,7 +283,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				v := iter.Value()
 				var bs []byte
 				var err error
-				bs, err = marshal(v.Interface(), newlevel, true)
+				bs, err = marshal(v.Interface(), newlevel)
 				if err != nil {
 					return empty, err
 				}
