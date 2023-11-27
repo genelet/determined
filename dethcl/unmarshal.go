@@ -49,6 +49,7 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 		return fmt.Errorf("data type %v not supported", rv.Kind())
 	}
 	return nil
+
 }
 
 // UnmarshalSpec decodes HCL struct data with interface specifications.
@@ -101,6 +102,19 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 		found = true
 		v.Expr = ctyToExpression(cv, v.Range())
 		node.AddItem(k, cv)
+	}
+
+	if spec == nil {
+		// The code will never be reached because Map and Slice are already handled in "Unmarshal".
+		// To force sorted map to map[string]interface{}, comment that and run the following code.
+		// The result is attached to the end of mapslice_test.go - commented out as well.
+		switch reflect.ValueOf(current).Elem().Kind() {
+		case reflect.Map:
+			return decodeMapMore(node, file, bd, current, labels...)
+		case reflect.Slice:
+			return decodeSliceMore(node, file, bd, current, labels...)
+		default:
+		}
 	}
 
 	newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
