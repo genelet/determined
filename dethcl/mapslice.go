@@ -5,11 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	//"log"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
@@ -133,176 +130,52 @@ func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{},
 	return nil, fmt.Errorf("unknow type %T", item)
 }
 
-func ctyToExpression(cv cty.Value, rng hcl.Range) hclsyntax.Expression {
-	switch cv.Type() {
-	case cty.String, cty.Number, cty.Bool:
-		return &hclsyntax.LiteralValueExpr{Val: cv, SrcRange: rng}
-	case cty.List(cty.String), cty.List(cty.Number), cty.List(cty.Bool):
-		var exprs []hclsyntax.Expression
-		for _, item := range cv.AsValueSlice() {
-			exprs = append(exprs, &hclsyntax.LiteralValueExpr{Val: item, SrcRange: rng})
-		}
-		return &hclsyntax.TupleConsExpr{Exprs: exprs, SrcRange: rng}
-	case cty.Map(cty.String), cty.Map(cty.Number), cty.Map(cty.Bool):
-		var items []hclsyntax.ObjectConsItem
-		for k, item := range cv.AsValueMap() {
-			items = append(items, hclsyntax.ObjectConsItem{
-				KeyExpr:   &hclsyntax.LiteralValueExpr{Val: cty.StringVal(k), SrcRange: rng},
-				ValueExpr: &hclsyntax.LiteralValueExpr{Val: item, SrcRange: rng},
-			})
-		}
-		return &hclsyntax.ObjectConsExpr{Items: items, SrcRange: rng}
-	default:
-	}
-	// just use the default seems to be ok
-	return &hclsyntax.LiteralValueExpr{Val: cv, SrcRange: rng}
-}
-
-func short(t hcl.Expression, ctx *hcl.EvalContext) (cty.Value, error) {
-	cv, diags := t.Value(ctx)
-	if diags.HasErrors() {
-		return cty.EmptyObjectVal, (diags.Errs())[0]
-	}
-	return cv, nil
-}
-
-func expressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Expression) (cty.Value, error) {
-	switch t := v.(type) {
-	case *hclsyntax.FunctionCallExpr:
-		if ref[FUNCTIONS] == nil {
-			return cty.EmptyObjectVal, fmt.Errorf("function call is nil for %s", t.Name)
-		}
-		ctx := &hcl.EvalContext{
-			Functions: ref[FUNCTIONS].(map[string]function.Function),
-			Variables: ref[ATTRIBUTES].(*Tree).Variables(),
-		}
-		return short(t, ctx)
-	case *hclsyntax.ScopeTraversalExpr:
-		trv := t.AsTraversal()
-		some := node
-		name := trv.RootName()
-		if !trv.IsRelative() {
-			var names []string
-			for _, item := range trv {
-				switch ty := item.(type) {
-				case hcl.TraverseRoot:
-					names = append(names, ty.Name)
-				case hcl.TraverseAttr:
-					names = append(names, ty.Name)
-				default:
-				}
-			}
-			n := len(names)
-			// the last one is not node but item
-			name = names[n-1]
-			names = names[:n-1]
-			n--
-
-			top := ref[ATTRIBUTES].(*Tree)
-			// check the first one
-			if n != 0 && names[0] == VAR {
-				names = names[1:]
-				n--
-			}
-			some = top.FindNode(names)
-			if some == nil {
-				return cty.EmptyObjectVal, fmt.Errorf("node %s not found", trv.RootName())
-			}
-		}
-		return some.Data[name], nil
-	case *hclsyntax.TemplateExpr:
-		if t.IsStringLiteral() {
-			return short(t, nil)
-		} else {
-			// we may need to enhance the following code to support more complex expressions
-			var ss []string
-			for _, p := range t.Parts {
-				cv, err := expressionToCty(ref, node, p)
-				if err != nil {
-					return cty.EmptyObjectVal, err
-				}
-				x, err := ctyToNative(cv)
-				if err != nil {
-					return cty.EmptyObjectVal, err
-				}
-				ss = append(ss, x.(string))
-			}
-			return nativeToCty(strings.Join(ss, ""))
-		}
-	case *hclsyntax.BinaryOpExpr:
-		lcty, err := expressionToCty(ref, node, t.LHS)
+func decodeMapMore(node *Tree, file *hcl.File, bd *hclsyntax.Body, current interface{}, labels ...string) error {
+	hash := current.(*map[string]interface{})
+	for k, v := range bd.Attributes {
+		u, err := expressionToNative(file, v.Expr)
 		if err != nil {
-			return cty.EmptyObjectVal, err
+			return err
 		}
-		rcty, err := expressionToCty(ref, node, t.RHS)
+		(*hash)[k] = u
+	}
+	for _, block := range bd.Blocks {
+		k := block.Type
+		_, ok := (*hash)[k]
+		if !ok {
+			(*hash)[k] = make([]interface{}, 0)
+		}
+		bs := file.Bytes[block.OpenBraceRange.Start.Byte+1 : block.CloseBraceRange.End.Byte-1]
+		item := map[string]interface{}{}
+		err := unmarshalSpec(node, bs, &item, nil, nil, block.Labels...)
 		if err != nil {
-			return cty.EmptyObjectVal, err
+			return err
 		}
-		return t.Op.Impl.Call([]cty.Value{lcty, rcty})
-	case *hclsyntax.ForExpr: // to be implemented
-	case *hclsyntax.IndexExpr: // to be implemented
-	case *hclsyntax.ParenthesesExpr: // to be implemented and so on...
-	default:
+		for i, v := range block.Labels {
+			item[fmt.Sprintf("%s_label_%d", k, i)] = v
+		}
+		(*hash)[k] = append((*hash)[k].([]interface{}), item)
 	}
-
-	return short(v, nil)
+	return nil
 }
 
-func nativeToCty(item interface{}) (cty.Value, error) {
-	typ, err := gocty.ImpliedType(item)
-	if err != nil {
-		return cty.EmptyObjectVal, err
+func decodeSliceMore(node *Tree, file *hcl.File, bd *hclsyntax.Body, current interface{}, labels ...string) error {
+	slice := current.(*[]interface{})
+	for _, v := range bd.Attributes {
+		u, err := expressionToNative(file, v.Expr)
+		if err != nil {
+			return err
+		}
+		*slice = append(*slice, u)
 	}
-	return gocty.ToCtyValue(item, typ)
-}
-
-func ctyToNative(val cty.Value) (interface{}, error) {
-	switch val.Type() {
-	case cty.String:
-		var v string
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.Number:
-		var v float64
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.Bool:
-		var v bool
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.List(cty.String):
-		var v []string
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.List(cty.Number):
-		var v []float64
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.List(cty.Bool):
-		var v []bool
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.List(cty.DynamicPseudoType):
-		var v []interface{}
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.Map(cty.String):
-		var v map[string]string
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.Map(cty.Number):
-		var v map[string]float64
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.Map(cty.Bool):
-		var v map[string]bool
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	case cty.Map(cty.DynamicPseudoType):
-		var v map[string]interface{}
-		err := gocty.FromCtyValue(val, &v)
-		return v, err
-	default:
+	for _, block := range bd.Blocks {
+		bs := file.Bytes[block.OpenBraceRange.Start.Byte+1 : block.CloseBraceRange.End.Byte-1]
+		next := make(map[string]interface{})
+		err := unmarshalSpec(node, bs, &next, nil, nil, block.Labels...)
+		if err != nil {
+			return err
+		}
+		*slice = append(*slice, next)
 	}
-	return nil, fmt.Errorf("primitive value %#v not implementned", val)
+	return nil
 }
