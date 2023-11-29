@@ -55,45 +55,35 @@ service "http" "web_proxy" {
 		t.Fatal(err)
 	}
 
-	data1, err := json.MarshalIndent(d, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if string(data1) != `{"io_mode":"async","service":{"http":{"web_proxy":{"listen_addr":"127.0.0.1:8080","process":{"main":{"command":["/usr/local/bin/awesome-app","server","gosh"]},"mgmt":{"command":["/usr/local/bin/awesome-app","mgmt"]}}}}}}` {
-		t.Errorf("%s", data)
-		t.Errorf("%s", data1)
-	}
-
+	bs := []byte(`
+io_mode = "async"
+service "http" "web_proxy" {
+  listen_addr = "127.0.0.1:8080"
+  process "main" {
+	command = [
+	  "/usr/local/bin/awesome-app",
+	  "server",
+	  "gosh"
+	]
+	received = 1
+  }
+  process "mgmt" {
+	command = [
+	  "/usr/local/bin/awesome-app",
+	  "mgmt"
+	]
+  }
+}`)
 	m := make(map[string]interface{})
-	err = json.Unmarshal(data1, &m)
+	err = Unmarshal(bs, &m)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	bs, err := Marshal(m)
-	if string(bs) != `{
-  service http web_proxy {
-    listen_addr = "127.0.0.1:8080"
-    process main {
-	  command = [
-	    "/usr/local/bin/awesome-app",
-	    "server",
-	    "gosh"
-	  ],
-	  received = 1.000000
-    }
-    process mgmt {
-	  command = [
-	    "/usr/local/bin/awesome-app",
-	    "mgmt"
-	  ]
-    }
-  },
-  io_mode = "async"
-}` {
+	if !reflect.DeepEqual(d, m) {
+		t.Errorf("%#v", d)
+		t.Errorf("%#v", d)
 		t.Errorf("%s", data)
-		t.Errorf("%s", data1)
 		t.Errorf("%s", bs)
 	}
 }
