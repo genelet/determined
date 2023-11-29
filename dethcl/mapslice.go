@@ -26,7 +26,7 @@ func isHashAll(item interface{}) (map[string]interface{}, bool) {
 	return next, foundItem
 }
 
-func encode(current interface{}, level int) ([]byte, error) {
+func encode_alternative(current interface{}, level int) ([]byte, error) {
 	var str string
 
 	leading := strings.Repeat("  ", level+1)
@@ -72,36 +72,81 @@ func encode(current interface{}, level int) ([]byte, error) {
 		} else {
 			str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, "\n"+leading), lessLeading)
 		}
-		/*
-			var found bool
-			for {
-				var inner_found bool
-				switch t := item.(type) {
-				case map[string]interface{}:
-					if len(t) == 1 {
-						for k, v := range t {
-							name += " " + k
-							item = v
-						}
-						inner_found = true
-					}
-				default:
-				}
-				if !inner_found {
-					break
-				}
-				found = inner_found
-			}
+
+	//		var found bool
+	//		for {
+	//			var inner_found bool
+	//			switch t := item.(type) {
+	//			case map[string]interface{}:
+	//				if len(t) == 1 {
+	//					for k, v := range t {
+	//						name += " " + k
+	//						item = v
+	//					}
+	//					inner_found = true
+	//				}
+	//			default:
+	//			}
+	//			if !inner_found {
+	//				break
+	//			}
+	//			found = inner_found
+	//		}
+	//		bs, err := mmarshal(item, level+1)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		if found {
+	//			arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+	//		} else {
+	//			arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+	//		}
+
+	case reflect.Slice, reflect.Array:
+		var arr []string
+		for _, item := range current.([]interface{}) {
 			bs, err := mmarshal(item, level+1)
 			if err != nil {
 				return nil, err
 			}
-			if found {
-				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
-			} else {
-				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+			arr = append(arr, string(bs))
+		}
+		str = fmt.Sprintf("[\n%s\n%s]", leading+strings.Join(arr, ",\n"+leading), lessLeading)
+	case reflect.String:
+		str = "\"" + rv.String() + "\""
+	case reflect.Bool:
+		str = fmt.Sprintf("%t", rv.Bool())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		str = fmt.Sprintf("%d", rv.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		str = fmt.Sprintf("%d", rv.Uint())
+	case reflect.Float32, reflect.Float64:
+		str = fmt.Sprintf("%f", rv.Float())
+	default:
+		return nil, fmt.Errorf("data type %v not supported", rv.Kind())
+	}
+
+	return []byte(str), nil
+}
+
+func encode(current interface{}, level int) ([]byte, error) {
+	var str string
+
+	leading := strings.Repeat("  ", level+1)
+	lessLeading := strings.Repeat("  ", level)
+
+	rv := reflect.ValueOf(current)
+	switch rv.Kind() {
+	case reflect.Map:
+		var arr []string
+		for name, item := range current.(map[string]interface{}) {
+			bs, err := mmarshal(item, level+1)
+			if err != nil {
+				return nil, err
 			}
-		*/
+			arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+		}
+		str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, ",\n"+leading), lessLeading)
 	case reflect.Slice, reflect.Array:
 		var arr []string
 		for _, item := range current.([]interface{}) {

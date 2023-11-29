@@ -227,7 +227,19 @@ func ctyToNative(val cty.Value) (interface{}, error) {
 	switch {
 	case ty.IsListType():
 	case ty.IsMapType():
-	case ty.IsObjectType():
+	case ty.IsObjectType(), ty.IsSetType():
+		var u map[string]interface{}
+		for k, v := range val.AsValueMap() {
+			x, err := ctyToNative(v)
+			if err != nil {
+				return nil, err
+			}
+			if u == nil {
+				u = make(map[string]interface{})
+			}
+			u[k] = x
+		}
+		return u, nil
 	case ty.IsTupleType():
 		var u []interface{}
 		for _, v := range val.AsValueSlice() {
@@ -238,10 +250,9 @@ func ctyToNative(val cty.Value) (interface{}, error) {
 			u = append(u, x)
 		}
 		return u, nil
-	case ty.IsSetType():
 	case ty.IsPrimitiveType():
 	default:
 	}
 
-	return nil, fmt.Errorf("primitive value %#v not implementned", val)
+	return nil, fmt.Errorf("assumed primitive value %#v not implementned", val)
 }
