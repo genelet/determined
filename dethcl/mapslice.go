@@ -21,13 +21,84 @@ func encode(current interface{}, level int) ([]byte, error) {
 	case reflect.Map:
 		var arr []string
 		for name, item := range current.(map[string]interface{}) {
+			var found, found2, found3 bool
+			next, ok := item.(map[string]interface{})
+			if ok {
+				found = true
+			TOP:
+				for key, value := range next {
+					next2, ok2 := value.(map[string]interface{})
+					if ok2 {
+						found2 = true
+						for _, v := range next2 {
+							_, ok3 := v.(map[string]interface{})
+							if ok3 {
+								found3 = true
+							} else {
+								found3 = false
+							}
+						}
+						if found3 {
+							for k, v := range next2 {
+								name2 := name + " " + key + " " + k
+								bs, err := mmarshal(v, level+1)
+								if err != nil {
+									return nil, err
+								}
+								arr = append(arr, fmt.Sprintf("%s %s", name2, bs))
+							}
+							break TOP
+						}
+					}
+					if !found3 {
+						name2 := name + " " + key
+						bs, err := mmarshal(value, level+1)
+						if err != nil {
+							return nil, err
+						}
+						arr = append(arr, fmt.Sprintf("%s %s", name2, bs))
+					}
+				}
+			}
+			if !found && !found2 {
+				bs, err := mmarshal(item, level+1)
+				if err != nil {
+					return nil, err
+				}
+				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+			}
+		}
+		str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, ",\n"+leading), lessLeading)
+		/*
+			var found bool
+			for {
+				var inner_found bool
+				switch t := item.(type) {
+				case map[string]interface{}:
+					if len(t) == 1 {
+						for k, v := range t {
+							name += " " + k
+							item = v
+						}
+						inner_found = true
+					}
+				default:
+				}
+				if !inner_found {
+					break
+				}
+				found = inner_found
+			}
 			bs, err := mmarshal(item, level+1)
 			if err != nil {
 				return nil, err
 			}
-			arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
-		}
-		str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, ",\n"+leading), lessLeading)
+			if found {
+				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+			} else {
+				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
+			}
+		*/
 	case reflect.Slice, reflect.Array:
 		var arr []string
 		for _, item := range current.([]interface{}) {
@@ -143,7 +214,14 @@ func decodeMapMore(node *Tree, file *hcl.File, bd *hclsyntax.Body, current inter
 		k := block.Type
 		_, ok := (*hash)[k]
 		if !ok {
-			(*hash)[k] = make([]interface{}, 0)
+			(*hash)[k] = make(map[string]interface{})
+		}
+		u := (*hash)[k].(map[string]interface{})
+		for _, v := range block.Labels {
+			if u[v] == nil {
+				u[v] = make(map[string]interface{})
+			}
+			u = u[v].(map[string]interface{})
 		}
 		bs := file.Bytes[block.OpenBraceRange.Start.Byte+1 : block.CloseBraceRange.End.Byte-1]
 		item := map[string]interface{}{}
@@ -151,10 +229,9 @@ func decodeMapMore(node *Tree, file *hcl.File, bd *hclsyntax.Body, current inter
 		if err != nil {
 			return err
 		}
-		for i, v := range block.Labels {
-			item[fmt.Sprintf("%s_label_%d", k, i)] = v
+		for k, v := range item {
+			u[k] = v
 		}
-		(*hash)[k] = append((*hash)[k].([]interface{}), item)
 	}
 	return nil
 }

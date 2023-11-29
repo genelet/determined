@@ -18,38 +18,53 @@ import (
 //   - current: pointer of struct, []interface{} or map[string]interface{}
 //   - optional labels: field values of labels
 func Unmarshal(dat []byte, current interface{}, labels ...string) error {
-	rv := reflect.ValueOf(current)
-	if rv.Kind() != reflect.Pointer {
-		return fmt.Errorf("non-pointer or nil data")
-	}
-	rv = rv.Elem()
+	return unmarshalSpec(nil, dat, current, nil, nil, labels...)
+	/*
+		   	// The code will never be reached because Map and Slice are already handled in "Unmarshal".
+			// To force sorted map to ignore blocks and force attributes to be map[string]interface{},
+			// comment the first last above and run the following code.
+		   rv := reflect.ValueOf(current)
 
-	switch rv.Kind() {
-	case reflect.Struct:
-		return UnmarshalSpec(dat, current, nil, nil, labels...)
-	case reflect.Map:
-		x := current.(*map[string]interface{})
-		obj, err := decodeMap(dat)
-		if err != nil {
-			return err
-		}
-		for k, v := range obj {
-			(*x)[k] = v
-		}
-	case reflect.Slice:
-		x := current.(*[]interface{})
-		obj, err := decodeSlice(dat)
-		if err != nil {
-			return err
-		}
-		for _, v := range obj {
-			*x = append(*x, v)
-		}
-	default:
-		return fmt.Errorf("data type %v not supported", rv.Kind())
-	}
-	return nil
+		   	if rv.Kind() != reflect.Pointer {
+		   		return fmt.Errorf("non-pointer or nil data")
+		   	}
 
+		   rv = rv.Elem()
+
+		   switch rv.Kind() {
+		   case reflect.Struct:
+
+		   	return UnmarshalSpec(dat, current, nil, nil, labels...)
+
+		   case reflect.Map:
+
+		   	x := current.(*map[string]interface{})
+		   	obj, err := decodeMap(dat)
+		   	if err != nil {
+		   		return err
+		   	}
+		   	for k, v := range obj {
+		   		(*x)[k] = v
+		   	}
+
+		   case reflect.Slice:
+
+		   	x := current.(*[]interface{})
+		   	obj, err := decodeSlice(dat)
+		   	if err != nil {
+		   		return err
+		   	}
+		   	for _, v := range obj {
+		   		*x = append(*x, v)
+		   	}
+
+		   default:
+
+		   		return fmt.Errorf("data type %v not supported", rv.Kind())
+		   	}
+
+		   return nil
+	*/
 }
 
 // UnmarshalSpec decodes HCL struct data with interface specifications.
@@ -105,9 +120,6 @@ func unmarshalSpec(node *Tree, dat []byte, current interface{}, spec *Struct, re
 	}
 
 	if spec == nil {
-		// The code will never be reached because Map and Slice are already handled in "Unmarshal".
-		// To force sorted map to map[string]interface{}, comment that and run the following code.
-		// The result is attached to the end of mapslice_test.go - commented out as well.
 		switch reflect.ValueOf(current).Elem().Kind() {
 		case reflect.Map:
 			return decodeMapMore(node, file, bd, current, labels...)
