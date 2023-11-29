@@ -10,6 +10,22 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
+func isHashAll(item interface{}) (map[string]interface{}, bool) {
+	var foundItem bool
+	next, ok := item.(map[string]interface{})
+	if ok {
+		for _, v := range next {
+			_, ok1 := v.(map[string]interface{})
+			if ok1 {
+				foundItem = true
+			} else {
+				foundItem = false
+			}
+		}
+	}
+	return next, foundItem
+}
+
 func encode(current interface{}, level int) ([]byte, error) {
 	var str string
 
@@ -21,37 +37,21 @@ func encode(current interface{}, level int) ([]byte, error) {
 	case reflect.Map:
 		var arr []string
 		for name, item := range current.(map[string]interface{}) {
-			var found, found2, found3 bool
-			next, ok := item.(map[string]interface{})
-			if ok {
-				found = true
-			TOP:
+			next, foundItem := isHashAll(item)
+			if foundItem {
 				for key, value := range next {
-					next2, ok2 := value.(map[string]interface{})
-					if ok2 {
-						found2 = true
-						for _, v := range next2 {
-							_, ok3 := v.(map[string]interface{})
-							if ok3 {
-								found3 = true
-							} else {
-								found3 = false
+					next2, found3 := isHashAll(value)
+					if found3 {
+						for k, v := range next2 {
+							name2 := name + ` "` + key + `" "` + k + `"`
+							bs, err := mmarshal(v, level+1)
+							if err != nil {
+								return nil, err
 							}
+							arr = append(arr, fmt.Sprintf("%s %s", name2, bs))
 						}
-						if found3 {
-							for k, v := range next2 {
-								name2 := name + " " + key + " " + k
-								bs, err := mmarshal(v, level+1)
-								if err != nil {
-									return nil, err
-								}
-								arr = append(arr, fmt.Sprintf("%s %s", name2, bs))
-							}
-							break TOP
-						}
-					}
-					if !found3 {
-						name2 := name + " " + key
+					} else {
+						name2 := name + ` "` + key + `"`
 						bs, err := mmarshal(value, level+1)
 						if err != nil {
 							return nil, err
@@ -59,8 +59,7 @@ func encode(current interface{}, level int) ([]byte, error) {
 						arr = append(arr, fmt.Sprintf("%s %s", name2, bs))
 					}
 				}
-			}
-			if !found && !found2 {
+			} else {
 				bs, err := mmarshal(item, level+1)
 				if err != nil {
 					return nil, err
@@ -68,7 +67,11 @@ func encode(current interface{}, level int) ([]byte, error) {
 				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
 			}
 		}
-		str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, ",\n"+leading), lessLeading)
+		if level == 0 {
+			str = fmt.Sprintf("\n%s\n%s", leading+strings.Join(arr, "\n"+leading), lessLeading)
+		} else {
+			str = fmt.Sprintf("{\n%s\n%s}", leading+strings.Join(arr, "\n"+leading), lessLeading)
+		}
 		/*
 			var found bool
 			for {
