@@ -35,7 +35,7 @@ Therefore,  _determined_  was created to streamline the coding process and enhan
 Following the idea in  [_reflect_](https://pkg.go.dev/reflect), we use  [protobuf](https://protobuf.dev/)  to implement  _Unmarshaler._
 
 The following proto interprets an interface type in dynamic JSON data:
-
+```bash
     syntax = "proto3";  
       
     package det;  
@@ -63,11 +63,11 @@ The following proto interprets an interface type in dynamic JSON data:
     message MapStruct {  
       map<string, Struct> map_fields = 1;  
     }
-
+```
 where c_lass_name_  is the  _go struct_  type name at run-time.
 
 The CLI,  _protoc_  will generate the following Golang code:
-
+```go
     type Struct struct {  
      ClassName string            `protobuf:"bytes,1,opt,name=ClassName,proto3" json:"ClassName,omitempty"`  
      Fields    map[string]*Value `protobuf:"bytes,2,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`  
@@ -84,11 +84,12 @@ The CLI,  _protoc_  will generate the following Golang code:
     }  
     
     ....
+```
 
 ## 1.3  _NewStruct_
 
 There’s no need for users to interact directly with the aforementioned proto-generated package. Instead, the required step involves creating a Golang map to interpret the interface. This map is then passed to the  _NewStruct_  function to generate a new  _Struct:_
-
+```go
     // NewStruct constructs a Struct from a generic Go map.  
     // The map keys of v must be valid UTF-8.  
     // The map values of v are converted using NewValue.  
@@ -110,7 +111,7 @@ There’s no need for users to interact directly with the aforementioned proto-g
     // ║ []*Struct                 │ ListStruct                   ║  
     // ║ map[string]*Struct        │ MapStruct                    ║  
     // ╚═══════════════════════════╧══════════════════════════════╝
-
+```
 Fields of primitive data types, or with defined  _go struct,_  should be ignored, since they will be decoded automatically by  _encoding/json_.
 
 Here are example usages of  _NewStruct_.
@@ -118,7 +119,7 @@ Here are example usages of  _NewStruct_.
 **Single Interface:**
 
 Here  _geo_  contains interface field  `Shape`.
-
+```go
     type geo struct {  
         Name  string `json:"name" hcl:"name"`  
         Shape inter  `json:"shape" hcl:"shape,block"`  
@@ -144,47 +145,47 @@ Here  _geo_  contains interface field  `Shape`.
     func (self *circle) Area() float32 {  
         return 3.14159 * self.Radius  
     }
-
+```
 Assume a serialized JSON of  _geo_  is received, where field  `Shape` is known to be  _circle_  at run-time. To decode  `Shape`  of type _circle_, build the following  _spec_:
-
+```go
     spec, err := NewStruct(  
       "geo", map[string]interface{}{"Shape": "circle"})
-
+```
 If  `Shape`  is type  _square,_  build this  _spec_:
-
+```go
     spec, err = NewStruct(  
       "geo", map[string]interface{}{"Shape": "square"})
-
+```
 **List of interface:**
 
 Here  _picture_  contains  `Drawings`, which is a slice of interface. The  _spec_  for serialized slice of  _square_,  _circle_  or combination of  _square_  and  _circle_, are
-
+```go
     type picture struct {  
     Name string  `json:"name" hcl:"name"`  
     Drawings []inter `json:"drawings" hcl:"drawings,block"`  
     }  
-
+```
  
 incoming data is slice of square, size 2 :
-
+```go
     spec, err := NewStruct(  
     "Picture", map[string]interface{}{  
     "Drawings": []string{"square", "square"}})  
-
+```
   
 the first element is square and the second circle  :
-
+```go
     spec, err := NewStruct(  
     "Picture", map[string]interface{}{  
     "Drawings": []string{"square", "circle"}})  
-
+```
   
 if all elements of interface slice is type square :
-
+```go
     spec, err := NewStruct(  
     "Picture", map[string]interface{}{  
     "Drawings": []string{"square"}})
-
+```
  
 
 Note that if all elements are of the same type  _square_  in  `Drawing`, just pass 1-element array  _[]string{“square”}._
@@ -192,7 +193,7 @@ Note that if all elements are of the same type  _square_  in  `Drawing`, just pa
 **Map of interface:**
 
 Here  `Shapes`  is a map of interface:
-
+```go
     type geometry struct {  
         Name   string           `json:"name" hcl:"name"`  
         Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`  
@@ -201,18 +202,18 @@ Here  `Shapes`  is a map of interface:
     spec, err := NewStruct(  
       "geometry", map[string]interface{}{  
         "Shapes": map[string]string{"k1":"square", "k2":"square"}})  
-
+```
   
 if all values of interface map is type square  :
-
+```go
     spec, err := NewStruct(  
       "Picture", map[string]interface{}{  
         "Shapes": []string{"square"}})
-
+```
 **Nested:**
 
 In  _toy_,  `Geo`  is of type  _geo_  which contains interface  `Shape`:
-
+```go
     type toy struct {  
         Geo     geo     `json:"geo" hcl:"geo,block"`  
         ToyName string  `json:"toy_name" hcl:"toy_name"`  
@@ -223,11 +224,11 @@ In  _toy_,  `Geo`  is of type  _geo_  which contains interface  `Shape`:
       "toy", map[string]interface{}{  
         "Geo": [2]interface{}{  
           "geo", map[string]interface{}{"Shape": "square"}}})
-
+```
 **Nested of nested:**
 
 Here  _child_  has field  `Brand`  which is a map of nested  _toy_:
-
+```go
     type child struct {  
         Brand map[string]*toy `json:"brand" hcl:"brand,block"`  
         Age   int  `json:"age" hcl:"age"`  
@@ -245,16 +246,16 @@ Here  _child_  has field  `Brand`  which is a map of nested  _toy_:
         },  
       },  
     )
-
+```
 ## 1.4 Use JsonUnmarshal to Decode JSON
 
 To decode JSON to object containing interface types, use  _JsonUnmarshal_:
 
-
+```go
     func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error
-    
+```    
     The following program decodes JSON  _data1_  into object  _child_:
-    
+ ```go   
     package main  
       
     import (  
@@ -348,20 +349,20 @@ To decode JSON to object containing interface types, use  _JsonUnmarshal_:
         fmt.Printf("%#v\n", c.Brand["def2"])  
         fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)  
     }
-
+```
 the program outputs:
-
+```bash
     &main.toy{Geo:main.geo{Name:"medium shape", Shape:(*main.circle)(0xc0000b6468)}, ToyName:"roblox", Price:99.9}  
     &main.circle{Radius:1.234}  
     &main.toy{Geo:main.geo{Name:"square shape", Shape:(*main.square)(0xc0000b6350)}, ToyName:"minecraft", Price:9.9}  
     &main.square{SX:5, SY:6}
-
+```
 ## 1.5 Customized Unmarshaler of encoding/json
 
 If  _UnmarshalJSON_  is implemented on  _go struct_, it is said to have a customized  _unmarshaler_  and so Golang core package  _encoding/json_ will automatically decode it.
 
 With  _JsonUnmarshal,_ we can easily write a customized  _unmarshaler_  for  _child_:
-
+```go
     type child struct {  
         Brand map[string]*toy `json:"brand" hcl:"brand,block"`  
         Age   int  `json:"age" hcl:"age"`  
@@ -375,9 +376,9 @@ With  _JsonUnmarshal,_ we can easily write a customized  _unmarshaler_  for  _ch
     func (self *child) UnmarshalJSON(dat []byte) error {  
         return det.JsonUnmarshal(dat, self, self.spec, self.ref)  
     }
-
+```
 Now the sample code in Chapter 4 can use  _encoding/json_  to decode:
-
+```go
     package main  
       
     import (  
@@ -483,7 +484,7 @@ Now the sample code in Chapter 4 can use  _encoding/json_  to decode:
         fmt.Printf("%#v\n", c.Brand["def2"])  
         fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)  
     }
-
+```
 The advantage of using a customized  _unmarshaler_  is that any Go struct, which encapsulates a child, can directly use  _encoding/json_  without worrying about interface fields in the child.
 
 <br>
@@ -502,7 +503,7 @@ HCL is a key component of Hashicorp’s cloud infrastructure automation tools, s
 ## 2.2 Encoding Map
 
 Here is an example to encode object with package  _gohcl_.
-
+```go
     package main  
       
     import (  
@@ -537,13 +538,13 @@ Here is an example to encode object with package  _gohcl_.
         gohcl.EncodeIntoBody(app, f.Body())  
         fmt.Printf("%s", f.Bytes())  
     }
-
+```
 It panics because of the map field  `Shapes`.
 
     panic: cannot encode map[string]*main.square as HCL expression: no cty.Type for main.square (no cty field tags)
 
 But  _determined_ will encode it properly:
-
+```go
     package main  
       
     import (  
@@ -579,9 +580,9 @@ But  _determined_ will encode it properly:
         }  
         fmt.Printf("%s", bs)  
     }
-
+```
 Run the code:
-
+```bash
     $ go run sample1_2.go  
       
     name = "Medium Article"  
@@ -594,7 +595,7 @@ Run the code:
      sx = 5  
      sy = 6  
     }
-
+```
 Note:
 
 > map is encoded as block list with labels as keys.
@@ -602,7 +603,7 @@ Note:
 ## 2.3 Encode Interface Data
 
 Go struct  _picture_  has field  `Drawings`, a list of  _interface_. This sample shows how  _determined_  encodes data of one  _square_  and one  _circle_  in the list.
-
+```go
     package main  
       
     import (  
@@ -649,9 +650,9 @@ Go struct  _picture_  has field  `Drawings`, a list of  _interface_. This sample
         }  
         fmt.Printf("%s", bs)  
     }
-
+```
 Run the code:
-
+```bash
     $ go run sample1_3.go   
       
     name = "Medium Article"  
@@ -663,11 +664,11 @@ Run the code:
     drawings {  
      radius = 6  
     }
-
+```
 ## 2.4  Encoding with HCL Labels
 
 `label`  is encoded as map key. If it is missing, the block map will be encoded as list:
-
+```go
     package main  
       
     import (  
@@ -719,9 +720,9 @@ Run the code:
         }  
         fmt.Printf("%s", bs)  
     }
-
+```
 Run the code:
-
+```bash
     $ go run sample1_5.go   
     name = "Medium Article"  
     drawings {  
@@ -733,7 +734,7 @@ Run the code:
      sx = 2  
      sy = 3  
     }
-
+```
 The labels  _abc2_  and  _def2_  are properly placed in block  `Drawings`.
 
 ## 2.5  Summary
@@ -759,7 +760,7 @@ The  _Unmarshal_  function in  _determined_  can
 Similar to JSON, HCL data cannot be decoded into an object if the latter contains an interface field. We need a specification for the actual data structure of the interface at runtime. HCL has the  [_hcldec_](https://pkg.go.dev/github.com/hashicorp/hcl/v2)  package to handle this issue.
 
 However,  _hcldec_  is not straightforward to use. For instance, describing the following data structure can be challenging:
-
+```bash
     io_mode = "async"
     
     service "http" "web_proxy" {
@@ -774,9 +775,9 @@ However,  _hcldec_  is not straightforward to use. For instance, describing the 
         command = ["/usr/local/bin/awesome-app", "mgmt"]
       }
     }
-
+```
 _hcldec_  needs a long description:
-
+```go
     spec := hcldec.ObjectSpec{  
         "io_mode": &hcldec.AttrSpec{  
             Name: "io_mode",  
@@ -807,11 +808,11 @@ _hcldec_  needs a long description:
     }  
     val, moreDiags := hcldec.Decode(f.Body, spec, nil)  
     diags = append(diags, moreDiags...)
-
+```
 > Note that  _hcldec_  also parses variables, functions and expression evaluations, as we see in Terraform. Those features have only been implemented partially in  _determined_.
 
 In  _determined_, the specification could be written simply as:
-
+```go
     spec, err := NewStruct("Terraform", map[string]interface{}{  
       "services": [][2]interface{}{  
         {"service", map[string]interface{}{  
@@ -823,13 +824,13 @@ In  _determined_, the specification could be written simply as:
         }},  
       },  
     } 
-
+```
 which says that  _service_  is the only item in list field  `services`; within  _service_, there is field  `processes`, defined to be scalar of  _process_, which contains interface field  `command`  and its runtime implementation is  _commandName_. Fields of primitive data type or defined  _go struct_  should be ignored in  _spec_, because they will be decoded automatically.
 
 ## 3.2 Struct and Value
 
 Beneath the surface, we have followed Go’s  _reflect_  package to define data  _Struct_  and  _Value_  in proto message,
-
+```bash
     syntax = "proto3";  
       
     package dethcl;  
@@ -852,9 +853,9 @@ Beneath the surface, we have followed Go’s  _reflect_  package to define data 
     message ListStruct {  
       repeated Struct list_fields = 1;  
     }
-    
+ ```   
     which is auto generated into the Go code:
-    
+  ```go  
     type Struct struct {  
         ClassName string            `protobuf:"bytes,1,opt,name=className,proto3" json:"className,omitempty"`  
         Fields    map[string]*Value `protobuf:"bytes,2,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`  
@@ -875,9 +876,9 @@ Beneath the surface, we have followed Go’s  _reflect_  package to define data 
     }  
       
     ...
-
+```
 To build a new  _Struct_, use function  _NewStruct_:
-
+```go
     func NewStruct(class_name string, v …map[string]interface{}) (*Struct, error)  
     //  
     // where v is a nested primative map with  
@@ -896,9 +897,9 @@ To build a new  _Struct_, use function  _NewStruct_:
     //  ║ *Struct          │ SingleStruct      ║  
     //  ║ []*Struct        │ ListStruct        ║  
     //  ╚══════════════════╧═══════════════════╝
-
+```
 In the following example, the  _geo_  type contains interface  `Shape`  which is implemented as either  _circle_  or  _square_:
-
+```go
     type geo struct {  
         Name  string `json:"name" hcl:"name"`  
         Shape inter  `json:"shape" hcl:"shape,block"`  
@@ -924,45 +925,45 @@ In the following example, the  _geo_  type contains interface  `Shape`  which is
     func (self *circle) Area() float32 {  
         return 3.14159 * self.Radius  
     }
-
+```
 At run time, we know the data instance of geo is using type  `Shape`  =  _cirle_, so our  _Struct_  is:
-
+```go
     spec, err := dethcl.NewStruct(  
       "geo", map[string]interface{}{"Shape": "circle"})
-    
+``` 
     and for  `Shape`  of  _square:_
-    
+ ```go   
     spec, err = NewStruct(  
       "geo", map[string]interface{}{"Shape": "square"})
-
+```
 We have ignored field  `Name`  because it is a primitive type.
 
 ## 3.3 More Examples
 
 Type _picture_  has field  `Drawings`  which is a list of  `Shape`  of size 2:
-
+```go
     type picture struct {  
         Name     string   `json:"name" hcl:"name"`  
         Drawings []inter  `json:"drawings" hcl:"drawings,block"`  
     }  
-
+```
   
 incoming data is slice of square, size 2  
-
+```go
     spec, err := NewStruct(  
       "Picture", map[string]interface{}{  
         "Drawings": []string{"square", "square"}})
-
+```
 Type  _geometry_  has field  `Shapes`  as a map of  `Shape`  of size 2:
-
+```go
     type geometry struct {  
         Name   string           `json:"name" hcl:"name"`  
         Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`  
     }  
-
+```
   
 incoming HCL data is map e.g.  
-
+```bash
     name = "medium shapes"  
     shapes obj5 {  
        sx = 5  
@@ -972,15 +973,15 @@ incoming HCL data is map e.g.
       sx = 7  
       sy = 8  
     }  
-
+```
   Use:
-
+```go
     spec, err := NewStruct(  
       "geometry", map[string]interface{}{  
         "Shapes": []string{"square", "square"}})
-
+```
 Type  _toy_  has field`Geo`  which contains  `Shape`:
-
+```go
     type toy struct {  
         Geo     geo     `json:"geo" hcl:"geo,block"`  
         ToyName string  `json:"toy_name" hcl:"toy_name"`  
@@ -991,9 +992,9 @@ Type  _toy_  has field`Geo`  which contains  `Shape`:
       "toy", map[string]interface{}{  
         "Geo": [2]interface{}{  
           "geo", map[string]interface{}{"Shape": "square"}}})
-
+```
 Type  _child_  has field  `Brand`  which is a map of the above  _Nested of nested_  _toy:_
-
+```go
     type child struct {  
         Brand map[string]*toy `json:"brand" hcl:"brand,block"`  
         Age   int  `json:"age" hcl:"age"`  
@@ -1011,7 +1012,7 @@ Type  _child_  has field  `Brand`  which is a map of the above  _Nested of neste
         },  
       },  
     )
-
+```
 ## 3.4 Unmarshal HCL Data to Object
 
 The decoding function  _Unmarshal_  can be used in 4 cases.
@@ -1033,7 +1034,7 @@ The decoding function  _Unmarshal_  can be used in 4 cases.
     func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error    
 ```
 In the following example, we decode data to  _child_  of type  _Nested of nested_, which contains multiple  _interfaces_  and  _maps_,
-
+```go
     package main  
       
     import (  
@@ -1090,17 +1091,17 @@ In the following example, we decode data to  _child_  of type  _Nested of nested
         fmt.Printf("%#v\n", c.Brand["def2"])  
         fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)  
     }  
-
+```
   
 the program outputs:  
   
-
+```bash
     5  
     &main.toy{Geo:main.geo{Name:"medium shape", Shape:(*main.circle)(0xc000018650)}, ToyName:"roblox", Price:99.9}  
     &main.circle{Radius:1.234}  
     &main.toy{Geo:main.geo{Name:"quare shape", Shape:(*main.square)(0xc000018890)}, ToyName:"minecraft", Price:9.9}  
     &main.square{SX:5, SY:6}
-
+```
 The output is populated properly into specified objects.
 
 <br>
@@ -1148,8 +1149,7 @@ If you start with HCL, make sure it contains only primitive data types of maps, 
 
 Here is the example to convert HCL to YAML:
 
-
-
+```go
     package main  
       
     import (  
@@ -1192,13 +1192,12 @@ Here is the example to convert HCL to YAML:
         }  
         fmt.Printf("%s\n", yml)  
     }
-
-
+```
 
 > Note that HCL is enclosed internally in curly bracket. But the top-level curly bracket should be removed, so it can be accepted by  [the HCL parser](https://pkg.go.dev/github.com/hashicorp/hcl/v2/hclsyntax).
 
 Run the program to get YAML:
-
+```bash
     $ go run x.go  
     
     name: marcus  
@@ -1220,13 +1219,12 @@ Run the program to get YAML:
         z:  
             za: aa  
             zb: 3.14
-
+```
 ## 4.4 The CLI
 
 In directory  `cmd`, there is a CLI program  `convert.go`. Its usage is
 
-    hcl, json and yaml are choices of the formats  
-      
+```bash      
     $ go run convert.go  
     
     convert [options] <filename>  
@@ -1234,9 +1232,11 @@ In directory  `cmd`, there is a CLI program  `convert.go`. Its usage is
          from format (default "hcl")  
       -to string  
          to format (default "yaml")
-    
-    This is a HCL:
-    
+ ```   
+
+This is a HCL:
+
+```bash
     version = "3.7"  
     services "db" {  
       image = "hashicorpdemoapp/product-api-db:v0.0.22"  
@@ -1264,17 +1264,16 @@ In directory  `cmd`, there is a CLI program  `convert.go`. Its usage is
         "./conf.json:/config/config.json"  
       ]  
     }  
-
+```
   
-
 Convert it to JSON:
-
+```bash
     $ go run convert.go -to json the_above.hcl   
     
     {"services":{"api":{"depends_on":["db"],"environment":{"CONFIG_FILE":"/config/config.json"},"image":"hashicorpdemoapp/product-api:v0.0.22","ports":["19090:9090"],"volumes":["./conf.json:/config/config.json"]},"db":{"environment":{"POSTGRES_DB":"products","POSTGRES_PASSWORD":"password","POSTGRES_USER":"postgres"},"image":"hashicorpdemoapp/product-api-db:v0.0.22","ports":["15432:5432"]}},"version":"3.7"}
-
+```
 Convert it to YAML:
-
+```bash
     $ go run convert.go the_above.hcl  
     
     services:  
@@ -1297,7 +1296,7 @@ Convert it to YAML:
             ports:  
                 - 15432:5432  
     version: "3.7"
-
+```
 We see that HCL’s syntax is cleaner, more readable, and less error-prone compared to JSON and YAML.
 
 ## 4.5 Summary
