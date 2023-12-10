@@ -252,9 +252,9 @@ Here  _child_  has field  `Brand`  which is a map of nested  _toy_:
 To decode JSON to object containing interface types, use  _JsonUnmarshal_:
 
 ```go
-    func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error
+func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error
 ```    
-    The following program decodes JSON  _data1_  into object  _child_:
+The following program decodes JSON  _data1_  into object  _child_:
  ```go   
     package main  
       
