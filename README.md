@@ -35,7 +35,7 @@ However, in cases where we don’t care about map orders, and there are no varia
 
 `determined`  is a GO package to marshal and unmarshal dynamic JSON and HCL contents with interface types. It has a  `convert`  library for conversions among different data formats.
 
-Technically, a JSON or YAML string can be unmarshalled into an anonymous map of  _map[string]interface{}_. For seamless conversion, `determined has internally implemented the methods to unmarshal any HCL string into an anonymous map, and marshal an anonymous map into a properly formatted HCL string.
+Technically, a JSON or YAML string can be unmarshalled into an anonymous map of  _map[string]interface{}_. For seamless conversion, `determined` has internally implemented the methods to unmarshal any HCL string into an anonymous map, and marshal an anonymous map into a properly formatted HCL string.
 
 The following functions in  `determined/convert`  can be used for conversion:
 
