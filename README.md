@@ -5,9 +5,9 @@ _Determined_ marshals and unmarshals JSON and HCL data to _go struct_ containing
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
 - Chapter 1: [Decoding of Dynamic JSON Data](#chapter-1-decoding-of-dynamic-json-data) (for JSON only)
-- Chapter 2: [Marshal GO Object into HCL](#chapter2) (for encoding HCL object)
-- Chapter 3: [Unmarshal HCL Data to GO Object](#chapter3) (for dynamic HCL decoding)
-- Chapter 4: [Convertion among Data Formats HCL, JSON and YAML](#chapter4)
+- Chapter 2: [Marshal GO Object into HCL](#chapter-2-marshal-go-object-into-hcl) (for encoding HCL object)
+- Chapter 3: [Unmarshal HCL Data to GO Object](#chapter-3-unmarshal-hcl-data-to-go-object) (for dynamic HCL decoding)
+- Chapter 4: [Convertion among Data Formats HCL, JSON and YAML](#chapter-4-convertion-among-data-formats-hcl-json-and-yaml)
 
 To download, 
 
@@ -490,7 +490,6 @@ The advantage of using a customized  _unmarshaler_  is that any Go struct, which
 
 <br>
 
-#chapter2
 # Chapter 2. Marshal GO Object into HCL
 <br>
 
@@ -745,7 +744,6 @@ The new HCL package,  _determined_, can marshal a wider range of Go objects, suc
 
 <br>
 
-#chapter3
 # Chapter 3. Unmarshal HCL Data to GO Object
 <br>
 
@@ -1019,31 +1017,21 @@ Type  _child_  has field  `Brand`  which is a map of the above  _Nested of neste
 The decoding function  _Unmarshal_  can be used in 4 cases.
 
 1.  Decode HCL  _data_  to  _object_  without dynamic schema.
-
+```go
     func Unmarshal(dat []byte, object interface{}) error
-
+```
 2. Decode  _data_  to  _object_  without dynamic schema but with  `label`. The labels will be assigned to the  _label_  fields in  _object_.
-
+```go
     func Unmarshal(dat []byte, object interface{}, labels ...string) error
-
+```
 3. Decode  _data_  to  _object_  with dynamic schema specified by  _spec_  and  _ref_.
-
+```go
     func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error   
-    //  
-    // spec: describe how the interface fields are interprested  
-    // ref: a reference map to map class names in spec, to objects of empty value.  
-    // e.g.  
-    // ref := map[string]interface{}{"cirle": new(Circle), "geo": new(Geo)}
-
+```
 4. Decode  _data_  to  _object_  with dynamic schema specified by  _spec_  and  _ref ,_ and with  `label`. The labels will be assigned to the  _label_  fields in  _object_.
-
-    func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error   
-    //  
-    // spec: describe how the interface fields are interprested  
-    // ref: a reference map to map class names in spec, to objects of empty value.  
-    // e.g.  
-    // ref := map[string]interface{}{"cirle": new(Circle), "geo": new(Geo)}  
-
+```go
+    func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error    
+```
 In the following example, we decode data to  _child_  of type  _Nested of nested_, which contains multiple  _interfaces_  and  _maps_,
 
     package main  
@@ -1119,7 +1107,6 @@ The output is populated properly into specified objects.
 
 <br>
 
-#chapeter4
 # Chapter 4. Convertion among Data Formats HCL, JSON and YAML
 <br>
 
