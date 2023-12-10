@@ -40,7 +40,7 @@ type some struct {
 
 func TestAddLabels(t *testing.T) {
 	v := &some{SX: 1, SY: 2}
-	addLables(v, "a1", "b1", "c1")
+	addLabels(v, "a1", "b1", "c1")
 	if v.L1 != "a1" || v.L2 != "b1" || v.L3 != "c1" || v.SX != 1 || v.SY != 2 {
 		t.Errorf("%#v", v)
 	}

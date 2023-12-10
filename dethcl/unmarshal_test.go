@@ -456,7 +456,7 @@ brand = {
 		t.Fatal(err)
 	}
 
-	if c["age"].(float64) != 5 || c["brand"].(map[string]interface{})["geo"].(map[string]interface{})["shape"].(map[string]interface{})["radius"].(float64) != 1.234 {
+	if c["age"].(int64) != 5 || c["brand"].(map[string]interface{})["geo"].(map[string]interface{})["shape"].(map[string]interface{})["radius"].(float64) != 1.234 {
 		t.Errorf("%#v", c)
 	}
 }

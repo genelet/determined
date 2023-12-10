@@ -6,16 +6,18 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/genelet/determined/utils"
+
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 )
 
 // Marshal marshals object into HCL string
 func Marshal(current interface{}) ([]byte, error) {
-	return mmarshal(current, 0)
+	return MarshalLevel(current, 0)
 }
 
-func mmarshal(current interface{}, level int) ([]byte, error) {
+func MarshalLevel(current interface{}, level int) ([]byte, error) {
 	rv := reflect.ValueOf(current)
 	if rv.IsValid() && rv.IsZero() {
 		return nil, nil
@@ -26,7 +28,8 @@ func mmarshal(current interface{}, level int) ([]byte, error) {
 		return marshal(current, level)
 	default:
 	}
-	return encode(current, level)
+
+	return utils.Encoding(current, level)
 }
 
 func marshal(current interface{}, level int) ([]byte, error) {
@@ -40,7 +43,7 @@ func marshal(current interface{}, level int) ([]byte, error) {
 		oriValue = oriValue.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return mmarshal(current, level)
+		return MarshalLevel(current, level)
 	}
 
 	newFields, err := getFields(t, oriValue)
@@ -252,7 +255,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 			}
 		} else {
-			bs, err := encode(oriField.Interface(), level+1)
+			bs, err := utils.Encoding(oriField.Interface(), level+1)
 			if err != nil {
 				return nil, err
 			}
@@ -293,7 +296,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				empty = append(empty, &marshalOut{hcltag(fieldTag), []byte(k.String()), bs, false})
 			}
 		} else {
-			bs, err := encode(oriField.Interface(), level+1)
+			bs, err := utils.Encoding(oriField.Interface(), level+1)
 			if err != nil {
 				return nil, err
 			}

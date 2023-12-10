@@ -2,7 +2,6 @@ package dethcl
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 )
 
@@ -26,14 +25,26 @@ func TestJsonHcl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(d, m) {
+
+	if !jsonEqual(d, m) {
 		t.Errorf("%#v", d)
-		t.Errorf("%s", bs)
 		t.Errorf("%#v", m)
+		t.Errorf("%s", bs)
 	}
 }
 
-/*
+func jsonEqual(d, m map[string]interface{}) bool {
+	xd, err := json.Marshal(d)
+	if err != nil {
+		panic(err)
+	}
+	xm, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(xd) == string(xm)
+}
+
 func TestDecodeMap(t *testing.T) {
 	data := `
 io_mode = "async"
@@ -56,36 +67,22 @@ service "http" "web_proxy" {
 		t.Fatal(err)
 	}
 
-	bs := []byte(`
-io_mode = "async"
-service "http" "web_proxy" {
-  listen_addr = "127.0.0.1:8080"
-  process "main" {
-	command = [
-	  "/usr/local/bin/awesome-app",
-	  "server",
-	  "gosh"
-	]
-	received = 1
-  }
-  process "mgmt" {
-	command = [
-	  "/usr/local/bin/awesome-app",
-	  "mgmt"
-	]
-  }
-}`)
+	bs, err := Marshal(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	m := make(map[string]interface{})
 	err = Unmarshal(bs, &m)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(d, m) {
+	if !jsonEqual(d, m) {
 		t.Errorf("%#v", d)
 		t.Errorf("%#v", d)
 		t.Errorf("%s", data)
 		t.Errorf("%s", bs)
 	}
+
 }
-*/

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/genelet/determined/utils"
+	"github.com/genelet/determined/convert"
 )
 
 var from string
@@ -44,9 +44,9 @@ func main() {
 	case "json":
 		switch to {
 		case "yaml":
-			raw, err = utils.JSONToYAML(raw)
+			raw, err = convert.JSONToYAML(raw)
 		case "hcl":
-			raw, err = utils.JSONToHCL(raw)
+			raw, err = convert.JSONToHCL(raw)
 		default:
 			fmt.Fprintf(os.Stderr, "error: unsupported to format %s\n", to)
 			os.Exit(-1)
@@ -54,9 +54,9 @@ func main() {
 	case "yaml":
 		switch to {
 		case "json":
-			raw, err = utils.YAMLToJSON(raw)
+			raw, err = convert.YAMLToJSON(raw)
 		case "hcl":
-			raw, err = utils.YAMLToHCL(raw)
+			raw, err = convert.YAMLToHCL(raw)
 		default:
 			fmt.Fprintf(os.Stderr, "error: unsupported to format %s\n", to)
 			os.Exit(-1)
@@ -64,9 +64,9 @@ func main() {
 	case "hcl":
 		switch to {
 		case "json":
-			raw, err = utils.HCLToJSON(raw)
+			raw, err = convert.HCLToJSON(raw)
 		case "yaml":
-			raw, err = utils.HCLToYAML(raw)
+			raw, err = convert.HCLToYAML(raw)
 		default:
 			fmt.Fprintf(os.Stderr, "error: unsupported to format %s\n", to)
 			os.Exit(-1)

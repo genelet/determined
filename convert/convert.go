@@ -1,8 +1,7 @@
-package utils
+package convert
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/genelet/determined/dethcl"
 	"gopkg.in/yaml.v3"
@@ -36,18 +35,8 @@ func JSONToHCL(raw []byte) ([]byte, error) {
 	return dethcl.Marshal(obj)
 }
 
-// refresh refreshes the raw string to a valid HCL string.
-func refresh(raw []byte) []byte {
-	str := strings.TrimSpace(string(raw))
-	if str[0:1] != `{` {
-		str = "{\n" + str + "\n}"
-	}
-	return []byte(str)
-}
-
 // HCLToJSON converts HCL to JSON.
 func HCLToJSON(raw []byte) ([]byte, error) {
-	raw = refresh(raw)
 	obj := map[string]interface{}{}
 	if err := dethcl.Unmarshal(raw, &obj); err != nil {
 		return nil, err
@@ -67,7 +56,6 @@ func YAMLToHCL(raw []byte) ([]byte, error) {
 
 // HCLToYAML converts HCL to YAML.
 func HCLToYAML(raw []byte) ([]byte, error) {
-	raw = refresh(raw)
 	obj := map[string]interface{}{}
 	if err := dethcl.Unmarshal(raw, &obj); err != nil {
 		return nil, err
