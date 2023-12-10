@@ -26,8 +26,6 @@ go get github.com/genelet/determined
 
 ## 1.1 Introduction
 
-In previous articles, we explored how to encode and decode HCL data using the Golang package  [_determined_](https://github.com/genelet/determined). Interestingly,  _determined_  was initially developed for decoding JSON data of the interface type.
-
 The core Golang package  [_encoding/json_](https://pkg.go.dev/encoding/json)  is an exceptional library for managing JSON data. However, to decode the interface type, it necessitates writing a customized  _Unmarshaler_  for the target object. While this isn’t typically a challenging task, it often results in repetitive code for different types of objects and packages.
 
 Therefore,  _determined_  was created to streamline the coding process and enhance productivity.
@@ -501,11 +499,6 @@ According to Hashicorp, HCL (Hashicorp Configuration Language) is a toolkit for 
 
 HCL is a key component of Hashicorp’s cloud infrastructure automation tools, such as Terraform. Its robust support for configuration and expression syntax gives it the potential to serve as a server-side format. For instance, it could replace the backend programming language in low-code/no-code platforms. However, the current  [HCL library](https://pkg.go.dev/github.com/hashicorp/hcl/v2)  does not fully support some data types, such as  _map_  and  _interface_, which limits its usage.
 
-To address this, we have developed a new Go package,  [determined](https://github.com/genelet/determined), which implements marshal and unmarshal functions for HCL, akin to those for  [JSON](https://pkg.go.dev/encoding/json).
-
-In this article, we will explore how to encode objects into HCL data.  
-The decoding of HCL, including data with dynamic schemas, will be discussed in a subsequent article.
-
 ## 2.2 Encoding Map
 
 Here is an example to encode object with package  _gohcl_.
@@ -756,7 +749,7 @@ The new HCL package,  _determined_, can marshal a wider range of Go objects, suc
 
 ## 3.1 Introduction
 
-In this section, we will explore how to convert HCL data back into a Go object using the  [_determined_](https://github.com/genelet/determined)  package.
+In this section, we will explore how to convert HCL data back into a Go object.
 
 The  _Unmarshal_  function in  _determined_  can
 
