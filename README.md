@@ -7,7 +7,7 @@ _Determined_ marshals and unmarshals JSON and HCL data to _go struct_ containing
 - Chapter 1: [Decoding of Dynamic JSON Data](#chapter-1-decoding-of-dynamic-json-data) (for JSON only)
 - Chapter 2: [Marshal GO Object into HCL](#chapter-2-marshal-go-object-into-hcl) (for encoding HCL object)
 - Chapter 3: [Unmarshal HCL Data to GO Object](#chapter-3-unmarshal-hcl-data-to-go-object) (for dynamic HCL decoding)
-- Chapter 4: [Convertion among Data Formats HCL, JSON and YAML](#chapter-4-convertion-among-data-formats-hcl-json-and-yaml)
+- Chapter 4: [Conversion among Data Formats HCL, JSON and YAML](#chapter-4-conversion-among-data-formats-hcl-json-and-yaml)
 
 To download, 
 
@@ -1108,7 +1108,7 @@ The output is populated properly into specified objects.
 
 <br>
 
-# Chapter 4. Convertion among Data Formats HCL, JSON and YAML
+# Chapter 4. Conversion among Data Formats HCL, JSON and YAML
 <br>
 
 ## 4.1 Introduction
