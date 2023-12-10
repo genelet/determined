@@ -4,10 +4,10 @@ _Determined_ marshals and unmarshals JSON and HCL data to _go struct_ containing
 
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
-- Chapter 1: Decoding of Dynamic JSON Data (for JSON only)
-- Chapter 2: Marshal GO Object into HCL (for encoding HCL object)
-- Chapter 3: Unmarshal HCL Data to GO Object (for dynamic HCL decoding)
-- Chapter 4: Convertion among Data Formats HCL, JSON and YAML
+- Chapter 1: [Decoding of Dynamic JSON Data](#chapter1) (for JSON only)
+- Chapter 2: [Marshal GO Object into HCL](#chapter2) (for encoding HCL object)
+- Chapter 3: [Unmarshal HCL Data to GO Object](#chapter3) (for dynamic HCL decoding)
+- Chapter 4: [Convertion among Data Formats HCL, JSON and YAML](#chapter4)
 
 To download, 
 
@@ -21,6 +21,7 @@ go get github.com/genelet/determined
 
 <br>
 
+#chapter1
 # Chapter 1. Decoding of Dynamic JSON Data
 <br>
 
@@ -490,6 +491,7 @@ The advantage of using a customized  _unmarshaler_  is that any Go struct, which
 
 <br>
 
+#chapter2
 # Chapter 2. Marshal GO Object into HCL
 <br>
 
@@ -744,6 +746,7 @@ The new HCL package,  _determined_, can marshal a wider range of Go objects, suc
 
 <br>
 
+#chapter3
 # Chapter 3. Unmarshal HCL Data to GO Object
 <br>
 
@@ -1117,7 +1120,7 @@ The output is populated properly into specified objects.
 
 <br>
 
-
+#chapeter4
 # Chapter 4. Convertion among Data Formats HCL, JSON and YAML
 <br>
 
