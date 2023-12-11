@@ -13,25 +13,26 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
+type Unmarshaler interface {
+	UnmarshalHCL([]byte, ...string) error
+}
+
 // Unmarshal decodes HCL data
 //
 //   - dat: Hcl data
 //   - current: pointer of struct, []interface{} or map[string]interface{}
 //   - optional labels: field values of labels
 func Unmarshal(dat []byte, current interface{}, labels ...string) error {
+	if current == nil {
+		return nil
+	}
 	rv := reflect.ValueOf(current)
-	if rv.Kind() == reflect.Pointer && rv.Elem().Kind() == reflect.Struct && rv.IsValid() {
-		if v := rv.MethodByName("UnmarshalHCL"); v.IsValid() {
-			in := []reflect.Value{reflect.ValueOf(dat)}
-			for _, label := range labels {
-				in = append(in, reflect.ValueOf(label))
-			}
-			arr := v.Call(in)
-			if arr == nil || arr[0].IsNil() {
-				return nil
-			}
-			return arr[0].Interface().(error)
-		}
+	if rv.Kind() != reflect.Pointer {
+		return fmt.Errorf("non-pointer or nil data")
+	}
+	v, ok := current.(Unmarshaler)
+	if ok {
+		return v.UnmarshalHCL(dat, labels...)
 	}
 	return UnmarshalSpec(dat, current, nil, nil, labels...)
 }
@@ -281,23 +282,11 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 }
 
 func plusUnmarshalSpecTree(subNode *utils.Tree, s []byte, trial interface{}, nextStruct *Struct, ref map[string]interface{}, labels ...string) error {
-	var err error
-	rv_trial := reflect.ValueOf(trial)
-	if v := rv_trial.MethodByName("UnmarshalHCL"); v.IsValid() {
-		in := []reflect.Value{reflect.ValueOf(s)}
-		for _, label := range labels {
-			in = append(in, reflect.ValueOf(label))
-		}
-		arr := v.Call(in)
-		if arr != nil && !arr[0].IsNil() {
-			err = arr[0].Interface().(error)
-		}
-	} else {
-		err = UnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
+	v, ok := trial.(Unmarshaler)
+	if ok {
+		return v.UnmarshalHCL(s, labels...)
 	}
-
-	return err
-
+	return UnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
 }
 
 func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields []reflect.StructField, newFields []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
