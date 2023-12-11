@@ -66,6 +66,31 @@ type picture struct {
 	Drawings []inter `json:"drawings" hcl:"drawings,block"`
 }
 
+type Painting struct {
+	Name     string  `json:"name" hcl:"name"`
+	Drawings []inter `json:"drawings" hcl:"drawings,block"`
+}
+
+func (self *Painting) UnmarshalHCL(dat []byte, labels ...string) error {
+	spec, err := NewStruct(
+		"Painting", map[string]interface{}{
+			"Drawings": []string{"square", "square"}})
+	if err != nil {
+		return err
+	}
+	g := &geo{}
+	s := &square{}
+	c := &circle{}
+	ref := map[string]interface{}{"geo": g, "circle": c, "square": s}
+
+	return UnmarshalSpec(dat, self, spec, ref)
+}
+
+type gallery struct {
+	City   string               `json:"city" hcl:"city"`
+	Makers map[string]*Painting `json:"makers" hcl:"makers,block"`
+}
+
 type X7 struct {
 	Many int    `json:"many" hcl:"many,optional"`
 	Why  string `json:"why" hcl:"why,optional"`

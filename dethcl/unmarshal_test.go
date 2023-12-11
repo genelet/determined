@@ -145,6 +145,75 @@ func TestHclShape2(t *testing.T) {
 	}
 }
 
+func TestHclShape3(t *testing.T) {
+	data4 := `
+	name = "peter drawings"
+	drawings {
+		sx=55
+		sy=66
+	}
+	drawings {
+		sx=7
+		sy=8
+	}
+`
+	p := &Painting{}
+	err := Unmarshal([]byte(data4), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drawings := p.Drawings
+	if p.Name != "peter drawings" ||
+		drawings[0].(*square).SX != 55 ||
+		drawings[1].(*square).SX != 7 {
+		t.Errorf("%#v", drawings[0].(*square))
+		t.Errorf("%#v", drawings[1].(*square))
+	}
+}
+
+func TestHclShape4(t *testing.T) {
+	data := `
+city = "Chicago"
+makers "x" {
+	name = "marcus drawings"
+	drawings {
+		sx=11
+		sy=22
+	}
+	drawings {
+		sx=3
+		sy=4
+	}
+}
+
+makers "y" {
+	name = "peter drawings"
+	drawings {
+		sx=55
+		sy=66
+	}
+	drawings {
+		sx=7
+		sy=8
+	}
+}
+`
+	g := &gallery{}
+
+	err := Unmarshal([]byte(data), g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := g.Makers["y"]
+	drawings := p.Drawings
+	if p.Name != "peter drawings" ||
+		drawings[0].(*square).SX != 55 ||
+		drawings[1].(*square).SX != 7 {
+		t.Errorf("%#v", drawings[0].(*square))
+		t.Errorf("%#v", drawings[1].(*square))
+	}
+}
+
 func TestHash(t *testing.T) {
 	data3 := `
 	name = "peter shapes"

@@ -19,6 +19,20 @@ import (
 //   - current: pointer of struct, []interface{} or map[string]interface{}
 //   - optional labels: field values of labels
 func Unmarshal(dat []byte, current interface{}, labels ...string) error {
+	rv := reflect.ValueOf(current)
+	if rv.Kind() == reflect.Pointer && rv.Elem().Kind() == reflect.Struct && rv.IsValid() {
+		if v := rv.MethodByName("UnmarshalHCL"); v.IsValid() {
+			in := []reflect.Value{reflect.ValueOf(dat)}
+			for _, label := range labels {
+				in = append(in, reflect.ValueOf(label))
+			}
+			arr := v.Call(in)
+			if arr == nil || arr[0].IsNil() {
+				return nil
+			}
+			return arr[0].Interface().(error)
+		}
+	}
 	return UnmarshalSpec(dat, current, nil, nil, labels...)
 }
 
@@ -53,6 +67,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		return fmt.Errorf("non-pointer or nil data")
 	}
 	rv = rv.Elem()
+
 	switch rv.Kind() {
 	case reflect.Map:
 		obj, err := decodeMap(dat)
@@ -213,7 +228,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if err != nil {
 					return err
 				}
-				err = UnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
+				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
 				if err != nil {
 					return err
 				}
@@ -248,7 +263,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 			if err != nil {
 				return err
 			}
-			err = UnmarshalSpecTree(subNode, s, trial, x, ref, labels...)
+			err = plusUnmarshalSpecTree(subNode, s, trial, x, ref, labels...)
 			if err != nil {
 				return err
 			}
@@ -263,6 +278,26 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	oriValue.Set(oriTobe)
 
 	return nil
+}
+
+func plusUnmarshalSpecTree(subNode *utils.Tree, s []byte, trial interface{}, nextStruct *Struct, ref map[string]interface{}, labels ...string) error {
+	var err error
+	rv_trial := reflect.ValueOf(trial)
+	if v := rv_trial.MethodByName("UnmarshalHCL"); v.IsValid() {
+		in := []reflect.Value{reflect.ValueOf(s)}
+		for _, label := range labels {
+			in = append(in, reflect.ValueOf(label))
+		}
+		arr := v.Call(in)
+		if arr != nil && !arr[0].IsNil() {
+			err = arr[0].Interface().(error)
+		}
+	} else {
+		err = UnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
+	}
+
+	return err
+
 }
 
 func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields []reflect.StructField, newFields []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
