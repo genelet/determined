@@ -225,17 +225,17 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 					return fmt.Errorf("ref not found for %s", name)
 				}
 				trial = clone(trial)
-				s, labels, err := getBlockBytes(blocks[k], file)
+				s, lbls, err := getBlockBytes(blocks[k], file)
 				if err != nil {
 					return err
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
+				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
 				knd := typ.Elem().Kind() // units' kind in hash or array
 				if typ.Kind() == reflect.Map {
-					strKey := reflect.ValueOf(labels[0])
+					strKey := reflect.ValueOf(lbls[0])
 					if knd == reflect.Interface || knd == reflect.Ptr {
 						fMap.SetMapIndex(strKey, reflect.ValueOf(trial))
 					} else {
@@ -260,11 +260,11 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				return fmt.Errorf("class ref not found for %s", x.ClassName)
 			}
 			trial = clone(trial)
-			s, labels, err := getBlockBytes(blocks[0], file)
+			s, lbls, err := getBlockBytes(blocks[0], file)
 			if err != nil {
 				return err
 			}
-			err = plusUnmarshalSpecTree(subNode, s, trial, x, ref, labels...)
+			err = plusUnmarshalSpecTree(subNode, s, trial, x, ref, lbls...)
 			if err != nil {
 				return err
 			}

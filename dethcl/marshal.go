@@ -14,6 +14,9 @@ import (
 
 // Marshal marshals object into HCL string
 func Marshal(current interface{}) ([]byte, error) {
+	if current == nil {
+		return nil, nil
+	}
 	return MarshalLevel(current, 0)
 }
 
