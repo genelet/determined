@@ -35,7 +35,7 @@ func MarshalLevel(current interface{}, level int) ([]byte, error) {
 	return utils.Encoding(current, level)
 }
 
-func marshal(current interface{}, level int) ([]byte, error) {
+func marshal(current interface{}, level int, keyname ...string) ([]byte, error) {
 	leading := strings.Repeat("  ", level+1)
 	lessLeading := strings.Repeat("  ", level)
 
@@ -79,8 +79,11 @@ func marshal(current interface{}, level int) ([]byte, error) {
 			fieldTag := field.Tag
 			hcl := tag2(fieldTag)
 			if hcl[1] == "label" {
-				labels = append(labels, oriField.Interface().(string))
-				k++
+				label := oriField.Interface().(string)
+				if keyname == nil || keyname[0] != label {
+					labels = append(labels, label)
+					k++
+				}
 				continue
 			}
 			tmp.Field(k).Set(oriField)
@@ -91,23 +94,31 @@ func marshal(current interface{}, level int) ([]byte, error) {
 	f := hclwrite.NewEmptyFile()
 	gohcl.EncodeIntoBody(tmp.Addr().Interface(), f.Body())
 	bs := f.Bytes()
+
 	str := string(bs)
 	str = leading + strings.ReplaceAll(str, "\n", "\n"+leading)
 
 	var lines []string
 	for _, item := range outliers {
+		//if allBlank(item.b2) {
+		//	continue
+		//}
 		line := string(item.b0) + " "
 		if item.encode {
 			line += " = "
 		}
 		if item.b1 != nil {
-			line += string(item.b1) + " "
+			line += `"` + string(item.b1) + `" `
 		}
 		line += string(item.b2)
 		lines = append(lines, line)
 	}
 	if len(lines) > 0 {
 		str += strings.Join(lines, "\n"+leading)
+		//} else {
+		//	if allBlank(bs) {
+		//		return nil, nil
+		//	}
 	}
 
 	str = strings.TrimRight(str, " \t\n\r")
@@ -117,7 +128,19 @@ func marshal(current interface{}, level int) ([]byte, error) {
 			str = "\"" + strings.Join(labels, "\" \"") + "\" " + str
 		}
 	}
+
 	return []byte(str), nil
+}
+
+func allBlank(bs []byte) bool {
+	if bs == nil {
+		return true
+	}
+	str := strings.ReplaceAll(string(bs), " \t\n\r", "")
+	if str == "" || str == "{}" || str == "[]" || str == "null" {
+		return true
+	}
+	return false
 }
 
 type marshalField struct {
@@ -205,11 +228,12 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 	var empty []*marshalOut
 	fieldTag := field.Tag
 	typ := field.Type
+	newlevel := level + 1
 
 	switch typ.Kind() {
 	case reflect.Interface, reflect.Pointer:
 		newCurrent := oriField.Interface()
-		bs, err := marshal(newCurrent, level+1)
+		bs, err := marshal(newCurrent, newlevel)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +243,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 	case reflect.Struct:
 		newCurrent := oriField.Addr().Interface()
-		bs, err := marshal(newCurrent, level+1)
+		bs, err := marshal(newCurrent, newlevel)
 		if err != nil {
 			return nil, err
 		}
@@ -245,7 +269,6 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		}
 
 		if isLoop {
-			newlevel := level + 1
 			for i := 0; i < n; i++ {
 				item := oriField.Index(i)
 				bs, err := marshal(item.Interface(), newlevel)
@@ -258,9 +281,12 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 			}
 		} else {
-			bs, err := utils.Encoding(oriField.Interface(), level+1)
+			bs, err := utils.Encoding(oriField.Interface(), newlevel)
 			if err != nil {
 				return nil, err
+			}
+			if bs == nil {
+				return nil, nil
 			}
 			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, true})
 		}
@@ -282,14 +308,13 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		}
 
 		if isLoop {
-			newlevel := level + 1
 			iter := oriField.MapRange()
 			for iter.Next() {
 				k := iter.Key()
 				v := iter.Value()
 				var bs []byte
 				var err error
-				bs, err = marshal(v.Interface(), newlevel)
+				bs, err = marshal(v.Interface(), newlevel, k.String())
 				if err != nil {
 					return empty, err
 				}
@@ -299,9 +324,12 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				empty = append(empty, &marshalOut{hcltag(fieldTag), []byte(k.String()), bs, false})
 			}
 		} else {
-			bs, err := utils.Encoding(oriField.Interface(), level+1)
+			bs, err := utils.Encoding(oriField.Interface(), newlevel)
 			if err != nil {
 				return nil, err
+			}
+			if bs == nil {
+				return nil, nil
 			}
 			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, true})
 		}

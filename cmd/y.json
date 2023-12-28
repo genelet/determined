@@ -1,0 +1,50 @@
+{
+	"dbconfig":{
+		"database":"summer",
+		"dbdriver":3,
+		"dbvars":["mysql","eightran_goto:12pass34@/summer"]
+	},
+	"parameters":{
+		"path_auth_config":"/auth/graphauth/config",
+		"vault_addr":"http://127.0.0.1:8200",
+		"vault_token":"hvs.CAESILqQzdHUpHAtoyxyRkb4xdOsCh-3MmhOwJONu4tS_4CUGh4KHGh2cy5QZG9zZnQ3T1B5WW0xSFNmanVtODNtWnY"
+	},
+	"teams":{
+		"admin":{
+			"dbteam":{},
+			"is_admin":true,
+			"team_name":"admin"
+		},
+		"adv":{
+			"dbteam":{
+				"call_name":"CALL login_adv(?,?)",
+				"output":["adv_id","firstname","lastname"],
+				"user_table_name":"adv",
+				"userid_name":"adv_id"
+			},
+			"is_admin":false,
+			"team_name":"adv",
+			"meta":{
+				"Policies":["adv_policy"]
+			}
+		},
+		"pub":{
+			"dbteam":{
+				"call_name":"CALL login_pub(?,?)",
+				"output":["pub_id","firstname","lastname"],
+				"user_table_name":"pub",
+				"userid_name":"pub_id"
+			},
+			"is_admin":false,
+			"team_name":"pub",
+			"meta":{
+				"Policies":["pub_policy"]
+			}
+		},
+		"public":{
+			"dbteam":{},
+			"is_public":true,
+			"team_name":"public"
+		}
+	}
+}

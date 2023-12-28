@@ -212,19 +212,19 @@ func TestMHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	if string(bs) != `  name = "peter shapes"
-  shapes obj5 {
+  shapes "obj5" {
     sx = 5
     sy = 6
   }
-  shapes obj7 {
+  shapes "obj7" {
     sx = 7
     sy = 8
   }` && string(bs) != `  name = "peter shapes"
-  shapes obj7 {
+  shapes "obj7" {
     sx = 7
     sy = 8
   }
-  shapes obj5 {
+  shapes "obj5" {
     sx = 5
     sy = 6
   }` {
@@ -490,6 +490,47 @@ brand {
         radius = 1
       }
     }
+  }` {
+		t.Errorf("'%s'", bs)
+	}
+}
+
+func TestMHclPainting(t *testing.T) {
+	data4 := `
+	name = "peter drawings"
+	drawings obj5 {
+		sx=55
+		sy=66
+	}
+	drawings obj7 {
+		sx=7
+		sy=8
+	}
+`
+
+	spec, err := NewStruct(
+		"geometry", map[string]interface{}{
+			"Drawings": []string{"team", "team"}})
+
+	ref := map[string]interface{}{"team": new(team)}
+	p := &config{}
+	err = UnmarshalSpec([]byte(data4), p, spec, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bs, err := Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(bs) != `  name = "peter drawings"
+  drawings "obj5" {
+    sx = 55
+    sy = 66
+  }
+  drawings "obj7" {
+    sx = 7
+    sy = 8
   }` {
 		t.Errorf("'%s'", bs)
 	}

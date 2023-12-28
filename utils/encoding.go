@@ -25,7 +25,7 @@ func isHashAll(item interface{}) (int, map[string]interface{}) {
 	return found, next
 }
 
-func loopHash(arr *[]string, name string, item interface{}, level int) error {
+func loopHash(arr *[]string, name string, item interface{}, level int, keyname ...string) error {
 	found, next := isHashAll(item)
 	switch found {
 	case 2:
@@ -37,22 +37,40 @@ func loopHash(arr *[]string, name string, item interface{}, level int) error {
 			}
 		}
 	case 1:
-		bs, err := Encoding(item, level+1)
+		// pass 'name' as the keyname to the next 'default' below
+		bs, err := encoding(item, level+1, name)
 		if err != nil {
 			return err
 		}
 		*arr = append(*arr, fmt.Sprintf("%s %s", name, bs))
 	default:
-		bs, err := Encoding(item, level+1)
+		bs, err := encoding(item, level+1)
 		if err != nil {
 			return err
+		}
+		if keyname != nil && matchlast(keyname[0], string(bs)) {
+			return nil
 		}
 		*arr = append(*arr, fmt.Sprintf("%s = %s", name, bs))
 	}
 	return nil
 }
 
+func matchlast(keyname string, name string) bool {
+	names := strings.Split(keyname, " ")
+	keyname = names[len(names)-1]
+	if keyname == name {
+		return true
+	}
+	return false
+}
+
+// Encoding encode the data to HCL format
 func Encoding(current interface{}, level int) ([]byte, error) {
+	return encoding(current, level)
+}
+
+func encoding(current interface{}, level int, keyname ...string) ([]byte, error) {
 	var str string
 
 	leading := strings.Repeat("  ", level+1)
@@ -63,18 +81,8 @@ func Encoding(current interface{}, level int) ([]byte, error) {
 	case reflect.Map:
 		var arr []string
 		for name, item := range current.(map[string]interface{}) {
-			/* // This is the old code for the this "for" loop
-			bs, err := Encoding(item, level+1)
-			if err != nil {
-				return nil, err
-			}
-			if string(bs)[0] == '{' {
-				arr = append(arr, fmt.Sprintf("%s %s", name, bs))
-			} else {
-				arr = append(arr, fmt.Sprintf("%s = %s", name, bs))
-			}
-			*/
-			err := loopHash(&arr, name, item, level)
+			// keyname is used only to be passed to loopHash
+			err := loopHash(&arr, name, item, level, keyname...)
 			if err != nil {
 				return nil, err
 			}

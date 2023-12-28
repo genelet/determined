@@ -13,6 +13,16 @@ func (self *square) Area() float32 {
 	return float32(self.SX * self.SY)
 }
 
+type team struct {
+	TeamName string `json:"team_name" hcl:"team_name,label"`
+	SX       int    `json:"sx" hcl:"sx"`
+	SY       int    `json:"sy" hcl:"sy"`
+}
+
+func (self *team) Area() float32 {
+	return float32(self.SX * self.SY)
+}
+
 type moresquare struct {
 	Morename1 string `json:"morename1" hcl:"morename1,label"`
 	Morename2 string `json:"morename2" hcl:"morename2,label"`
@@ -62,6 +72,11 @@ type geometry struct {
 }
 
 type picture struct {
+	Name     string  `json:"name" hcl:"name"`
+	Drawings []inter `json:"drawings" hcl:"drawings,block"`
+}
+
+type config struct {
 	Name     string  `json:"name" hcl:"name"`
 	Drawings []inter `json:"drawings" hcl:"drawings,block"`
 }
