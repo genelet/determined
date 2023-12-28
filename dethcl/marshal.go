@@ -82,8 +82,8 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 				label := oriField.Interface().(string)
 				if keyname == nil || keyname[0] != label {
 					labels = append(labels, label)
-					k++
 				}
+				k++
 				continue
 			}
 			tmp.Field(k).Set(oriField)
