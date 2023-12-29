@@ -157,6 +157,9 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 		if !unicode.IsUpper([]rune(field.Name)[0]) {
 			continue
 		}
+		if !oriValue.IsValid() || oriValue.IsZero() {
+			continue
+		}
 		oriField := oriValue.Field(i)
 		two := tag2(field.Tag)
 		tcontent := two[0]
