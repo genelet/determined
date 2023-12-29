@@ -66,12 +66,12 @@ service "http" "web_proxy" {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	//t.Errorf("%#v", d)
 	bs, err := Marshal(d)
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	//t.Errorf("%s", bs)
 	m := make(map[string]interface{})
 	err = Unmarshal(bs, &m)
 	if err != nil {
@@ -80,7 +80,7 @@ service "http" "web_proxy" {
 
 	if !jsonEqual(d, m) {
 		t.Errorf("%#v", d)
-		t.Errorf("%#v", d)
+		t.Errorf("%#v", m)
 		t.Errorf("%s", data)
 		t.Errorf("%s", bs)
 	}

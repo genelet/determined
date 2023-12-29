@@ -78,11 +78,14 @@ func encoding(current interface{}, level int, keyname ...string) ([]byte, error)
 
 	rv := reflect.ValueOf(current)
 	switch rv.Kind() {
+	case reflect.Pointer:
+		return encoding(rv.Elem().Interface(), level, keyname...)
 	case reflect.Map:
 		var arr []string
-		for name, item := range current.(map[string]interface{}) {
-			// keyname is used only to be passed to loopHash
-			err := loopHash(&arr, name, item, level, keyname...)
+		iter := rv.MapRange()
+		for iter.Next() {
+			key := iter.Key()
+			err := loopHash(&arr, key.String(), iter.Value().Interface(), level, keyname...)
 			if err != nil {
 				return nil, err
 			}
@@ -94,8 +97,8 @@ func encoding(current interface{}, level int, keyname ...string) ([]byte, error)
 		}
 	case reflect.Slice, reflect.Array:
 		var arr []string
-		for _, item := range current.([]interface{}) {
-			bs, err := Encoding(item, level+1)
+		for i := 0; i < rv.Len(); i++ {
+			bs, err := Encoding(rv.Index(i).Interface(), level+1)
 			if err != nil {
 				return nil, err
 			}
