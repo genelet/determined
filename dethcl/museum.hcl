@@ -1,4 +1,29 @@
   location = "Chicago"
+  arts "fifth" {
+    name = "peter drawings fifth"
+    drawings {
+      sx = 13
+      sy = 14
+    }
+    drawings {
+      radius = 15
+    }
+    drawings {
+      sx = 16
+      sy = 17
+    }
+  }
+  arts "first" {
+    name = "peter drawings first"
+    drawings {
+      sx = 1
+      sy = 2
+    }
+    drawings {
+      sx = 3
+      sy = 4
+    }
+  }
   arts "second" {
     name = "peter drawings second"
     drawings {
@@ -46,30 +71,5 @@
     }
     drawings {
       radius = 12
-    }
-  }
-  arts "fifth" {
-    name = "peter drawings fifth"
-    drawings {
-      sx = 13
-      sy = 14
-    }
-    drawings {
-      radius = 15
-    }
-    drawings {
-      sx = 16
-      sy = 17
-    }
-  }
-  arts "first" {
-    name = "peter drawings first"
-    drawings {
-      sx = 1
-      sy = 2
-    }
-    drawings {
-      sx = 3
-      sy = 4
     }
   }
