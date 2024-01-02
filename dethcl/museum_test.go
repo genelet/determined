@@ -89,7 +89,7 @@ func TestMapSliceRead(t *testing.T) {
 
 	m := &museum{}
 	ref := map[string]interface{}{
-		"sqaure":  new(square),
+		"square":  new(square),
 		"circle":  new(circle),
 		"picture": new(picture),
 		"museum":  new(museum),
@@ -98,10 +98,10 @@ func TestMapSliceRead(t *testing.T) {
 		"museum", map[string]interface{}{
 			"Arts": map[string][2]interface{}{
 				"first": {"picture", map[string]interface{}{
-					"Drawings": []string{"sqaure", "square"}},
+					"Drawings": []string{"square", "square"}},
 				},
 				"second": {"picture", map[string]interface{}{
-					"Drawings": []string{"sqaure", "square", "sqaure", "square"}},
+					"Drawings": []string{"square", "square", "square", "square"}},
 				},
 				"third": {"picture", map[string]interface{}{
 					"Drawings": []string{"circle", "circle", "circle"}},
@@ -110,7 +110,7 @@ func TestMapSliceRead(t *testing.T) {
 					"Drawings": []string{"circle", "circle", "circle", "circle", "circle"}},
 				},
 				"fifth": {"picture", map[string]interface{}{
-					"Drawings": []string{"sqaure", "circle", "sqaure"}},
+					"Drawings": []string{"square", "circle", "square"}},
 				},
 			},
 		},
@@ -118,6 +118,11 @@ func TestMapSliceRead(t *testing.T) {
 	err = UnmarshalSpec(bs, m, spec, ref)
 	if err != nil {
 		t.Fatal(err)
+	}
+	for k, v := range m.Arts {
+		for _, d := range v.Drawings {
+			t.Logf("%s, %s, %#v", k, v.Name, d)
+		}
 	}
 	t.Errorf("%#v", m)
 }

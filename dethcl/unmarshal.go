@@ -199,34 +199,53 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		f := oriTobe.Elem().FieldByName(name)
 		subNode := node.AddNode(name)
 		result := objectMap[name]
+
 		if x := result.GetMapStruct(); x != nil {
 			nextMapStructs := x.GetMapFields()
-			nSmaller := len(nextMapStructs)
 			if typ.Kind() != reflect.Map {
 				return fmt.Errorf("type mismatch for %s", name)
 			}
+			var first *utils.Struct
+			for _, first = range nextMapStructs {
+				break
+			}
+			n := len(blocks)
+			fMap := reflect.MakeMapWithSize(typ, n)
 
-			fMap := reflect.MakeMapWithSize(typ, nSmaller)
-			for k := 0; k < nSmaller; k++ {
-				nextStruct := first
-				if k < nSmaller {
-					nextStruct = nextMapStructs[k]
+			for k := 0; k < n; k++ {
+				block := blocks[k]
+				keystring := block.Labels[0]
+				nextStruct, ok := nextMapStructs[keystring]
+				if !ok {
+					nextStruct = first
 				}
+
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
-					return fmt.Errorf("ref not found for %s", name)
+					return fmt.Errorf("ref not found for %s", nextStruct.ClassName)
 				}
 				trial = clone(trial)
-				s, lbls, err := getBlockBytes(blocks[k], file)
+				s, lbls, err := getBlockBytes(block, file)
 				if err != nil {
 					return err
+				}
+				if len(lbls) > 1 {
+					return fmt.Errorf("only one label is allowed for map struct %s", name)
 				}
 				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
-				fMap.SetMapIndex(reflect.ValueOf(lbls[0]), reflect.ValueOf(trial))
+				knd := typ.Elem().Kind() // units' kind in hash or array
+				strKey := reflect.ValueOf(keystring)
+
+				if knd == reflect.Interface || knd == reflect.Ptr {
+					fMap.SetMapIndex(strKey, reflect.ValueOf(trial))
+				} else {
+					fMap.SetMapIndex(strKey, reflect.ValueOf(trial).Elem())
+				}
 			}
+			f.Set(fMap)
 		} else if x := result.GetListStruct(); x != nil {
 			nextListStructs := x.GetListFields()
 			nSmaller := len(nextListStructs)
@@ -242,12 +261,13 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 			}
 			for k := 0; k < n; k++ {
 				nextStruct := first
-				if k < nSmaller {
+				if k < nSmaller && (typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array) {
 					nextStruct = nextListStructs[k]
+					// map is only using the first struct
 				}
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
-					return fmt.Errorf("ref not found for %s", name)
+					return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
 				}
 				trial = clone(trial)
 				s, lbls, err := getBlockBytes(blocks[k], file)

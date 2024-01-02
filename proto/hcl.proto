@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package det;
+
+option go_package = "./dethcl";
+
+message Struct {
+  string ClassName = 1;
+  map<string, Value> fields = 2;
+}
+
+message Value {
+  // The kind of value.
+  oneof kind {
+    Struct single_struct   = 1;
+    ListStruct list_struct = 2;
+    MapStruct map_struct   = 3;
+    HclStruct hcl_struct   = 4;
+  }
+}
+
+message ListStruct {
+  repeated Struct list_fields = 1;
+}
+
+message MapStruct {
+  map<string, Struct> map_fields = 1;
+}
+
+message Compound {
+  repeated string labels = 1;
+}
+
+message HclStruct {
+  map<Compound, Struct> hcl_fields = 1;
+}
