@@ -2,6 +2,8 @@ package dethcl
 
 import (
 	"testing"
+
+	"github.com/genelet/determined/utils"
 )
 
 func TestHclSimple(t *testing.T) {
@@ -28,7 +30,7 @@ func TestHclShape1(t *testing.T) {
 	g := &geo{}
 	c := &circle{}
 	ref := map[string]interface{}{"circle": c}
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
 	err = UnmarshalSpec([]byte(data1), g, spec, ref)
 	if err != nil {
@@ -48,7 +50,7 @@ func TestHclShape1(t *testing.T) {
 	g = &geo{}
 	s := &square{}
 	ref = map[string]interface{}{"circle": c, "square": s}
-	spec, err = NewStruct(
+	spec, err = utils.NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
 	err = UnmarshalSpec([]byte(data2), g, spec, ref)
 	if err != nil {
@@ -72,7 +74,7 @@ func TestHclShape2(t *testing.T) {
 	}
 `
 	p := &picture{}
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"square", "square"}})
 	if err != nil {
@@ -107,7 +109,7 @@ func TestHclShape2(t *testing.T) {
     }
 `
 	p = &picture{}
-	spec, err = NewStruct(
+	spec, err = utils.NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"moresquare", "moresquare"}})
 	if err != nil {
@@ -227,7 +229,7 @@ func TestHash(t *testing.T) {
 	}
 `
 	g := &geometry{}
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"geometry", map[string]interface{}{
 			"Shapes": []string{"square", "square"}})
 	//"Shapes": []string{"square", "square"}})
@@ -389,7 +391,7 @@ y11 k7 {
 }
 
 `
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"frame", map[string]interface{}{
 			"X1": [2]interface{}{
 				"geo", map[string]interface{}{"Shape": "circle"},
@@ -454,7 +456,7 @@ brand {
 	}
 }
 `
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{
@@ -486,7 +488,7 @@ brand = {
 	}
 }
 `
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{

@@ -44,7 +44,7 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - spec: Determined for data specs
 //   - ref: object map, with key object name and value new object
 //   - optional labels: values of labels
-func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
+func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	if ref == nil {
 		ref = make(map[string]interface{})
 	}
@@ -62,7 +62,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string
 //   - spec: Determined for data specs
 //   - ref: object map, with key object name and value new object
 //   - optional labels: values of labels
-func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, labels ...string) error {
+func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	rv := reflect.ValueOf(current)
 	if rv.Kind() != reflect.Pointer {
 		return fmt.Errorf("non-pointer or nil data")
@@ -99,12 +99,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	}
 	t = t.Elem()
 
-	var objectMap map[string]*Value
+	var objectMap map[string]*utils.Value
 	if spec != nil {
 		objectMap = spec.GetFields()
 	}
 	if objectMap == nil {
-		objectMap = make(map[string]*Value)
+		objectMap = make(map[string]*utils.Value)
 	}
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
@@ -199,12 +199,37 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		f := oriTobe.Elem().FieldByName(name)
 		subNode := node.AddNode(name)
 		result := objectMap[name]
-		if x := result.GetListStruct(); x != nil {
+		if x := result.GetMapStruct(); x != nil {
+			nextMapStructs := x.GetMapFields()
+			nSmaller := len(nextMapStructs)
+			if typ.Kind() != reflect.Map {
+				return fmt.Errorf("type mismatch for %s", name)
+			}
+
+			fMap := reflect.MakeMapWithSize(typ, nSmaller)
+			for k := 0; k < nSmaller; k++ {
+				nextStruct := first
+				if k < nSmaller {
+					nextStruct = nextMapStructs[k]
+				}
+				trial := ref[nextStruct.ClassName]
+				if trial == nil {
+					return fmt.Errorf("ref not found for %s", name)
+				}
+				trial = clone(trial)
+				s, lbls, err := getBlockBytes(blocks[k], file)
+				if err != nil {
+					return err
+				}
+				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				if err != nil {
+					return err
+				}
+				fMap.SetMapIndex(reflect.ValueOf(lbls[0]), reflect.ValueOf(trial))
+			}
+		} else if x := result.GetListStruct(); x != nil {
 			nextListStructs := x.GetListFields()
 			nSmaller := len(nextListStructs)
-			if nSmaller == 0 {
-				continue
-			}
 			first := nextListStructs[0]
 
 			n := len(blocks)
@@ -281,7 +306,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	return nil
 }
 
-func plusUnmarshalSpecTree(subNode *utils.Tree, s []byte, trial interface{}, nextStruct *Struct, ref map[string]interface{}, labels ...string) error {
+func plusUnmarshalSpecTree(subNode *utils.Tree, s []byte, trial interface{}, nextStruct *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	v, ok := trial.(Unmarshaler)
 	if ok {
 		return v.UnmarshalHCL(s, labels...)
@@ -355,7 +380,7 @@ func getTagref(oriFields []reflect.StructField) map[string]bool {
 // newFields for normal fields, can be decoded withe gohcl
 // oriFields for blocks, decoded individually as body
 // decFields for map[string]interface{} or []interface{}
-func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
+func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
 	var newFields []reflect.StructField
 	var oriFields []reflect.StructField
 	var decFields []reflect.StructField
@@ -399,7 +424,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]inte
 		} else if typ.Kind() == reflect.Struct {
 			s := typ.String()
 			ref[s] = reflect.New(typ).Interface()
-			v, err := NewValue(s)
+			v, err := utils.NewValue(s)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -420,7 +445,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value, ref map[string]inte
 				newFields = append(newFields, field)
 				continue
 			}
-			v, err := NewValue([]string{s})
+			v, err := utils.NewValue([]string{s})
 			if err != nil {
 				return nil, nil, nil, err
 			}

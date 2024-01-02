@@ -1,5 +1,9 @@
 package dethcl
 
+import (
+	"github.com/genelet/determined/utils"
+)
+
 type inter interface {
 	Area() float32
 }
@@ -87,7 +91,7 @@ type Painting struct {
 }
 
 func (self *Painting) UnmarshalHCL(dat []byte, labels ...string) error {
-	spec, err := NewStruct(
+	spec, err := utils.NewStruct(
 		"Painting", map[string]interface{}{
 			"Drawings": []string{"square", "square"}})
 	if err != nil {

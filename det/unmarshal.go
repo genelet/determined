@@ -3,8 +3,10 @@ package det
 import (
 	"encoding/json"
 	"fmt"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	"reflect"
+
+	"github.com/genelet/determined/utils"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 // JsonUnmarshal unmarshals JSON data with interfaces determined by Determined.
@@ -13,7 +15,7 @@ import (
 //   - current: object as interface
 //   - spec: Determined
 //   - ref: struct map, with key being string name and value pointer to struct
-func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error {
+func JsonUnmarshal(dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}) error {
 	if spec == nil {
 		return json.Unmarshal(dat, current)
 	}
@@ -60,7 +62,7 @@ func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string
 			if nSmaller == 0 {
 				return fmt.Errorf("missing map struct for %s", name)
 			}
-			var first *Struct
+			var first *utils.Struct
 			for _, first = range nextMapStructs {
 				break
 			}

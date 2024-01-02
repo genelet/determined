@@ -2,11 +2,11 @@ syntax = "proto3";
 
 package det;
 
-option go_package = "./det";
+option go_package = "./utils";
 
 message Struct {
-	string ClassName = 1;
-        map<string, Value> fields = 2;
+  string ClassName = 1;
+  map<string, Value> fields = 2;
 }
 
 message Value {
