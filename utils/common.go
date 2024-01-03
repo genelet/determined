@@ -1,28 +1,28 @@
 package utils
 
 import (
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	utf8 "unicode/utf8"
+
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 // NewValue constructs a Value from generic Go interface v.
 //
-//  ╔═══════════════════════════╤══════════════════════════════╗
-//  ║ Go type                   │ Conversion                   ║
-//  ╠═══════════════════════════╪══════════════════════════════╣
-//  ║ string                    │ ending SingleStruct value    ║
-//  ║ []string                  │ ending ListStruct value      ║
-//  ║ map[string]string         │ ending MapStruct value       ║
-//  ║                           │                              ║
-//  ║ [2]interface{}            │ SingleStruct value           ║
-//  ║ [][2]interface{}          │ ListStruct value             ║
-//  ║ map[string][2]interface{} │ MapStruct value              ║
-//  ║                           │                              ║
-//  ║ *Struct                   │ SingleStruct                 ║
-//  ║ []*Struct                 │ ListStruct                   ║
-//  ║ map[string]*Struct        │ MapStruct                    ║
-//  ╚═══════════════════════════╧══════════════════════════════╝
-//
+//	╔═══════════════════════════╤══════════════════════════════╗
+//	║ Go type                   │ Conversion                   ║
+//	╠═══════════════════════════╪══════════════════════════════╣
+//	║ string                    │ ending SingleStruct value    ║
+//	║ []string                  │ ending ListStruct value      ║
+//	║ map[string]string         │ ending MapStruct value       ║
+//	║                           │                              ║
+//	║ [2]interface{}            │ SingleStruct value           ║
+//	║ [][2]interface{}          │ ListStruct value             ║
+//	║ map[string][2]interface{} │ MapStruct value              ║
+//	║                           │                              ║
+//	║ *Struct                   │ SingleStruct                 ║
+//	║ []*Struct                 │ ListStruct                   ║
+//	║ map[string]*Struct        │ MapStruct                    ║
+//	╚═══════════════════════════╧══════════════════════════════╝
 func NewValue(v interface{}) (*Value, error) {
 
 	singleValue := func(x [2]interface{}) (*Value, error) {
@@ -34,17 +34,25 @@ func NewValue(v interface{}) (*Value, error) {
 	}
 	listValue := func(x [][2]interface{}) (*Value, error) {
 		y, err := newListStruct(x)
-        if err != nil { 
-            return nil, err
-        }
-        return &Value{Kind: &Value_ListStruct{ListStruct: y}}, nil
+		if err != nil {
+			return nil, err
+		}
+		return &Value{Kind: &Value_ListStruct{ListStruct: y}}, nil
 	}
 	mapValue := func(x map[string][2]interface{}) (*Value, error) {
-        y, err := newMapStruct(x)
-        if err != nil {
-            return nil, err
-        }
-        return &Value{Kind: &Value_MapStruct{MapStruct: y}}, nil
+		y, err := newMapStruct(x)
+		if err != nil {
+			return nil, err
+		}
+		return &Value{Kind: &Value_MapStruct{MapStruct: y}}, nil
+	}
+
+	map2Value := func(x map[[2]string][2]interface{}) (*Value, error) {
+		y, err := newMap2Struct(x)
+		if err != nil {
+			return nil, err
+		}
+		return &Value{Kind: &Value_Map2Struct{Map2Struct: y}}, nil
 	}
 
 	switch t := v.(type) {
@@ -61,22 +69,33 @@ func NewValue(v interface{}) (*Value, error) {
 		return listValue(x)
 	case [][2]interface{}:
 		return listValue(t)
-    case map[string]string:
-        x := make(map[string][2]interface{})
-        for k, s := range t {
-            x[k] = [2]interface{}{s}
-        }
+	case map[string]string:
+		x := make(map[string][2]interface{})
+		for k, s := range t {
+			x[k] = [2]interface{}{s}
+		}
 		return mapValue(x)
-    case map[string][2]interface{}:
+	case map[string][2]interface{}:
 		return mapValue(t)
+	case map[[2]string]string:
+		x := make(map[[2]string][2]interface{})
+		for k, s := range t {
+			x[k] = [2]interface{}{s}
+		}
+		return map2Value(x)
+	case map[[2]string][2]interface{}:
+		return map2Value(t)
 	case *Struct:
 		return &Value{Kind: &Value_SingleStruct{SingleStruct: t}}, nil
 	case []*Struct:
 		v := &ListStruct{ListFields: t}
 		return &Value{Kind: &Value_ListStruct{ListStruct: v}}, nil
 	case map[string]*Struct:
-        v := &MapStruct{MapFields: t}
-        return &Value{Kind: &Value_MapStruct{MapStruct: v}}, nil
+		v := &MapStruct{MapFields: t}
+		return &Value{Kind: &Value_MapStruct{MapStruct: v}}, nil
+	case map[string]*MapStruct:
+		v := &Map2Struct{Map2Fields: t}
+		return &Value{Kind: &Value_Map2Struct{Map2Struct: v}}, nil
 	default:
 	}
 	return nil, protoimpl.X.NewError("invalid type: %T", v)
@@ -115,9 +134,9 @@ func newSingleStruct(v [2]interface{}) (*Struct, error) {
 		return NewStruct(name)
 	}
 	hash, ok := v[1].(map[string]interface{})
-    if !ok {
-        return nil, protoimpl.X.NewError("the second has to be map[string]interface{} %T", v[1])
-    }
+	if !ok {
+		return nil, protoimpl.X.NewError("the second has to be map[string]interface{} %T", v[1])
+	}
 
 	return NewStruct(name, hash)
 }
@@ -135,14 +154,26 @@ func newListStruct(v [][2]interface{}) (*ListStruct, error) {
 }
 
 func newMapStruct(v map[string][2]interface{}) (*MapStruct, error) {
-    var err error
-    x := make(map[string]*Struct)
-    for i, u := range v {
-        x[i], err = newSingleStruct(u)
-        if err != nil {
-            return nil, err
-        }
-    }
-    return &MapStruct{MapFields: x}, nil
+	var err error
+	x := make(map[string]*Struct)
+	for i, u := range v {
+		x[i], err = newSingleStruct(u)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &MapStruct{MapFields: x}, nil
 }
 
+func newMap2Struct(v map[[2]string][2]interface{}) (*Map2Struct, error) {
+	x := make(map[string]*MapStruct)
+	for i, u := range v {
+		v := map[string][2]interface{}{i[1]: u}
+		ms, err := newMapStruct(v)
+		if err != nil {
+			return nil, err
+		}
+		x[i[0]] = ms
+	}
+	return &Map2Struct{Map2Fields: x}, nil
+}

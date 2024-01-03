@@ -200,7 +200,61 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		subNode := node.AddNode(name)
 		result := objectMap[name]
 
-		if x := result.GetMapStruct(); x != nil {
+		if x := result.GetMap2Struct(); x != nil {
+			nextMap2Structs := x.GetMap2Fields()
+			if typ.Kind() != reflect.Map {
+				return fmt.Errorf("type mismatch for %s", name)
+			}
+			var first *utils.MapStruct
+			for _, first = range nextMap2Structs {
+				break
+			}
+			n := len(blocks)
+			fMap := reflect.MakeMapWithSize(typ, n)
+
+			for k := 0; k < n; k++ {
+				block := blocks[k]
+				keystring0 := block.Labels[0]
+				var keystring1 string
+				if len(block.Labels) > 1 {
+					keystring1 = block.Labels[1]
+				}
+				nextMapStruct, ok := nextMap2Structs[keystring0]
+				if !ok {
+					nextMapStruct = first
+				}
+				nextStruct, ok := nextMapStruct.GetMapFields()[keystring1]
+				if !ok {
+					return fmt.Errorf("map struct not found for %s=>%s", name, x.String())
+				}
+
+				trial := ref[nextStruct.ClassName]
+				if trial == nil {
+					return fmt.Errorf("ref not found for %s", nextStruct.ClassName)
+				}
+				trial = clone(trial)
+				s, lbls, err := getBlockBytes(block, file)
+				if err != nil {
+					return err
+				}
+				if len(lbls) > 2 {
+					return fmt.Errorf("only two labels are allowed for map2 struct %s", name)
+				}
+				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				if err != nil {
+					return err
+				}
+				knd := typ.Elem().Kind() // units' kind in hash or array
+				strKey := reflect.ValueOf([2]string{keystring0, keystring1})
+
+				if knd == reflect.Interface || knd == reflect.Ptr {
+					fMap.SetMapIndex(strKey, reflect.ValueOf(trial))
+				} else {
+					fMap.SetMapIndex(strKey, reflect.ValueOf(trial).Elem())
+				}
+			}
+			f.Set(fMap)
+		} else if x := result.GetMapStruct(); x != nil {
 			nextMapStructs := x.GetMapFields()
 			if typ.Kind() != reflect.Map {
 				return fmt.Errorf("type mismatch for %s", name)
