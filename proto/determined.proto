@@ -15,6 +15,7 @@ message Value {
     Struct single_struct   = 1;
     ListStruct list_struct = 2;
     MapStruct map_struct   = 3;
+    Map2Struct map2_struct = 4;
   }
 }
 
@@ -24,4 +25,8 @@ message ListStruct {
 
 message MapStruct {
   map<string, Struct> map_fields = 1;
+}
+
+message Map2Struct {
+  map<string, MapStruct> map2_fields = 1;
 }
