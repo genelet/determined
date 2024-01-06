@@ -25,7 +25,7 @@ func isHashAll(item interface{}) (int, map[string]interface{}) {
 	return found, next
 }
 
-func loopHash(arr *[]string, name string, item interface{}, depth, level int, keyname ...string) error {
+func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, level int, keyname ...string) error {
 	found, next := isHashAll(item)
 	if depth >= 2 && found == 2 {
 		found = 1
@@ -34,20 +34,26 @@ func loopHash(arr *[]string, name string, item interface{}, depth, level int, ke
 	case 2:
 		for key, value := range next {
 			name2 := name + ` "` + key + `"`
-			err := loopHash(arr, name2, value, depth+1, level)
+			err := loopHash(arr, name2, value, false, depth+1, level)
 			if err != nil {
 				return err
 			}
 		}
 	case 1:
 		// pass 'name' as the keyname to the next 'default' below
-		bs, err := encoding(item, level+1, name)
+		bs, err := encoding(item, equal, level+1, name)
 		if err != nil {
 			return err
 		}
-		*arr = append(*arr, fmt.Sprintf("%s %s", name, bs))
+		var str string
+		if equal {
+			str = "="
+		}
+		// this is the only place where 'equal' matters. if we don't care about it,
+		// we can just remove variable 'equal' from functions encoding and loopHash.
+		*arr = append(*arr, fmt.Sprintf("%s %s %s", name, str, bs))
 	default:
-		bs, err := encoding(item, level+1)
+		bs, err := encoding(item, equal, level+1)
 		if err != nil {
 			return err
 		}
@@ -70,10 +76,10 @@ func matchlast(keyname string, name string) bool {
 
 // Encoding encode the data to HCL format
 func Encoding(current interface{}, level int) ([]byte, error) {
-	return encoding(current, level)
+	return encoding(current, false, level)
 }
 
-func encoding(current interface{}, level int, keyname ...string) ([]byte, error) {
+func encoding(current interface{}, equal bool, level int, keyname ...string) ([]byte, error) {
 	var str string
 
 	leading := strings.Repeat("  ", level+1)
@@ -82,13 +88,13 @@ func encoding(current interface{}, level int, keyname ...string) ([]byte, error)
 	rv := reflect.ValueOf(current)
 	switch rv.Kind() {
 	case reflect.Pointer:
-		return encoding(rv.Elem().Interface(), level, keyname...)
+		return encoding(rv.Elem().Interface(), equal, level, keyname...)
 	case reflect.Map:
 		var arr []string
 		iter := rv.MapRange()
 		for iter.Next() {
 			key := iter.Key()
-			err := loopHash(&arr, key.String(), iter.Value().Interface(), 0, level, keyname...)
+			err := loopHash(&arr, key.String(), iter.Value().Interface(), equal, 0, level, keyname...)
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +107,7 @@ func encoding(current interface{}, level int, keyname ...string) ([]byte, error)
 	case reflect.Slice, reflect.Array:
 		var arr []string
 		for i := 0; i < rv.Len(); i++ {
-			bs, err := Encoding(rv.Index(i).Interface(), level+1)
+			bs, err := encoding(rv.Index(i).Interface(), true, level+1)
 			if err != nil {
 				return nil, err
 			}
