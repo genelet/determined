@@ -25,13 +25,16 @@ func isHashAll(item interface{}) (int, map[string]interface{}) {
 	return found, next
 }
 
-func loopHash(arr *[]string, name string, item interface{}, level int, keyname ...string) error {
+func loopHash(arr *[]string, name string, item interface{}, depth, level int, keyname ...string) error {
 	found, next := isHashAll(item)
+	if depth >= 2 && found == 2 {
+		found = 1
+	}
 	switch found {
 	case 2:
 		for key, value := range next {
 			name2 := name + ` "` + key + `"`
-			err := loopHash(arr, name2, value, level)
+			err := loopHash(arr, name2, value, depth+1, level)
 			if err != nil {
 				return err
 			}
@@ -85,7 +88,7 @@ func encoding(current interface{}, level int, keyname ...string) ([]byte, error)
 		iter := rv.MapRange()
 		for iter.Next() {
 			key := iter.Key()
-			err := loopHash(&arr, key.String(), iter.Value().Interface(), level, keyname...)
+			err := loopHash(&arr, key.String(), iter.Value().Interface(), 0, level, keyname...)
 			if err != nil {
 				return nil, err
 			}

@@ -12,8 +12,8 @@ var from string
 var to string
 
 func init() {
-	flag.StringVar(&from, "from", "hcl", "from format")
-	flag.StringVar(&to, "to", "yaml", "to format")
+	flag.StringVar(&from, "from", "json", "from format")
+	flag.StringVar(&to, "to", "hcl", "to format")
 	flag.Parse()
 }
 
