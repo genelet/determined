@@ -1121,7 +1121,7 @@ However, in many scenarios, we still need to use popular data formats like JSON 
 
 An intriguing question arises: Is it possible to convert HCL to JSON or YAML, and vice versa? Could we use HCL as the universal configuration language in projects and generate YAML or JSON with CLI or within  `Terraform`  on the fly?
 
-Unfortunately, the answer is generally no. The expressive power of HCL surpasses that of JSON and YAML. In particular, HCL uses labels to express sorted maps, while JSON and YAML treat all maps as unsorted. Most importantly, HCL allows variables and logic expressions, while JSON and YAML are purely data declarative. Therefore, some features in HCL can never be accurately represented in JSON.
+Unfortunately, the answer is generally no. The expressive power of HCL surpasses that of JSON and YAML. In particular, HCL uses array key (i.e. labels) to express maps, while JSON and YAML use single maps. Most importantly, HCL allows variables and logic expressions, while JSON and YAML are purely data declarative. Therefore, some features in HCL can never be accurately represented in JSON.
 
 However, in cases where we don’t care about map orders, and there are no variables or logical expressions, but only generic maps, lists, and scalars, then the answer is yes. This type of HCL can be accurately converted to JSON, and vice versa.
 
