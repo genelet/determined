@@ -81,7 +81,9 @@ func Encoding(current interface{}, level int) ([]byte, error) {
 
 func encoding(current interface{}, equal bool, level int, keyname ...string) ([]byte, error) {
 	var str string
-
+	if current == nil {
+		return nil, nil
+	}
 	leading := strings.Repeat("  ", level+1)
 	lessLeading := strings.Repeat("  ", level)
 
@@ -111,7 +113,11 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 			if err != nil {
 				return nil, err
 			}
-			arr = append(arr, string(bs))
+			item := `[]`
+			if bs != nil {
+				item = string(bs)
+			}
+			arr = append(arr, item)
 		}
 		str = fmt.Sprintf("[\n%s\n%s]", leading+strings.Join(arr, ",\n"+leading), lessLeading)
 		// both the above and the following code are correct

@@ -8,10 +8,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/zclconf/go-cty/cty/gocty"
 )
 
-func decodeSlice(bs []byte) ([]interface{}, error) {
+func decodeSlice(ref map[string]interface{}, node *utils.Tree, bs []byte) ([]interface{}, error) {
 	file, diags := hclsyntax.ParseConfig(append([]byte("x = "), bs...), rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
@@ -23,7 +22,7 @@ func decodeSlice(bs []byte) ([]interface{}, error) {
 
 	var object []interface{}
 	for _, item := range tuple.Exprs {
-		val, err := expressionToNative(file, item)
+		val, err := expressionToNative(ref, node, file, item)
 		if err != nil {
 			return nil, err
 		}
@@ -32,23 +31,23 @@ func decodeSlice(bs []byte) ([]interface{}, error) {
 	return object, nil
 }
 
-func decodeMap(bs []byte) (map[string]interface{}, error) {
+func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[string]interface{}, error) {
 	str := strings.TrimSpace(string(bs))
 	if str[0] == '{' && str[len(str)-1] == '}' {
-		return decodeObjectConsExpr(bs)
+		return decodeObjectConsExpr(ref, node, bs)
 	}
 	file, diags := hclsyntax.ParseConfig(bs, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
 	}
 
-	return decodeBody(file, file.Body.(*hclsyntax.Body))
+	return decodeBody(ref, node, file, file.Body.(*hclsyntax.Body))
 }
 
-func decodeBody(file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
+func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
 	object := make(map[string]interface{})
 	for key, item := range body.Attributes {
-		val, err := expressionToNative(file, item.Expr)
+		val, err := expressionToNative(ref, node, file, item.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +55,7 @@ func decodeBody(file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, e
 	}
 
 	for _, item := range body.Blocks {
-		val, err := decodeBody(file, item.Body)
+		val, err := decodeBody(ref, node, file, item.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +92,7 @@ func loop(x, y map[string]interface{}) {
 	}
 }
 
-func decodeObjectConsExpr(bs []byte) (map[string]interface{}, error) {
+func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[string]interface{}, error) {
 	file, diags := hclsyntax.ParseConfig(append([]byte("x = "), bs...), rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
@@ -110,7 +109,7 @@ func decodeObjectConsExpr(bs []byte) (map[string]interface{}, error) {
 		if diags.HasErrors() {
 			return nil, (diags.Errs())[0]
 		}
-		val, err := expressionToNative(file, item.ValueExpr)
+		val, err := expressionToNative(ref, node, file, item.ValueExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -119,31 +118,21 @@ func decodeObjectConsExpr(bs []byte) (map[string]interface{}, error) {
 	return object, nil
 }
 
-func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{}, error) {
+func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.File, item hclsyntax.Expression) (interface{}, error) {
 	switch t := item.(type) {
-	case *hclsyntax.TemplateExpr:
-		if t.IsStringLiteral() {
-			val, diags := t.Value(nil)
-			if diags.HasErrors() {
-				return nil, (diags.Errs())[0]
-			}
-			var v string
-			err := gocty.FromCtyValue(val, &v)
-			return v, err
-		} else {
-			return nil, fmt.Errorf("template for type %v not implemented", t)
-		}
-	case *hclsyntax.LiteralValueExpr:
-		return utils.CtyToNative(t.Val)
 	case *hclsyntax.TupleConsExpr: // array
 		rng := t.SrcRange
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
-		return decodeSlice(bs)
+		return decodeSlice(ref, node, bs)
 	case *hclsyntax.ObjectConsExpr: // map
 		rng := t.SrcRange
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
-		return decodeMap(bs)
+		return decodeMap(ref, node, bs)
 	default:
+		cv, err := utils.ExpressionToCty(ref, node, item)
+		if err != nil {
+			return nil, err
+		}
+		return utils.CtyToNative(cv)
 	}
-	return nil, fmt.Errorf("unknow type %T", item)
 }

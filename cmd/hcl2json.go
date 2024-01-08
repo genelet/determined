@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"github.com/genelet/determined/dethcl"
 	"os"
+
+	"github.com/genelet/determined/convert"
 )
 
 // treat hcl as map[string]interface{} or []interface{}
@@ -20,18 +20,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", scanner.Err())
 		os.Exit(-1)
 	}
-	obj := map[string]interface{}{}
-	if err := dethcl.Unmarshal([]byte(hcl), &obj); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(-1)
-	}
-
-	json, err := json.Marshal(obj)
+	jsn, err := convert.HCLToJSON([]byte(hcl))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(-1)
 	}
-
-	fmt.Printf("%s\n", json)
+	fmt.Printf("%s\n", jsn)
 	os.Exit(0)
 }

@@ -71,7 +71,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 	switch rv.Kind() {
 	case reflect.Map:
-		obj, err := decodeMap(dat)
+		obj, err := decodeMap(ref, node, dat)
 		if err != nil {
 			return err
 		}
@@ -81,7 +81,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		}
 		return nil
 	case reflect.Slice:
-		obj, err := decodeSlice(dat)
+		obj, err := decodeSlice(ref, node, dat)
 		if err != nil {
 			return err
 		}
@@ -173,13 +173,13 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		typ := field.Type
 		f := oriTobe.Elem().FieldByName(name)
 		if typ.Kind() == reflect.Slice {
-			obj, err := decodeSlice(bs)
+			obj, err := decodeSlice(ref, node, bs)
 			if err != nil {
 				return err
 			}
 			f.Set(reflect.ValueOf(obj))
 		} else {
-			obj, err := decodeMap(bs)
+			obj, err := decodeMap(ref, node, bs)
 			if err != nil {
 				return err
 			}
