@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"strings"
 
@@ -49,6 +50,7 @@ func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 	if v == nil {
 		return cty.NilVal, nil
 	}
+	log.Printf("node %#v", node)
 
 	switch t := v.(type) {
 	case *hclsyntax.FunctionCallExpr:

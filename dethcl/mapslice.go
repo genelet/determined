@@ -22,7 +22,7 @@ func decodeSlice(ref map[string]interface{}, node *utils.Tree, bs []byte) ([]int
 
 	var object []interface{}
 	for _, item := range tuple.Exprs {
-		val, err := expressionToNative(ref, node, file, item)
+		val, err := expressionToNative(ref, node, file, "", item)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +47,7 @@ func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[str
 func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
 	object := make(map[string]interface{})
 	for key, item := range body.Attributes {
-		val, err := expressionToNative(ref, node, file, item.Expr)
+		val, err := expressionToNative(ref, node, file, key, item.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byt
 		if diags.HasErrors() {
 			return nil, (diags.Errs())[0]
 		}
-		val, err := expressionToNative(ref, node, file, item.ValueExpr)
+		val, err := expressionToNative(ref, node, file, key.AsString(), item.ValueExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +118,7 @@ func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byt
 	return object, nil
 }
 
-func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.File, item hclsyntax.Expression) (interface{}, error) {
+func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.File, key string, item hclsyntax.Expression) (interface{}, error) {
 	switch t := item.(type) {
 	case *hclsyntax.TupleConsExpr: // array
 		rng := t.SrcRange
@@ -133,6 +133,10 @@ func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.
 		if err != nil {
 			return nil, err
 		}
+
+		item = utils.CtyToExpression(cv, item.Range())
+		node.AddItem(key, cv)
+
 		return utils.CtyToNative(cv)
 	}
 }
