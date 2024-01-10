@@ -2,6 +2,7 @@ package dethcl
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/genelet/determined/utils"
@@ -21,8 +22,8 @@ func decodeSlice(ref map[string]interface{}, node *utils.Tree, bs []byte) ([]int
 	}
 
 	var object []interface{}
-	for _, item := range tuple.Exprs {
-		val, err := expressionToNative(ref, node, file, "", item)
+	for dex, item := range tuple.Exprs {
+		val, err := expressionToNative(ref, node, file, dex, item)
 		if err != nil {
 			return nil, err
 		}
@@ -32,6 +33,7 @@ func decodeSlice(ref map[string]interface{}, node *utils.Tree, bs []byte) ([]int
 }
 
 func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[string]interface{}, error) {
+	log.Printf("decodeMap: %s", string(bs))
 	str := strings.TrimSpace(string(bs))
 	if str[0] == '{' && str[len(str)-1] == '}' {
 		return decodeObjectConsExpr(ref, node, bs)
@@ -40,22 +42,31 @@ func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[str
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
 	}
-
+	log.Printf("11111: %s", "start")
 	return decodeBody(ref, node, file, file.Body.(*hclsyntax.Body))
 }
 
 func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
 	object := make(map[string]interface{})
+	log.Printf("22222: %s=> %#v", node.Name, body.Attributes)
 	for key, item := range body.Attributes {
-		val, err := expressionToNative(ref, node, file, key, item.Expr)
+		val, err := expressionToNative(ref, node, file, key, item.Expr, item)
 		if err != nil {
 			return nil, err
 		}
 		object[key] = val
 	}
+	log.Printf("33333: %#v", node.Name)
+	for _, down := range node.Downs {
+		log.Printf("44444: %#v", down)
+	}
 
-	for _, item := range body.Blocks {
-		val, err := decodeBody(ref, node, file, item.Body)
+	for i, item := range body.Blocks {
+		log.Printf("A55555-%d-%s: %s", i, item.Type, node.Name)
+		node.ParentAddNodes(item.Type, item.Labels...)
+		subNode := node.GetNode(item.Type, item.Labels...)
+		log.Printf("B55555-%d-%s: %s=>%s", i, item.Type, node.Name, subNode.Name)
+		val, err := decodeBody(ref, subNode, file, item.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +87,9 @@ func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, bo
 			loop(x[item.Type].(map[string]interface{}), object[item.Type].(map[string]interface{}))
 		}
 	}
-
+	for _, down := range node.Downs {
+		log.Printf("99999: %#v", down)
+	}
 	return object, nil
 }
 
@@ -109,6 +122,7 @@ func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byt
 		if diags.HasErrors() {
 			return nil, (diags.Errs())[0]
 		}
+		log.Printf("CONS %s=>%#v=>%#v", node.Name, key, item.ValueExpr)
 		val, err := expressionToNative(ref, node, file, key.AsString(), item.ValueExpr)
 		if err != nil {
 			return nil, err
@@ -118,24 +132,32 @@ func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byt
 	return object, nil
 }
 
-func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.File, key string, item hclsyntax.Expression) (interface{}, error) {
+func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.File, key interface{}, item hclsyntax.Expression, attr ...*hclsyntax.Attribute) (interface{}, error) {
 	switch t := item.(type) {
 	case *hclsyntax.TupleConsExpr: // array
 		rng := t.SrcRange
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
-		return decodeSlice(ref, node, bs)
+		subNode := node.AddNode(fmt.Sprintf("%v", key))
+		log.Printf("ARRAY node %s", subNode.Name)
+		return decodeSlice(ref, subNode, bs)
 	case *hclsyntax.ObjectConsExpr: // map
 		rng := t.SrcRange
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
-		return decodeMap(ref, node, bs)
+		subNode := node.AddNode(fmt.Sprintf("%v", key))
+		log.Printf("MAP node %s", subNode.Name)
+		return decodeMap(ref, subNode, bs)
 	default:
 		cv, err := utils.ExpressionToCty(ref, node, item)
 		if err != nil {
 			return nil, err
 		}
 
-		item = utils.CtyToExpression(cv, item.Range())
-		node.AddItem(key, cv)
+		if attr != nil {
+			attr[0].Expr = utils.CtyToExpression(cv, attr[0].Expr.Range())
+		}
+		//item = utils.CtyToExpression(cv, item.Range())
+
+		node.AddItem(fmt.Sprintf("%v", key), cv)
 
 		return utils.CtyToNative(cv)
 	}

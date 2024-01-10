@@ -2,6 +2,7 @@ package dethcl
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"unicode"
@@ -106,6 +107,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	if objectMap == nil {
 		objectMap = make(map[string]*utils.Value)
 	}
+	log.Printf("00000000000 '%s'", dat)
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
@@ -121,6 +123,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		v.Expr = utils.CtyToExpression(cv, v.Range())
 		node.AddItem(k, cv)
 	}
+
+	log.Printf("11111111111 %s => %+#v", node.Name, node)
+	for _, block := range bd.Blocks {
+		node.ParentAddNodes(block.Type, block.Labels...)
+	}
+	log.Printf("33333333 %#v", node)
 
 	newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
 	if err != nil {
@@ -197,7 +205,6 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		name := field.Name
 		typ := field.Type
 		f := oriTobe.Elem().FieldByName(name)
-		subNode := node.AddNode(name)
 		result := objectMap[name]
 
 		if x := result.GetMap2Struct(); x != nil {
@@ -214,6 +221,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 			for k := 0; k < n; k++ {
 				block := blocks[k]
+				subNode := node.GetNode(tag, block.Labels...)
 				keystring0 := block.Labels[0]
 				var keystring1 string
 				if len(block.Labels) > 1 {
@@ -268,6 +276,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 			for k := 0; k < n; k++ {
 				block := blocks[k]
+				subNode := node.GetNode(tag, block.Labels...)
 				keystring := block.Labels[0]
 				nextStruct, ok := nextMapStructs[keystring]
 				if !ok {
@@ -319,12 +328,15 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 					nextStruct = nextListStructs[k]
 					// map is only using the first struct
 				}
+				block := blocks[k]
+				subNode := node.GetNode(tag, block.Labels...)
+				log.Printf("ffffff %s => %s => %s => %#v", node.Name, subNode.Name, tag, block.Labels)
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
 					return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
 				}
 				trial = clone(trial)
-				s, lbls, err := getBlockBytes(blocks[k], file)
+				s, lbls, err := getBlockBytes(block, file)
 				if err != nil {
 					return err
 				}
@@ -354,6 +366,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				f.Set(fSlice)
 			}
 		} else if x := result.GetSingleStruct(); x != nil {
+			subNode := node.GetNode(tag, blocks[0].Labels...)
 			trial := ref[x.ClassName]
 			if trial == nil {
 				return fmt.Errorf("class ref not found for %s", x.ClassName)

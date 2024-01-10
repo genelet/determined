@@ -24,13 +24,68 @@ func NewTree(name string) *Tree {
 	return &Tree{Name: name, Data: make(map[string]cty.Value)}
 }
 
+func (self *Tree) SimpleMap() map[string]interface{} {
+	x := map[string]interface{}{"name": self.Name}
+	if self.Up != nil {
+		x["up"] = self.Up.Name
+	}
+	if len(self.Downs) > 0 {
+		var downs []map[string]interface{}
+		for _, down := range self.Downs {
+			downs = append(downs, down.SimpleMap())
+		}
+		x["downs"] = downs
+	}
+	return x
+}
+
 func (self *Tree) AddNode(name string) *Tree {
+	first := grep(self.Downs, name)
+	if first != nil {
+		return first
+	}
+
 	self.mu.Lock()
 	child := NewTree(name)
 	self.Downs = append(self.Downs, child)
 	child.Up = self
 	self.mu.Unlock()
 	return child
+}
+
+func (self *Tree) ParentAddNodes(tag string, names ...string) {
+	node := self.AddNode(tag)
+	for _, name := range names {
+		node = node.AddNode(name)
+	}
+}
+
+func grep(downs []*Tree, name string) *Tree {
+	for _, down := range downs {
+		if down.Name == name {
+			return down
+		}
+	}
+	return nil
+}
+
+func (self *Tree) GetNode(tag string, names ...string) *Tree {
+	if tag == "" {
+		return self
+	}
+	down := grep(self.Downs, tag)
+	if down == nil {
+		return nil
+	}
+
+	for _, name := range names {
+		down = grep(down.Downs, name)
+		if down == nil {
+			return nil
+		}
+	}
+
+	return down
 }
 
 func (self *Tree) DeleteNode(name string) {
@@ -63,18 +118,25 @@ func (self *Tree) DeleteItem(k string) {
 
 func (self *Tree) FindNode(names []string) *Tree {
 	if names == nil || len(names) == 0 {
-		return self
+		return nil
 	}
-	for _, item := range names {
-		for _, down := range self.Downs {
-			if down.Name == item {
-				if len(names) == 1 {
-					return down
-				}
-				return down.FindNode(names[1:])
+
+	var down *Tree
+
+	for _, item := range self.Downs {
+		if item.Name == names[0] {
+			if len(names) == 1 {
+				return item
+			}
+			return item.FindNode(names[1:])
+		} else {
+			down = item.FindNode(names)
+			if down != nil {
+				return down
 			}
 		}
 	}
+
 	return nil
 }
 
