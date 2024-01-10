@@ -2,16 +2,18 @@ package dethcl
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"unicode"
 
+	ilang "github.com/genelet/determined/internal/lang"
 	"github.com/genelet/determined/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Unmarshaler interface {
@@ -52,6 +54,15 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[
 	top := utils.NewTree(utils.VAR)
 	node := top
 	ref[utils.ATTRIBUTES] = top
+	defaultFuncs := ilang.CoreFunctions(".")
+	if ref[utils.FUNCTIONS] == nil {
+		ref[utils.FUNCTIONS] = defaultFuncs
+	} else {
+		for k, v := range defaultFuncs {
+			ref[utils.FUNCTIONS].(map[string]function.Function)[k] = v
+		}
+	}
+
 	return UnmarshalSpecTree(node, dat, current, spec, ref, labels...)
 }
 
@@ -107,7 +118,6 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	if objectMap == nil {
 		objectMap = make(map[string]*utils.Value)
 	}
-	log.Printf("00000000000 '%s'", dat)
 
 	file, diags := hclsyntax.ParseConfig(dat, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
@@ -124,11 +134,9 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		node.AddItem(k, cv)
 	}
 
-	log.Printf("11111111111 %s => %+#v", node.Name, node)
 	for _, block := range bd.Blocks {
 		node.ParentAddNodes(block.Type, block.Labels...)
 	}
-	log.Printf("33333333 %#v", node)
 
 	newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
 	if err != nil {
@@ -221,7 +229,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 			for k := 0; k < n; k++ {
 				block := blocks[k]
-				subNode := node.GetNode(tag, block.Labels...)
+				subnode := node.GetNode(tag, block.Labels...)
 				keystring0 := block.Labels[0]
 				var keystring1 string
 				if len(block.Labels) > 1 {
@@ -248,7 +256,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if len(lbls) > 2 {
 					return fmt.Errorf("only two labels are allowed for map2 struct %s", name)
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				err = plusUnmarshalSpecTree(subnode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
@@ -276,7 +284,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 			for k := 0; k < n; k++ {
 				block := blocks[k]
-				subNode := node.GetNode(tag, block.Labels...)
+				subnode := node.GetNode(tag, block.Labels...)
 				keystring := block.Labels[0]
 				nextStruct, ok := nextMapStructs[keystring]
 				if !ok {
@@ -295,7 +303,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if len(lbls) > 1 {
 					return fmt.Errorf("only one label is allowed for map struct %s", name)
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				err = plusUnmarshalSpecTree(subnode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
@@ -329,8 +337,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 					// map is only using the first struct
 				}
 				block := blocks[k]
-				subNode := node.GetNode(tag, block.Labels...)
-				log.Printf("ffffff %s => %s => %s => %#v", node.Name, subNode.Name, tag, block.Labels)
+				subnode := node.GetNode(tag, block.Labels...)
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
 					return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
@@ -340,7 +347,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if err != nil {
 					return err
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				err = plusUnmarshalSpecTree(subnode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
@@ -366,7 +373,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				f.Set(fSlice)
 			}
 		} else if x := result.GetSingleStruct(); x != nil {
-			subNode := node.GetNode(tag, blocks[0].Labels...)
+			subnode := node.GetNode(tag, blocks[0].Labels...)
 			trial := ref[x.ClassName]
 			if trial == nil {
 				return fmt.Errorf("class ref not found for %s", x.ClassName)
@@ -376,7 +383,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 			if err != nil {
 				return err
 			}
-			err = plusUnmarshalSpecTree(subNode, s, trial, x, ref, lbls...)
+			err = plusUnmarshalSpecTree(subnode, s, trial, x, ref, lbls...)
 			if err != nil {
 				return err
 			}
@@ -393,12 +400,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	return nil
 }
 
-func plusUnmarshalSpecTree(subNode *utils.Tree, s []byte, trial interface{}, nextStruct *utils.Struct, ref map[string]interface{}, labels ...string) error {
+func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nextStruct *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	v, ok := trial.(Unmarshaler)
 	if ok {
 		return v.UnmarshalHCL(s, labels...)
 	}
-	return UnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
+	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
 func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields []reflect.StructField, newFields []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {

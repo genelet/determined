@@ -75,21 +75,18 @@ func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 				default:
 				}
 			}
+
 			n := len(names)
-			// the last one is not node but item
-			name = names[n-1]
+			name = names[n-1] // the last one is item, not node
 			names = names[:n-1]
 			n--
 
-			top := ref[ATTRIBUTES].(*Tree)
-			// check the first one
-			if n != 0 && names[0] == VAR {
-				names = names[1:]
-				n--
-			}
-			some = top.FindNode(names)
-			if some == nil {
-				return cty.EmptyObjectVal, fmt.Errorf("node %#v %s not found: %#v", top, trv.RootName(), names)
+			some = ref[ATTRIBUTES].(*Tree)
+			if n > 0 && !(n == 1 && names[0] == VAR) {
+				some = some.FindNode(names)
+				if some == nil {
+					return cty.EmptyObjectVal, fmt.Errorf("node not found: %s", trv.RootName())
+				}
 			}
 		}
 		return some.Data[name], nil
