@@ -1,15 +1,4 @@
   location = "Chicago"
-  arts "first" "x1" {
-    name = "peter drawings first"
-    drawings {
-      sx = 1
-      sy = 2
-    }
-    drawings {
-      sx = 3
-      sy = 4
-    }
-  }
   arts "second" "x2" {
     name = "peter drawings second"
     drawings {
@@ -71,5 +60,16 @@
     drawings {
       sx = 16
       sy = 17
+    }
+  }
+  arts "first" "x1" {
+    name = "peter drawings first"
+    drawings {
+      sx = 1
+      sy = 2
+    }
+    drawings {
+      sx = 3
+      sy = 4
     }
   }

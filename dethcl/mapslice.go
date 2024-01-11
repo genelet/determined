@@ -44,6 +44,27 @@ func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[str
 	return decodeBody(ref, node, file, file.Body.(*hclsyntax.Body))
 }
 
+func checkItemInBlocks(blocks2 [][]*hclsyntax.Block, labels []string) ([]*hclsyntax.Block, int) {
+	for k, blocks := range blocks2 {
+		block := blocks[len(blocks)-1]
+		var found bool
+		if block.Type == labels[0] {
+			for i := 1; i < len(labels); i++ {
+				if len(block.Labels) > i-1 && block.Labels[i-1] == labels[i] {
+					found = true
+				} else {
+					found = false
+					break
+				}
+			}
+		}
+		if found {
+			return blocks, k
+		}
+	}
+	return nil, -1
+}
+
 func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
 	object := make(map[string]interface{})
 	for key, item := range body.Attributes {
@@ -54,15 +75,41 @@ func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, bo
 		object[key] = val
 	}
 
+	var blocks2 [][]*hclsyntax.Block
 	for _, item := range body.Blocks {
-		node.ParentAddNodes(item.Type, item.Labels...)
-		subnode := node.GetNode(item.Type, item.Labels...)
-		val, err := decodeBody(ref, subnode, file, item.Body)
-		if err != nil {
-			return nil, err
+		labels := append([]string{item.Type}, item.Labels...)
+		leading, k := checkItemInBlocks(blocks2, labels)
+		if leading != nil {
+			blocks2[k] = append(leading, item)
+		} else {
+			blocks2 = append(blocks2, []*hclsyntax.Block{item})
+		}
+	}
+
+	for _, blocks := range blocks2 {
+		var val interface{}
+		var err error
+		b0 := blocks[0]
+		subnode := node.AddNodes(b0.Type, b0.Labels...)
+		if len(blocks) > 1 {
+			var multi []map[string]interface{}
+			for i, block := range blocks {
+				subnode2 := subnode.AddNode(fmt.Sprintf("%d", i))
+				x, err := decodeBody(ref, subnode2, file, block.Body)
+				if err != nil {
+					return nil, err
+				}
+				multi = append(multi, x)
+			}
+			val = multi
+		} else {
+			val, err = decodeBody(ref, subnode, file, b0.Body)
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		labels := append([]string{item.Type}, item.Labels...)
+		labels := append([]string{b0.Type}, b0.Labels...)
 		var x map[string]interface{}
 		for j := len(labels) - 1; j >= 0; j-- {
 			if x == nil {
@@ -72,10 +119,11 @@ func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, bo
 			}
 		}
 
-		if object[item.Type] == nil {
-			object[item.Type] = x[item.Type]
+		l0 := labels[0]
+		if object[l0] == nil {
+			object[l0] = x[l0]
 		} else {
-			loop(x[item.Type].(map[string]interface{}), object[item.Type].(map[string]interface{}))
+			loop(x[l0].(map[string]interface{}), object[l0].(map[string]interface{}))
 		}
 	}
 

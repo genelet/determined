@@ -72,6 +72,12 @@ func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 					names = append(names, ty.Name)
 				case hcl.TraverseAttr:
 					names = append(names, ty.Name)
+				case hcl.TraverseIndex:
+					index, err := CtyNumberToNative(ty.Key)
+					if err != nil {
+						return cty.EmptyObjectVal, err
+					}
+					names = append(names, fmt.Sprintf("%v", index))
 				default:
 				}
 			}

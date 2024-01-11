@@ -53,11 +53,12 @@ func (self *Tree) AddNode(name string) *Tree {
 	return child
 }
 
-func (self *Tree) ParentAddNodes(tag string, names ...string) {
+func (self *Tree) AddNodes(tag string, names ...string) *Tree {
 	node := self.AddNode(tag)
 	for _, name := range names {
 		node = node.AddNode(name)
 	}
+	return node
 }
 
 func grep(downs []*Tree, name string) *Tree {
