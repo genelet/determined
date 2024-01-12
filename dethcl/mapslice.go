@@ -8,10 +8,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/zclconf/go-cty/cty/gocty"
 )
 
-func decodeSlice(bs []byte) ([]interface{}, error) {
+func decodeSlice(ref map[string]interface{}, node *utils.Tree, bs []byte) ([]interface{}, error) {
 	file, diags := hclsyntax.ParseConfig(append([]byte("x = "), bs...), rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
@@ -22,8 +21,8 @@ func decodeSlice(bs []byte) ([]interface{}, error) {
 	}
 
 	var object []interface{}
-	for _, item := range tuple.Exprs {
-		val, err := expressionToNative(file, item)
+	for dex, item := range tuple.Exprs {
+		val, err := expressionToNative(ref, node, file, dex, item)
 		if err != nil {
 			return nil, err
 		}
@@ -32,36 +31,85 @@ func decodeSlice(bs []byte) ([]interface{}, error) {
 	return object, nil
 }
 
-func decodeMap(bs []byte) (map[string]interface{}, error) {
+func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[string]interface{}, error) {
 	str := strings.TrimSpace(string(bs))
 	if str[0] == '{' && str[len(str)-1] == '}' {
-		return decodeObjectConsExpr(bs)
+		return decodeObjectConsExpr(ref, node, bs)
 	}
 	file, diags := hclsyntax.ParseConfig(bs, rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
 	}
 
-	return decodeBody(file, file.Body.(*hclsyntax.Body))
+	return decodeBody(ref, node, file, file.Body.(*hclsyntax.Body))
 }
 
-func decodeBody(file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
+func checkItemInBlocks(blocks2 [][]*hclsyntax.Block, labels []string) ([]*hclsyntax.Block, int) {
+	for k, blocks := range blocks2 {
+		block := blocks[len(blocks)-1]
+		var found bool
+		if block.Type == labels[0] {
+			for i := 1; i < len(labels); i++ {
+				if len(block.Labels) > i-1 && block.Labels[i-1] == labels[i] {
+					found = true
+				} else {
+					found = false
+					break
+				}
+			}
+		}
+		if found {
+			return blocks, k
+		}
+	}
+	return nil, -1
+}
+
+func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
 	object := make(map[string]interface{})
 	for key, item := range body.Attributes {
-		val, err := expressionToNative(file, item.Expr)
+		val, err := expressionToNative(ref, node, file, key, item.Expr, item)
 		if err != nil {
 			return nil, err
 		}
 		object[key] = val
 	}
 
+	var blocks2 [][]*hclsyntax.Block
 	for _, item := range body.Blocks {
-		val, err := decodeBody(file, item.Body)
-		if err != nil {
-			return nil, err
+		labels := append([]string{item.Type}, item.Labels...)
+		leading, k := checkItemInBlocks(blocks2, labels)
+		if leading != nil {
+			blocks2[k] = append(leading, item)
+		} else {
+			blocks2 = append(blocks2, []*hclsyntax.Block{item})
+		}
+	}
+
+	for _, blocks := range blocks2 {
+		var val interface{}
+		var err error
+		b0 := blocks[0]
+		subnode := node.AddNodes(b0.Type, b0.Labels...)
+		if len(blocks) > 1 {
+			var multi []map[string]interface{}
+			for i, block := range blocks {
+				subnode2 := subnode.AddNode(fmt.Sprintf("%d", i))
+				x, err := decodeBody(ref, subnode2, file, block.Body)
+				if err != nil {
+					return nil, err
+				}
+				multi = append(multi, x)
+			}
+			val = multi
+		} else {
+			val, err = decodeBody(ref, subnode, file, b0.Body)
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		labels := append([]string{item.Type}, item.Labels...)
+		labels := append([]string{b0.Type}, b0.Labels...)
 		var x map[string]interface{}
 		for j := len(labels) - 1; j >= 0; j-- {
 			if x == nil {
@@ -71,10 +119,11 @@ func decodeBody(file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, e
 			}
 		}
 
-		if object[item.Type] == nil {
-			object[item.Type] = x[item.Type]
+		l0 := labels[0]
+		if object[l0] == nil {
+			object[l0] = x[l0]
 		} else {
-			loop(x[item.Type].(map[string]interface{}), object[item.Type].(map[string]interface{}))
+			loop(x[l0].(map[string]interface{}), object[l0].(map[string]interface{}))
 		}
 	}
 
@@ -93,7 +142,7 @@ func loop(x, y map[string]interface{}) {
 	}
 }
 
-func decodeObjectConsExpr(bs []byte) (map[string]interface{}, error) {
+func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[string]interface{}, error) {
 	file, diags := hclsyntax.ParseConfig(append([]byte("x = "), bs...), rname(), hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, (diags.Errs())[0]
@@ -110,7 +159,7 @@ func decodeObjectConsExpr(bs []byte) (map[string]interface{}, error) {
 		if diags.HasErrors() {
 			return nil, (diags.Errs())[0]
 		}
-		val, err := expressionToNative(file, item.ValueExpr)
+		val, err := expressionToNative(ref, node, file, key.AsString(), item.ValueExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -119,31 +168,31 @@ func decodeObjectConsExpr(bs []byte) (map[string]interface{}, error) {
 	return object, nil
 }
 
-func expressionToNative(file *hcl.File, item hclsyntax.Expression) (interface{}, error) {
+func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.File, key interface{}, item hclsyntax.Expression, attr ...*hclsyntax.Attribute) (interface{}, error) {
 	switch t := item.(type) {
-	case *hclsyntax.TemplateExpr:
-		if t.IsStringLiteral() {
-			val, diags := t.Value(nil)
-			if diags.HasErrors() {
-				return nil, (diags.Errs())[0]
-			}
-			var v string
-			err := gocty.FromCtyValue(val, &v)
-			return v, err
-		} else {
-			return nil, fmt.Errorf("template for type %v not implemented", t)
-		}
-	case *hclsyntax.LiteralValueExpr:
-		return utils.CtyToNative(t.Val)
 	case *hclsyntax.TupleConsExpr: // array
 		rng := t.SrcRange
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
-		return decodeSlice(bs)
+		subnode := node.AddNode(fmt.Sprintf("%v", key))
+		return decodeSlice(ref, subnode, bs)
 	case *hclsyntax.ObjectConsExpr: // map
 		rng := t.SrcRange
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
-		return decodeMap(bs)
+		subnode := node.AddNode(fmt.Sprintf("%v", key))
+		return decodeMap(ref, subnode, bs)
 	default:
+		cv, err := utils.ExpressionToCty(ref, node, item)
+		if err != nil {
+			return nil, err
+		}
+
+		if attr != nil {
+			attr[0].Expr = utils.CtyToExpression(cv, attr[0].Expr.Range())
+		}
+		//item = utils.CtyToExpression(cv, item.Range())
+
+		node.AddItem(fmt.Sprintf("%v", key), cv)
+
+		return utils.CtyToNative(cv)
 	}
-	return nil, fmt.Errorf("unknow type %T", item)
 }

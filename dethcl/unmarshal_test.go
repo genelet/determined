@@ -20,6 +20,45 @@ func TestHclSimple(t *testing.T) {
 	}
 }
 
+/*
+	func TestHclArray(t *testing.T) {
+		type datacenter struct {
+			Alias  string `json:"alias" hcl:"alias,label"`
+			Region string `json:"region" hcl:"region"`
+		}
+		type city struct {
+			Google []*datacenter `json:"google" hcl:"google,block"`
+		}
+
+		type provider struct {
+			Provider map[string]*city `json:"provider" hcl:"provider,block"`
+		}
+
+		data2 := `
+		   	# default configuration
+		   	provider "google" {
+		   	#	alias  = "us"
+		   	  region = "us-central1"
+		   	}
+
+		   	# alternate configuration, whose alias is "europe"
+		   	provider "google" {
+		   	  alias  = "europe"
+		   	  region = "europe-west1"
+		   	}
+
+`
+
+	p := new(provider)
+	err := UnmarshalSpec([]byte(data2), p, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Errorf("%#v", p.Provider["google"])
+
+}
+*/
 func TestHclShape1(t *testing.T) {
 	data1 := `
 	name = "peter shape"

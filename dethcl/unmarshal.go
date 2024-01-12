@@ -6,11 +6,14 @@ import (
 	"strings"
 	"unicode"
 
+	ilang "github.com/genelet/determined/internal/lang"
 	"github.com/genelet/determined/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Unmarshaler interface {
@@ -51,6 +54,15 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[
 	top := utils.NewTree(utils.VAR)
 	node := top
 	ref[utils.ATTRIBUTES] = top
+	defaultFuncs := ilang.CoreFunctions(".")
+	if ref[utils.FUNCTIONS] == nil {
+		ref[utils.FUNCTIONS] = defaultFuncs
+	} else {
+		for k, v := range defaultFuncs {
+			ref[utils.FUNCTIONS].(map[string]function.Function)[k] = v
+		}
+	}
+
 	return UnmarshalSpecTree(node, dat, current, spec, ref, labels...)
 }
 
@@ -71,7 +83,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 	switch rv.Kind() {
 	case reflect.Map:
-		obj, err := decodeMap(dat)
+		obj, err := decodeMap(ref, node, dat)
 		if err != nil {
 			return err
 		}
@@ -81,7 +93,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		}
 		return nil
 	case reflect.Slice:
-		obj, err := decodeSlice(dat)
+		obj, err := decodeSlice(ref, node, dat)
 		if err != nil {
 			return err
 		}
@@ -122,12 +134,16 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		node.AddItem(k, cv)
 	}
 
-	newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
+	for _, block := range bd.Blocks {
+		node.AddNodes(block.Type, block.Labels...)
+	}
+
+	newLabels, newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
 	if err != nil {
 		return err
 	}
 
-	rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields)
+	rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields, newLabels)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -141,17 +157,20 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		m = len(labels)
 	}
 	k := 0
-	for i, field := range newFields {
-		two := tag2(field.Tag)
+	for _, field := range newLabels {
 		name := field.Name
 		f := oriTobe.Elem().FieldByName(name)
-		if strings.ToLower(two[1]) == "label" && k < m {
+		if k < m {
 			f.Set(reflect.ValueOf(labels[k]))
 			k++
-		} else {
-			rawField := rawValue.Field(i)
-			f.Set(rawField)
 		}
+	}
+
+	for i, field := range newFields {
+		name := field.Name
+		f := oriTobe.Elem().FieldByName(name)
+		rawField := rawValue.Field(i)
+		f.Set(rawField)
 	}
 
 	for _, field := range decFields {
@@ -173,13 +192,13 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		typ := field.Type
 		f := oriTobe.Elem().FieldByName(name)
 		if typ.Kind() == reflect.Slice {
-			obj, err := decodeSlice(bs)
+			obj, err := decodeSlice(ref, node, bs)
 			if err != nil {
 				return err
 			}
 			f.Set(reflect.ValueOf(obj))
 		} else {
-			obj, err := decodeMap(bs)
+			obj, err := decodeMap(ref, node, bs)
 			if err != nil {
 				return err
 			}
@@ -197,7 +216,6 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		name := field.Name
 		typ := field.Type
 		f := oriTobe.Elem().FieldByName(name)
-		subNode := node.AddNode(name)
 		result := objectMap[name]
 
 		if x := result.GetMap2Struct(); x != nil {
@@ -214,6 +232,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 			for k := 0; k < n; k++ {
 				block := blocks[k]
+				subnode := node.GetNode(tag, block.Labels...)
 				keystring0 := block.Labels[0]
 				var keystring1 string
 				if len(block.Labels) > 1 {
@@ -240,7 +259,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if len(lbls) > 2 {
 					return fmt.Errorf("only two labels are allowed for map2 struct %s", name)
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				err = plusUnmarshalSpecTree(subnode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
@@ -268,6 +287,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 			for k := 0; k < n; k++ {
 				block := blocks[k]
+				subnode := node.GetNode(tag, block.Labels...)
 				keystring := block.Labels[0]
 				nextStruct, ok := nextMapStructs[keystring]
 				if !ok {
@@ -286,7 +306,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if len(lbls) > 1 {
 					return fmt.Errorf("only one label is allowed for map struct %s", name)
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				err = plusUnmarshalSpecTree(subnode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
@@ -319,16 +339,18 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 					nextStruct = nextListStructs[k]
 					// map is only using the first struct
 				}
+				block := blocks[k]
+				subnode := node.GetNode(tag, block.Labels...)
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
 					return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
 				}
 				trial = clone(trial)
-				s, lbls, err := getBlockBytes(blocks[k], file)
+				s, lbls, err := getBlockBytes(block, file)
 				if err != nil {
 					return err
 				}
-				err = plusUnmarshalSpecTree(subNode, s, trial, nextStruct, ref, lbls...)
+				err = plusUnmarshalSpecTree(subnode, s, trial, nextStruct, ref, lbls...)
 				if err != nil {
 					return err
 				}
@@ -354,6 +376,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				f.Set(fSlice)
 			}
 		} else if x := result.GetSingleStruct(); x != nil {
+			subnode := node.GetNode(tag, blocks[0].Labels...)
 			trial := ref[x.ClassName]
 			if trial == nil {
 				return fmt.Errorf("class ref not found for %s", x.ClassName)
@@ -363,7 +386,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 			if err != nil {
 				return err
 			}
-			err = plusUnmarshalSpecTree(subNode, s, trial, x, ref, lbls...)
+			err = plusUnmarshalSpecTree(subnode, s, trial, x, ref, lbls...)
 			if err != nil {
 				return err
 			}
@@ -380,20 +403,19 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	return nil
 }
 
-func plusUnmarshalSpecTree(subNode *utils.Tree, s []byte, trial interface{}, nextStruct *utils.Struct, ref map[string]interface{}, labels ...string) error {
+func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nextStruct *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	v, ok := trial.(Unmarshaler)
 	if ok {
 		return v.UnmarshalHCL(s, labels...)
 	}
-	return UnmarshalSpecTree(subNode, s, trial, nextStruct, ref, labels...)
+	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
-func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields []reflect.StructField, newFields []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
 	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
 
 	oriref := getTagref(oriFields)
 	decref := getTagref(decFields)
-
 	var decattrs map[string]*hclsyntax.Attribute
 	for k, v := range bd.Attributes {
 		if decref[k] {
@@ -405,7 +427,17 @@ func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields 
 			if body.Attributes == nil {
 				body.Attributes = make(map[string]*hclsyntax.Attribute)
 			}
-			body.Attributes[k] = v
+			var found bool
+			for _, s := range newLabels {
+				tags := tag2(s.Tag)
+				if len(tags) == 2 && tags[0] == k && strings.ToLower(tags[1]) == "label" {
+					found = true
+					break
+				}
+			}
+			if found == false {
+				body.Attributes[k] = v
+			}
 		}
 	}
 
@@ -424,6 +456,7 @@ func refreshBody(bd *hclsyntax.Body, oriFields []reflect.StructField, decFields 
 
 	newType := reflect.StructOf(newFields)
 	raw := reflect.New(newType).Interface()
+
 	diags := gohcl.DecodeBody(body, nil, raw)
 	if diags.HasErrors() {
 		return reflect.Zero(newType), nil, nil, nil, diags
@@ -454,7 +487,8 @@ func getTagref(oriFields []reflect.StructField) map[string]bool {
 // newFields for normal fields, can be decoded withe gohcl
 // oriFields for blocks, decoded individually as body
 // decFields for map[string]interface{} or []interface{}
-func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
+func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
+	var newLabels []reflect.StructField
 	var newFields []reflect.StructField
 	var oriFields []reflect.StructField
 	var decFields []reflect.StructField
@@ -469,6 +503,11 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			continue
 		}
 		tag := (tag2(field.Tag))[0]
+		what := (tag2(field.Tag))[1]
+		if strings.ToLower(what) == "label" {
+			newLabels = append(newLabels, field)
+			continue
+		}
 		if tag == `-` || (len(tag) >= 2 && tag[len(tag)-2:] == `,-`) {
 			continue
 		}
@@ -479,9 +518,9 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 		if tag == "" {
 			switch typ.Kind() {
 			case reflect.Struct:
-				deeps, deepTypes, deepDecs, err := loopFields(field.Type, objectMap, ref)
+				_, deeps, deepTypes, deepDecs, err := loopFields(field.Type, objectMap, ref)
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 				for _, v := range deeps {
 					newFields = append(newFields, v)
@@ -500,7 +539,7 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			ref[s] = reflect.New(typ).Interface()
 			v, err := utils.NewValue(s)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			objectMap[field.Name] = v
 			oriFields = append(oriFields, field)
@@ -521,7 +560,7 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			}
 			v, err := utils.NewValue([]string{s})
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			objectMap[field.Name] = v
 			oriFields = append(oriFields, field)
@@ -529,7 +568,7 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			newFields = append(newFields, field)
 		}
 	}
-	return newFields, oriFields, decFields, nil
+	return newLabels, newFields, oriFields, decFields, nil
 }
 
 func addLabels(current interface{}, labels ...string) {
