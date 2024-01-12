@@ -135,6 +135,61 @@ func TestMapSliceNew(t *testing.T) {
 	os.Remove("museum.hcl")
 }
 
+func TestMap2Hcl(t *testing.T) {
+	type datacenter struct {
+		Alias  string `json:"alias" hcl:"alias,label"`
+		Region string `json:"region" hcl:"region"`
+	}
+
+	type provider struct {
+		Provider map[[2]string]*datacenter `json:"provider" hcl:"provider,block"`
+	}
+
+	data2 := `
+		   	# default configuration
+		   	provider "google" {
+		   	  region = "us-central1"
+		   	}
+
+		   	# alternate configuration, whose alias is "europe"
+		   	provider "google" "europe" {				
+		   	  region = "europe-west1"
+		   	}
+
+			provider "amazon" {
+			  alias = "us"
+			  region = "lax-1"
+			}
+
+`
+	p := new(provider)
+	err := UnmarshalSpec([]byte(data2), p, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for k, v := range p.Provider {
+		switch k[0] {
+		case "google":
+			switch k[1] {
+			case "europe":
+				if v.Region != "europe-west1" {
+					t.Errorf("%v => %#v", k, v)
+				}
+			default:
+				if v.Region != "us-central1" {
+					t.Errorf("%v => %#v", k, v)
+				}
+			}
+		case "amazon":
+			if !(k[1] == "" && v.Region == "lax-1") {
+				t.Errorf("%v => %#v", k, v)
+			}
+		default:
+		}
+	}
+}
+
 type museum2 struct {
 	Location string                 `hcl:"location"`
 	Arts     map[[2]string]*picture `hcl:"arts,block"`

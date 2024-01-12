@@ -143,7 +143,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		return err
 	}
 
-	rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields, newLabels)
+	labelExprs, rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields, newLabels)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -160,10 +160,21 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	for _, field := range newLabels {
 		name := field.Name
 		f := oriTobe.Elem().FieldByName(name)
-		if k < m {
-			f.Set(reflect.ValueOf(labels[k]))
-			k++
+		var label string
+		if labelExprs != nil && len(labelExprs) > k {
+			cv, diags := labelExprs[k].Value(nil)
+			if diags.HasErrors() {
+				return diags
+			}
+			label = cv.AsString()
+			if k < m {
+				labels[k] = label // useless but if pass ...*string as labels
+			}
+		} else if k < m {
+			label = labels[k]
 		}
+		f.Set(reflect.ValueOf(label))
+		k++
 	}
 
 	for i, field := range newFields {
@@ -224,7 +235,11 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				return fmt.Errorf("type mismatch for %s", name)
 			}
 			var first *utils.MapStruct
+			var firstFirst *utils.Struct
 			for _, first = range nextMap2Structs {
+				for _, firstFirst = range first.GetMapFields() {
+					break
+				}
 				break
 			}
 			n := len(blocks)
@@ -244,9 +259,8 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				}
 				nextStruct, ok := nextMapStruct.GetMapFields()[keystring1]
 				if !ok {
-					return fmt.Errorf("map struct not found for %s=>%s", name, x.String())
+					nextStruct = firstFirst
 				}
-
 				trial := ref[nextStruct.ClassName]
 				if trial == nil {
 					return fmt.Errorf("ref not found for %s", nextStruct.ClassName)
@@ -411,11 +425,13 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
-func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) (reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) ([]hclsyntax.Expression, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
 	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
 
 	oriref := getTagref(oriFields)
 	decref := getTagref(decFields)
+
+	var labelExprs []hclsyntax.Expression
 	var decattrs map[string]*hclsyntax.Attribute
 	for k, v := range bd.Attributes {
 		if decref[k] {
@@ -424,9 +440,6 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 			}
 			decattrs[k] = v
 		} else {
-			if body.Attributes == nil {
-				body.Attributes = make(map[string]*hclsyntax.Attribute)
-			}
 			var found bool
 			for _, s := range newLabels {
 				tags := tag2(s.Tag)
@@ -435,7 +448,12 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 					break
 				}
 			}
-			if found == false {
+			if found {
+				labelExprs = append(labelExprs, v.Expr)
+			} else {
+				if body.Attributes == nil {
+					body.Attributes = make(map[string]*hclsyntax.Attribute)
+				}
 				body.Attributes[k] = v
 			}
 		}
@@ -459,10 +477,10 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 
 	diags := gohcl.DecodeBody(body, nil, raw)
 	if diags.HasErrors() {
-		return reflect.Zero(newType), nil, nil, nil, diags
+		return nil, reflect.Zero(newType), nil, nil, nil, diags
 	}
 
-	return reflect.ValueOf(raw).Elem(), decattrs, decblock, oriblock, nil
+	return labelExprs, reflect.ValueOf(raw).Elem(), decattrs, decblock, oriblock, nil
 }
 
 func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
@@ -515,6 +533,7 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			oriFields = append(oriFields, field)
 			continue
 		}
+
 		if tag == "" {
 			switch typ.Kind() {
 			case reflect.Struct:
@@ -532,9 +551,11 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 					decFields = append(decFields, v)
 				}
 			default:
-				continue
 			}
-		} else if typ.Kind() == reflect.Struct {
+			continue
+		}
+
+		if typ.Kind() == reflect.Struct {
 			s := typ.String()
 			ref[s] = reflect.New(typ).Interface()
 			v, err := utils.NewValue(s)
@@ -543,9 +564,11 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			}
 			objectMap[field.Name] = v
 			oriFields = append(oriFields, field)
-		} else if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map {
+		} else if typ.Kind() == reflect.Map && typ.Key().Kind() == reflect.Array && typ.Key().Len() == 2 {
+			// this is map[[2]string]string
 			eType := typ.Elem()
 			s := eType.String()
+
 			switch eType.Kind() {
 			case reflect.Struct:
 				ref[s] = reflect.New(eType).Interface()
@@ -558,6 +581,30 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 				newFields = append(newFields, field)
 				continue
 			}
+			// use 2 empty strings here as key, then firstFirst in unmarshaling as default
+			v, err := utils.NewValue(map[[2]string]string{{"", ""}: s})
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+			objectMap[field.Name] = v
+			oriFields = append(oriFields, field)
+		} else if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map {
+			eType := typ.Elem()
+			s := eType.String()
+
+			switch eType.Kind() {
+			case reflect.Struct:
+				ref[s] = reflect.New(eType).Interface()
+			case reflect.Pointer:
+				ref[s] = reflect.New(eType.Elem()).Interface()
+			case reflect.Interface:
+				decFields = append(decFields, field)
+				continue
+			default:
+				newFields = append(newFields, field)
+				continue
+			}
+
 			v, err := utils.NewValue([]string{s})
 			if err != nil {
 				return nil, nil, nil, nil, err
