@@ -147,12 +147,13 @@ func TestMap2Hcl(t *testing.T) {
 
 	data2 := `
 		   	# default configuration
-		   	provider "google" {
+		   	provider "google" "default" {
 		   	  region = "us-central1"
 		   	}
 
 		   	# alternate configuration, whose alias is "europe"
-		   	provider "google" "europe" {				
+		   	provider "google" {
+			  alias = "europe"				
 		   	  region = "europe-west1"
 		   	}
 
@@ -182,7 +183,7 @@ func TestMap2Hcl(t *testing.T) {
 				}
 			}
 		case "amazon":
-			if !(k[1] == "" && v.Region == "lax-1") {
+			if !(k[1] == "us" && v.Region == "lax-1") {
 				t.Errorf("%v => %#v", k, v)
 			}
 		default:

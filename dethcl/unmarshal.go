@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	ilang "github.com/genelet/determined/internal/lang"
+
 	"github.com/genelet/determined/utils"
 
 	"github.com/hashicorp/hcl/v2"
@@ -152,28 +153,34 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	oriTobe := reflect.New(oriValue.Elem().Type()).Elem()
 	oriTobe.Set(oriValue.Elem())
 
-	m := 0
-	if labels != nil {
-		m = len(labels)
-	}
+	// first, to fill in the struct if values of labels are found
 	k := 0
-	for _, field := range newLabels {
-		name := field.Name
-		f := oriTobe.Elem().FieldByName(name)
-		var label string
-		if labelExprs != nil && len(labelExprs) > k {
-			cv, diags := labelExprs[k].Value(nil)
-			if diags.HasErrors() {
-				return diags
+	if labelExprs != nil {
+		for _, field := range newLabels {
+			name := field.Name
+			f := oriTobe.Elem().FieldByName(name)
+			if k < len(labelExprs) {
+				cv, diags := labelExprs[k].Value(nil)
+				if diags.HasErrors() {
+					return diags
+				}
+				label := cv.AsString()
+				k++
+				f.Set(reflect.ValueOf(label))
 			}
-			label = cv.AsString()
-		} else if k < m {
-			// force the upper keys to be labels.
-			// for [2]string, there might be a mis-alignment
-			label = labels[k]
 		}
-		f.Set(reflect.ValueOf(label))
-		k++
+	}
+
+	// second, add missing labels if they are passed from the upper level
+	if labels != nil && newLabels != nil && len(labels) == len(newLabels) {
+		for i, field := range newLabels {
+			name := field.Name
+			f := oriTobe.Elem().FieldByName(name)
+			if f.String() == "" {
+				label := labels[i]
+				f.Set(reflect.ValueOf(label))
+			}
+		}
 	}
 
 	for i, field := range newFields {
@@ -247,10 +254,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 			for k := 0; k < n; k++ {
 				block := blocks[k]
 				subnode := node.GetNode(tag, block.Labels...)
-				keystring0 := block.Labels[0]
-				var keystring1 string
-				if len(block.Labels) > 1 {
-					keystring1 = block.Labels[1]
+				var keystring0, keystring1 string
+				if len(block.Labels) > 0 {
+					keystring0 = block.Labels[0]
+					if len(block.Labels) > 1 {
+						keystring1 = block.Labels[1]
+					}
 				}
 				nextMapStruct, ok := nextMap2Structs[keystring0]
 				if !ok {
@@ -276,9 +285,22 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				if err != nil {
 					return err
 				}
-				knd := typ.Elem().Kind() // units' kind in hash or array
+
+				// in case labels are in the struct
+				key0, key1 := getLabels(trial)
+				if keystring0 == "" {
+					keystring0 = key0
+					keystring1 = key1
+				} else if keystring1 == "" {
+					if key1 != "" {
+						keystring1 = key1
+					} else if key0 != "" {
+						keystring1 = key0
+					}
+				}
 				strKey := reflect.ValueOf([2]string{keystring0, keystring1})
 
+				knd := typ.Elem().Kind() // units' kind in hash or array
 				if knd == reflect.Interface || knd == reflect.Ptr {
 					fMap.SetMapIndex(strKey, reflect.ValueOf(trial))
 				} else {
@@ -641,4 +663,27 @@ func addLabels(current interface{}, labels ...string) {
 		}
 	}
 	oriValue.Set(oriTobe)
+}
+
+func getLabels(current interface{}) (string, string) {
+	t := reflect.TypeOf(current).Elem()
+	n := t.NumField()
+	oriValue := reflect.ValueOf(current).Elem()
+
+	k := 0
+	var key0, key1 string
+	for i := 0; i < n; i++ {
+		field := t.Field(i)
+		f := oriValue.Field(i)
+		two := tag2(field.Tag)
+		if strings.ToLower(two[1]) == "label" {
+			if k == 0 {
+				key0 = f.String()
+			} else {
+				key1 = f.String()
+			}
+			k++
+		}
+	}
+	return key0, key1
 }
