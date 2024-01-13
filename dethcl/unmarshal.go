@@ -167,10 +167,9 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 				return diags
 			}
 			label = cv.AsString()
-			if k < m {
-				labels[k] = label // useless but if pass ...*string as labels
-			}
 		} else if k < m {
+			// force the upper keys to be labels.
+			// for [2]string, there might be a mis-alignment
 			label = labels[k]
 		}
 		f.Set(reflect.ValueOf(label))
