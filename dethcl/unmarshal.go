@@ -639,32 +639,6 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 	return newLabels, newFields, oriFields, decFields, nil
 }
 
-func addLabels(current interface{}, labels ...string) {
-	if labels == nil {
-		return
-	}
-	m := len(labels)
-	k := 0
-
-	t := reflect.TypeOf(current).Elem()
-	n := t.NumField()
-
-	oriValue := reflect.ValueOf(&current).Elem()
-	oriTobe := reflect.New(oriValue.Elem().Type()).Elem()
-	oriTobe.Set(oriValue.Elem())
-
-	for i := 0; i < n; i++ {
-		field := t.Field(i)
-		f := oriTobe.Elem().Field(i)
-		two := tag2(field.Tag)
-		if strings.ToLower(two[1]) == "label" && k < m {
-			f.Set(reflect.ValueOf(labels[k]))
-			k++
-		}
-	}
-	oriValue.Set(oriTobe)
-}
-
 func getLabels(current interface{}) (string, string) {
 	t := reflect.TypeOf(current).Elem()
 	n := t.NumField()
