@@ -45,8 +45,18 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 		t = t.Elem()
 		oriValue = oriValue.Elem()
 	}
-	if t.Kind() != reflect.Struct {
-		return MarshalLevel(current, level)
+
+	switch t.Kind() {
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
+		return []byte(fmt.Sprintf("= %v", oriValue.Interface())), nil
+	case reflect.String:
+		return []byte(" = " + oriValue.String()), nil
+	case reflect.Pointer:
+		return marshal(oriValue.Elem().Interface(), level, keyname...)
+	default:
 	}
 
 	newFields, err := getFields(t, oriValue)
