@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genelet/determined/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -76,7 +75,7 @@ func TestSliceForMap(t *testing.T) {
 	}
 }`
 	geometry := &Geometry{}
-	spec, err := utils.NewStruct(
+	spec, err := NewStruct(
 		"Geometry", map[string]interface{}{
 			"Shapes": []string{
 				"Square"}}) // in case of key is unknown, use slice
@@ -104,7 +103,7 @@ func TestJsonShape(t *testing.T) {
 	geo := &Geo{}
 	c := &Circle{}
 	ref := map[string]interface{}{"Circle": c}
-	spec, err := utils.NewStruct(
+	spec, err := NewStruct(
 		"Geo", map[string]interface{}{"Shape": "Circle"})
 	err = JsonUnmarshal([]byte(data1), geo, spec, ref)
 	if err != nil {
@@ -124,7 +123,7 @@ func TestJsonShape(t *testing.T) {
 	geo = &Geo{}
 	s := &Square{}
 	ref = map[string]interface{}{"Circle": c, "Square": s}
-	spec, err = utils.NewStruct(
+	spec, err = NewStruct(
 		"Geo", map[string]interface{}{"Shape": "Square"})
 	err = JsonUnmarshal([]byte(data2), geo, spec, ref)
 	if err != nil {
@@ -142,7 +141,7 @@ func TestJsonShape(t *testing.T) {
 	}
 }`
 	geometry := &Geometry{}
-	spec, err = utils.NewStruct(
+	spec, err = NewStruct(
 		"Geometry", map[string]interface{}{
 			"Shapes": map[string]string{
 				"obj5": "Square",
@@ -160,7 +159,7 @@ func TestJsonShape(t *testing.T) {
 	}
 
 	geometry = &Geometry{}
-	spec, err = utils.NewStruct(
+	spec, err = NewStruct(
 		"Geometry", map[string]interface{}{
 			"Shapes": map[string]string{
 				"obj7": "Square"}}) // in case of less items, use the first one
@@ -184,7 +183,7 @@ func TestJsonShape(t *testing.T) {
 	]
 }`
 	picture := &Picture{}
-	spec, err = utils.NewStruct(
+	spec, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"Square", "Square"}})
 	if err != nil {
@@ -203,7 +202,7 @@ func TestJsonShape(t *testing.T) {
 	}
 
 	picture = &Picture{}
-	spec, err = utils.NewStruct(
+	spec, err = NewStruct(
 		"Picture", map[string]interface{}{
 			"Drawings": []string{"Square"}})
 	if err != nil {
@@ -252,11 +251,11 @@ type Adult struct {
 	Toys     []*Toy `json:"toys" hcl:"toys,block"`
 	Family   bool   `json:"family" hcl:"family"`
 	Lastname string `json:"lastname" hcl:"lastname"`
-	spec     *utils.Struct
+	spec     *Struct
 	ref      map[string]interface{}
 }
 
-func (self *Adult) Assign(spec *utils.Struct, ref map[string]interface{}) {
+func (self *Adult) Assign(spec *Struct, ref map[string]interface{}) {
 	self.spec = spec
 	self.ref = ref
 }
@@ -278,7 +277,7 @@ func TestJsonToy1(t *testing.T) {
 	}
 }
 }`
-	spec, err := utils.NewStruct(
+	spec, err := NewStruct(
 		"Child", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"Toy", map[string]interface{}{
@@ -310,7 +309,7 @@ func TestJsonToy(t *testing.T) {
 	}
 }
 }`
-	spec, err := utils.NewStruct(
+	spec, err := NewStruct(
 		"Child", map[string]interface{}{
 			"Toy": [2]interface{}{
 				"Toy", map[string]interface{}{
@@ -351,7 +350,7 @@ func TestJsonToy(t *testing.T) {
 	}
 }]
 }`
-	spec, err = utils.NewStruct(
+	spec, err = NewStruct(
 		"Adult", map[string]interface{}{
 			"Toys": [][2]interface{}{
 				{"Toy", map[string]interface{}{
@@ -398,7 +397,7 @@ func TestJsonToy(t *testing.T) {
 }
 
 func TestJsonEncoding(t *testing.T) {
-	spec, err := utils.NewStruct(
+	spec, err := NewStruct(
 		"Adult", map[string]interface{}{
 			"Toys": [][2]interface{}{
 				{"Toy", map[string]interface{}{
