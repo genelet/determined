@@ -36,6 +36,9 @@ func MarshalLevel(current interface{}, level int) ([]byte, error) {
 }
 
 func marshal(current interface{}, level int, keyname ...string) ([]byte, error) {
+	if current == nil {
+		return nil, nil
+	}
 	leading := strings.Repeat("  ", level+1)
 	lessLeading := strings.Repeat("  ", level)
 
