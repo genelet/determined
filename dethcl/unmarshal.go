@@ -144,7 +144,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		return err
 	}
 
-	labelExprs, rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields, newLabels)
+	labelExprs, existingAttrs, rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields, newLabels)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -185,9 +185,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 
 	for i, field := range newFields {
 		name := field.Name
-		f := oriTobe.Elem().FieldByName(name)
-		rawField := rawValue.Field(i)
-		f.Set(rawField)
+		tag := (tag2(field.Tag))[0]
+		if _, ok := existingAttrs[tag]; ok {
+			rawField := rawValue.Field(i)
+			f := oriTobe.Elem().FieldByName(name)
+			f.Set(rawField)
+		}
 	}
 
 	for _, field := range decFields {
@@ -446,7 +449,7 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
-func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) ([]hclsyntax.Expression, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) ([]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
 	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
 
 	oriref := getTagref(oriFields)
@@ -454,6 +457,7 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 
 	var labelExprs []hclsyntax.Expression
 	var decattrs map[string]*hclsyntax.Attribute
+	var existingAttrs map[string]bool
 	for k, v := range bd.Attributes {
 		if decref[k] {
 			if decattrs == nil {
@@ -476,6 +480,10 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 					body.Attributes = make(map[string]*hclsyntax.Attribute)
 				}
 				body.Attributes[k] = v
+				if existingAttrs == nil {
+					existingAttrs = make(map[string]bool)
+				}
+				existingAttrs[k] = true
 			}
 		}
 	}
@@ -498,10 +506,10 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 
 	diags := gohcl.DecodeBody(body, nil, raw)
 	if diags.HasErrors() {
-		return nil, reflect.Zero(newType), nil, nil, nil, diags
+		return nil, nil, reflect.Zero(newType), nil, nil, nil, diags
 	}
 
-	return labelExprs, reflect.ValueOf(raw).Elem(), decattrs, decblock, oriblock, nil
+	return labelExprs, existingAttrs, reflect.ValueOf(raw).Elem(), decattrs, decblock, oriblock, nil
 }
 
 func getBlockBytes(block *hclsyntax.Block, file *hcl.File) ([]byte, []string, error) {
