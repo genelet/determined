@@ -54,12 +54,12 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
-		if oriValue.IsValid() && !oriValue.IsNil() {
+		if oriValue.IsValid() {
 			return []byte(fmt.Sprintf("= %v", oriValue.Interface())), nil
 		}
 		return nil, nil
 	case reflect.String:
-		if oriValue.IsValid() && !oriValue.IsNil() {
+		if oriValue.IsValid() {
 			return []byte(" = " + oriValue.String()), nil
 		}
 		return nil, nil
