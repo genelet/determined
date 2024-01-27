@@ -454,6 +454,7 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 
 	oriref := getTagref(oriFields)
 	decref := getTagref(decFields)
+	labref := getTagref(newLabels)
 
 	var labelExprs map[string]hclsyntax.Expression
 	var decattrs map[string]*hclsyntax.Attribute
@@ -464,30 +465,20 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 				decattrs = make(map[string]*hclsyntax.Attribute)
 			}
 			decattrs[k] = v
+		} else if labref[k] {
+			if labelExprs == nil {
+				labelExprs = make(map[string]hclsyntax.Expression)
+			}
+			labelExprs[k] = v.Expr
 		} else {
-			var found bool
-			for _, s := range newLabels {
-				tags := tag2(s.Tag)
-				if len(tags) == 2 && tags[0] == k && strings.ToLower(tags[1]) == "label" {
-					found = true
-					break
-				}
+			if body.Attributes == nil {
+				body.Attributes = make(map[string]*hclsyntax.Attribute)
 			}
-			if found {
-				if labelExprs == nil {
-					labelExprs = make(map[string]hclsyntax.Expression)
-				}
-				labelExprs[k] = v.Expr
-			} else {
-				if body.Attributes == nil {
-					body.Attributes = make(map[string]*hclsyntax.Attribute)
-				}
-				body.Attributes[k] = v
-				if existingAttrs == nil {
-					existingAttrs = make(map[string]bool)
-				}
-				existingAttrs[k] = true
+			body.Attributes[k] = v
+			if existingAttrs == nil {
+				existingAttrs = make(map[string]bool)
 			}
+			existingAttrs[k] = true
 		}
 	}
 
@@ -507,6 +498,7 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 	newType := reflect.StructOf(newFields)
 	raw := reflect.New(newType).Interface()
 
+	// can't get proper reflect value for int, if directly use utils.CtysToNative
 	diags := gohcl.DecodeBody(body, nil, raw)
 	if diags.HasErrors() {
 		return nil, nil, reflect.Zero(newType), nil, nil, nil, diags
