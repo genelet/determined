@@ -182,7 +182,11 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 		oriField := oriValue.Field(i)
 		two := tag2(field.Tag)
 		tcontent := two[0]
-		if tcontent == "" {
+		if tcontent == `-` || (len(tcontent) >= 2 && tcontent[len(tcontent)-2:] == `,-`) {
+			continue
+		}
+
+		if field.Anonymous {
 			switch typ.Kind() {
 			case reflect.Ptr:
 				mfs, err := getFields(typ.Elem(), oriField.Elem())
@@ -204,9 +208,7 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 			}
 			continue
 		}
-		if tcontent == `-` || (len(tcontent) >= 2 && tcontent[len(tcontent)-2:] == `,-`) {
-			continue
-		}
+
 		pass := false
 		switch typ.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Struct:
@@ -234,6 +236,13 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 				continue
 			}
 		}
+		if tcontent == "" {
+			if pass {
+				field.Tag = reflect.StructTag(fmt.Sprintf(`hcl:"%s,block"`, strings.ToLower(field.Name)))
+			} else {
+				field.Tag = reflect.StructTag(fmt.Sprintf(`hcl:"%s,optional"`, strings.ToLower(field.Name)))
+			}
+		}
 		newFields = append(newFields, &marshalField{field, oriField, pass})
 	}
 	return newFields, nil
@@ -255,7 +264,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 	switch typ.Kind() {
 	case reflect.Interface, reflect.Pointer:
 		newCurrent := oriField.Interface()
-		bs, err := marshal(newCurrent, newlevel)
+		bs, err := MarshalLevel(newCurrent, newlevel)
 		if err != nil {
 			return nil, err
 		}
@@ -264,8 +273,14 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		}
 		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 	case reflect.Struct:
-		newCurrent := oriField.Addr().Interface()
-		bs, err := marshal(newCurrent, newlevel)
+		var newCurrent interface{}
+		if oriField.CanAddr() {
+			newCurrent = oriField.Addr().Interface()
+		} else {
+			newCurrent = oriField.Interface()
+		}
+
+		bs, err := MarshalLevel(newCurrent, newlevel)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +308,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		if isLoop {
 			for i := 0; i < n; i++ {
 				item := oriField.Index(i)
-				bs, err := marshal(item.Interface(), newlevel)
+				bs, err := MarshalLevel(item.Interface(), newlevel)
 				if err != nil {
 					return nil, err
 				}

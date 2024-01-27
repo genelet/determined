@@ -154,18 +154,18 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	oriTobe.Set(oriValue.Elem())
 
 	// first, to fill in the struct if values of labels are found
-	k := 0
 	if labelExprs != nil {
 		for _, field := range newLabels {
 			name := field.Name
 			f := oriTobe.Elem().FieldByName(name)
-			if k < len(labelExprs) {
-				cv, diags := labelExprs[k].Value(nil)
+			tag := (tag2(field.Tag))[0]
+			expr, ok := labelExprs[tag]
+			if ok {
+				cv, diags := expr.Value(nil)
 				if diags.HasErrors() {
 					return diags
 				}
 				label := cv.AsString()
-				k++
 				f.Set(reflect.ValueOf(label))
 			}
 		}
@@ -449,13 +449,13 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
-func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) ([]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
 	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
 
 	oriref := getTagref(oriFields)
 	decref := getTagref(decFields)
 
-	var labelExprs []hclsyntax.Expression
+	var labelExprs map[string]hclsyntax.Expression
 	var decattrs map[string]*hclsyntax.Attribute
 	var existingAttrs map[string]bool
 	for k, v := range bd.Attributes {
@@ -474,7 +474,10 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 				}
 			}
 			if found {
-				labelExprs = append(labelExprs, v.Expr)
+				if labelExprs == nil {
+					labelExprs = make(map[string]hclsyntax.Expression)
+				}
+				labelExprs[k] = v.Expr
 			} else {
 				if body.Attributes == nil {
 					body.Attributes = make(map[string]*hclsyntax.Attribute)
