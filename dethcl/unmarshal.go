@@ -111,6 +111,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		return fmt.Errorf("non-pointer or nil data")
 	}
 	t = t.Elem()
+	if t.Kind() == reflect.Pointer { // for pointer to pointer, e.g. current = &(new(struct))
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("non-struct object")
+	}
 
 	var objectMap map[string]*utils.Value
 	if spec != nil {
