@@ -1,6 +1,7 @@
 package dethcl
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -166,6 +167,6 @@ func TestMarshal_MapsAndSlicesOfBasicTypes(t *testing.T) {
 `)
 
 	result, err := Marshal(input)
-	assert.Equal(t, string(expected), string(result))
+	assert.True(t, reflect.DeepEqual(expected, result))
 	assert.Nil(t, err)
 }
