@@ -1,5 +1,2 @@
 docs/
-godbi/
-tmp/
-go.mod
-go.sum
+.vscode
