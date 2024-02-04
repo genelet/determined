@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -37,107 +36,24 @@ func CtyToExpression(cv cty.Value, rng hcl.Range) hclsyntax.Expression {
 	return &hclsyntax.LiteralValueExpr{Val: cv, SrcRange: rng}
 }
 
-func short(t hcl.Expression, ctx *hcl.EvalContext) (cty.Value, error) {
-	cv, diags := t.Value(ctx)
-	if diags.HasErrors() {
-		return cty.EmptyObjectVal, (diags.Errs())[0]
-	}
-	return cv, nil
-}
-
 func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Expression) (cty.Value, error) {
 	if v == nil {
 		return cty.NilVal, nil
 	}
 
-	switch t := v.(type) {
-	case *hclsyntax.FunctionCallExpr:
-		if ref[FUNCTIONS] == nil {
-			return cty.EmptyObjectVal, fmt.Errorf("function call is nil for %s", t.Name)
-		}
-		ctx := &hcl.EvalContext{
-			Functions: ref[FUNCTIONS].(map[string]function.Function),
-			Variables: ref[ATTRIBUTES].(*Tree).Variables(),
-		}
-		return short(t, ctx)
-	case *hclsyntax.ScopeTraversalExpr:
-		trv := t.AsTraversal()
-		some := node
-		name := trv.RootName()
-		if !trv.IsRelative() {
-			var names []string
-			for _, item := range trv {
-				switch ty := item.(type) {
-				case hcl.TraverseRoot:
-					names = append(names, ty.Name)
-				case hcl.TraverseAttr:
-					names = append(names, ty.Name)
-				case hcl.TraverseIndex:
-					index, err := CtyNumberToNative(ty.Key)
-					if err != nil {
-						return cty.EmptyObjectVal, err
-					}
-					names = append(names, fmt.Sprintf("%v", index))
-				default:
-				}
-			}
-
-			n := len(names)
-			name = names[n-1] // the last one is item, not node
-			names = names[:n-1]
-			n--
-
-			some = ref[ATTRIBUTES].(*Tree)
-			if n > 0 && !(n == 1 && names[0] == VAR) {
-				some = some.FindNode(names)
-				if some == nil {
-					return cty.EmptyObjectVal, fmt.Errorf("node not found: %s", trv.RootName())
-				}
-			}
-		}
-		return some.Data[name], nil
-	case *hclsyntax.TemplateExpr:
-		if t.IsStringLiteral() {
-			return short(t, nil)
-		} else {
-			// we may need to enhance the following code to support more complex expressions
-			var ss []string
-			for _, p := range t.Parts {
-				cv, err := ExpressionToCty(ref, node, p)
-				if err != nil {
-					return cty.EmptyObjectVal, err
-				}
-				x, err := CtyToNative(cv)
-				if err != nil {
-					return cty.EmptyObjectVal, err
-				}
-				if x == nil {
-					continue
-				}
-				ss = append(ss, x.(string))
-			}
-			if ss == nil {
-				return cty.NilVal, nil
-			}
-			return NativeToCty(strings.Join(ss, ""))
-		}
-	case *hclsyntax.BinaryOpExpr:
-		lcty, err := ExpressionToCty(ref, node, t.LHS)
-		if err != nil {
-			return cty.EmptyObjectVal, err
-		}
-		rcty, err := ExpressionToCty(ref, node, t.RHS)
-		if err != nil {
-			return cty.EmptyObjectVal, err
-		}
-		return t.Op.Impl.Call([]cty.Value{lcty, rcty})
-	case *hclsyntax.ForExpr: // to be implemented
-	case *hclsyntax.IndexExpr: // to be implemented
-	case *hclsyntax.ParenthesesExpr: // to be implemented and so on...
-	default:
+	ctx := new(hcl.EvalContext)
+	if ref != nil && ref[FUNCTIONS] != nil {
+		ctx.Functions = ref[FUNCTIONS].(map[string]function.Function)
+	}
+	if ref != nil && ref[ATTRIBUTES] != nil {
+		ctx.Variables = ref[ATTRIBUTES].(*Tree).Variables()
 	}
 
-	return short(v, nil)
+	cv, diags := v.Value(ctx)
+	if diags.HasErrors() {
+		return cty.EmptyObjectVal, (diags.Errs())[0]
+	}
+	return cv, nil
 }
 
 func NativeToCty(item interface{}) (cty.Value, error) {

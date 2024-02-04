@@ -6,15 +6,11 @@ import (
 	"strings"
 	"unicode"
 
-	ilang "github.com/genelet/determined/internal/lang"
-
 	"github.com/genelet/determined/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Unmarshaler interface {
@@ -49,22 +45,8 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - ref: object map, with key object name and value new object
 //   - optional labels: values of labels
 func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
-	if ref == nil {
-		ref = make(map[string]interface{})
-	}
-	top := utils.NewTree(utils.VAR)
-	node := top
-	ref[utils.ATTRIBUTES] = top
-	defaultFuncs := ilang.CoreFunctions(".")
-	if ref[utils.FUNCTIONS] == nil {
-		ref[utils.FUNCTIONS] = defaultFuncs
-	} else {
-		for k, v := range defaultFuncs {
-			ref[utils.FUNCTIONS].(map[string]function.Function)[k] = v
-		}
-	}
-
-	return UnmarshalSpecTree(node, dat, current, spec, ref, labels...)
+	node, ref := utils.DefaultTreeFunctions(ref)
+	return unmarshalSpecTree(node, dat, current, spec, ref, labels...)
 }
 
 // UnmarshalSpecTree decodes HCL struct data with interface specifications, at specifc tree node
@@ -75,7 +57,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[
 //   - spec: Determined for data specs
 //   - ref: object map, with key object name and value new object
 //   - optional labels: values of labels
-func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
+func unmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	rv := reflect.ValueOf(current)
 	if rv.Kind() != reflect.Pointer {
 		return fmt.Errorf("non-pointer or nil data")
@@ -452,7 +434,7 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	if ok {
 		return v.UnmarshalHCL(s, labels...)
 	}
-	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
+	return unmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
 func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {

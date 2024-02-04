@@ -3,7 +3,9 @@ package utils
 import (
 	"sync"
 
+	ilang "github.com/genelet/determined/internal/lang"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 const (
@@ -22,6 +24,25 @@ type Tree struct {
 
 func NewTree(name string) *Tree {
 	return &Tree{Name: name, Data: make(map[string]cty.Value)}
+}
+
+func DefaultTreeFunctions(ref map[string]interface{}) (*Tree, map[string]interface{}) {
+	if ref == nil {
+		ref = make(map[string]interface{})
+	}
+	top := NewTree(VAR)
+	node := top
+	ref[ATTRIBUTES] = top
+	defaultFuncs := ilang.CoreFunctions(".")
+	if ref[FUNCTIONS] == nil {
+		ref[FUNCTIONS] = defaultFuncs
+	} else {
+		for k, v := range defaultFuncs {
+			ref[FUNCTIONS].(map[string]function.Function)[k] = v
+		}
+	}
+
+	return node, ref
 }
 
 func (self *Tree) SimpleMap() map[string]interface{} {
@@ -141,24 +162,28 @@ func (self *Tree) FindNode(names []string) *Tree {
 	return nil
 }
 
-// this type of Variable name is not implemented in ScopeTraversalExpr
-// but could be used in function
-// note: hcl.Traversal.TraverseAbs uses only Variables in Eval
 func (self *Tree) Variables() map[string]cty.Value {
 	output := make(map[string]cty.Value)
-	for k, v := range self.Data {
-		output[self.Name+"."+k] = v
-		if self.Name == VAR {
+	if self.Name == VAR {
+		for k, v := range self.Data {
 			output[k] = v
 		}
 	}
+	output[self.Name] = cty.ObjectVal(self.Data)
+	hash := output[self.Name].AsValueMap()
 	for _, down := range self.Downs {
-		for k, v := range down.Variables() {
-			output[self.Name+"."+k] = v
+		if variables := down.Variables(); variables != nil {
+			cv := cty.ObjectVal(down.Variables())
+			if self.Name == VAR {
+				output[down.Name] = cv
+			}
+			hash[down.Name] = cv
 		}
 	}
-	if len(output) == 1 {
+	output[self.Name] = cty.ObjectVal(hash)
+	if len(output) <= 1 {
 		return nil
 	}
+
 	return output
 }
