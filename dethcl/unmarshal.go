@@ -46,7 +46,7 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - optional labels: values of labels
 func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	node, ref := utils.DefaultTreeFunctions(ref)
-	return unmarshalSpecTree(node, dat, current, spec, ref, labels...)
+	return UnmarshalSpecTree(node, dat, current, spec, ref, labels...)
 }
 
 // UnmarshalSpecTree decodes HCL struct data with interface specifications, at specifc tree node
@@ -57,7 +57,7 @@ func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[
 //   - spec: Determined for data specs
 //   - ref: object map, with key object name and value new object
 //   - optional labels: values of labels
-func unmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
+func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
 	rv := reflect.ValueOf(current)
 	if rv.Kind() != reflect.Pointer {
 		return fmt.Errorf("non-pointer or nil data")
@@ -434,7 +434,7 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	if ok {
 		return v.UnmarshalHCL(s, labels...)
 	}
-	return unmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
+	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
 func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {

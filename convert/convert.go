@@ -23,7 +23,7 @@ func YAMLToJSON(raw []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(obj, "", "  ")
+	return json.Marshal(obj)
 }
 
 // JSONToHCL converts JSON to HCL.
@@ -41,7 +41,7 @@ func HCLToJSON(raw []byte) ([]byte, error) {
 	if err := dethcl.Unmarshal(raw, &obj); err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(obj, "", "  ")
+	return json.Marshal(obj)
 }
 
 // YAMLToHCL converts YAML to HCL.
