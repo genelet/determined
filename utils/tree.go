@@ -30,9 +30,13 @@ func DefaultTreeFunctions(ref map[string]interface{}) (*Tree, map[string]interfa
 	if ref == nil {
 		ref = make(map[string]interface{})
 	}
-	top := NewTree(VAR)
-	node := top
-	ref[ATTRIBUTES] = top
+	var node *Tree
+	if inode, ok := ref[ATTRIBUTES]; ok {
+		node = inode.(*Tree)
+	} else {
+		node = NewTree(VAR)
+		ref[ATTRIBUTES] = node
+	}
 	defaultFuncs := ilang.CoreFunctions(".")
 	if ref[FUNCTIONS] == nil {
 		ref[FUNCTIONS] = defaultFuncs
