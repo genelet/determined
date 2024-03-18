@@ -6,15 +6,11 @@ import (
 	"strings"
 	"unicode"
 
-	ilang "github.com/genelet/determined/internal/lang"
-
 	"github.com/genelet/determined/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Unmarshaler interface {
@@ -49,21 +45,7 @@ func Unmarshal(dat []byte, current interface{}, labels ...string) error {
 //   - ref: object map, with key object name and value new object
 //   - optional labels: values of labels
 func UnmarshalSpec(dat []byte, current interface{}, spec *utils.Struct, ref map[string]interface{}, labels ...string) error {
-	if ref == nil {
-		ref = make(map[string]interface{})
-	}
-	top := utils.NewTree(utils.VAR)
-	node := top
-	ref[utils.ATTRIBUTES] = top
-	defaultFuncs := ilang.CoreFunctions(".")
-	if ref[utils.FUNCTIONS] == nil {
-		ref[utils.FUNCTIONS] = defaultFuncs
-	} else {
-		for k, v := range defaultFuncs {
-			ref[utils.FUNCTIONS].(map[string]function.Function)[k] = v
-		}
-	}
-
+	node, ref := utils.DefaultTreeFunctions(ref)
 	return UnmarshalSpecTree(node, dat, current, spec, ref, labels...)
 }
 
@@ -111,6 +93,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		return fmt.Errorf("non-pointer or nil data")
 	}
 	t = t.Elem()
+	if t.Kind() == reflect.Pointer { // for pointer to pointer, e.g. current = &(new(struct))
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("non-struct object")
+	}
 
 	var objectMap map[string]*utils.Value
 	if spec != nil {

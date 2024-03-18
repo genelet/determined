@@ -1002,11 +1002,11 @@ Type  _child_  has field  `Brand`  which is a map of the above  _Nested of neste
       
     spec, err = NewStruct(  
       "child", map[string]interface{}{  
-        "Brand": [][2]interface{}{  
-          [2]interface{}{"toy", map[string]interface{}{  
+        "Brand": map[string][2]interface{}{  
+          "abc1": {"toy", map[string]interface{}{  
             "Geo": [2]interface{}{  
               "geo", map[string]interface{}{"Shape": "circle"}}}},  
-          [2]interface{}{"toy", map[string]interface{}{  
+          "ref2": {"toy", map[string]interface{}{  
             "Geo": [2]interface{}{  
               "geo", map[string]interface{}{"Shape": "square"}}}},  
         },  
@@ -1041,6 +1041,7 @@ In the following example, we decode data to  _child_  of type  _Nested of nested
         "fmt"  
       
         "github.com/genelet/determined/dethcl"  
+        "github.com/genelet/determined/utils"  
     )  
       
     func main() {  
@@ -1068,12 +1069,12 @@ In the following example, we decode data to  _child_  of type  _Nested of nested
         }  
     }  
     `  
-        spec, err := dethcl.NewStruct("child", map[string]interface{}{  
-            "Brand": [][2]interface{}{  
-                [2]interface{}{"toy", map[string]interface{}{  
+        spec, err := utils.NewStruct("child", map[string]interface{}{  
+            "Brand": map[string][2]interface{}{  
+                "abc1":{"toy", map[string]interface{}{  
                     "Geo": [2]interface{}{  
                         "geo", map[string]interface{}{"Shape": "circle"}}}},  
-                [2]interface{}{"toy", map[string]interface{}{  
+                "ref2":{"toy", map[string]interface{}{  
                     "Geo": [2]interface{}{  
                         "geo", map[string]interface{}{"Shape": "square"}}}},  
             },  

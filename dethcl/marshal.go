@@ -186,7 +186,7 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 			continue
 		}
 
-		if field.Anonymous {
+		if field.Anonymous && tcontent == "" {
 			switch typ.Kind() {
 			case reflect.Ptr:
 				mfs, err := getFields(typ.Elem(), oriField.Elem())

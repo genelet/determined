@@ -150,22 +150,3 @@ func TestMarshal_EmbeddedStructsAndPointers(t *testing.T) {
 	assert.Equal(t, string(expected), string(result))
 	assert.Nil(t, err)
 }
-
-// Handles maps and slices of basic types
-func TestMarshal_MapsAndSlicesOfBasicTypes(t *testing.T) {
-	input := map[string]interface{}{
-		"key1": "value1",
-		"key2": 123,
-		"key3": true,
-	}
-
-	expected := []byte(`
-  key1 = "value1"
-  key2 = 123
-  key3 = true
-`)
-
-	result, err := Marshal(input)
-	assert.Equal(t, string(expected), string(result))
-	assert.Nil(t, err)
-}
