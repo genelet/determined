@@ -59,7 +59,7 @@ func TestUnmarshal_ValidHCLFile_Map(t *testing.T) {
 	}
 
 	if result["key1"] != "value1" ||
-		result["key2"] != int64(123) ||
+		result["key2"] != 123 ||
 		result["key3"] != true {
 		t.Errorf("result: %#v", result)
 	}

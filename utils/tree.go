@@ -40,9 +40,9 @@ func DefaultTreeFunctions(ref map[string]interface{}) (*Tree, map[string]interfa
 	defaultFuncs := ilang.CoreFunctions(".")
 	if ref[FUNCTIONS] == nil {
 		ref[FUNCTIONS] = defaultFuncs
-	} else {
+	} else if t, ok := ref[FUNCTIONS].(map[string]function.Function); ok {
 		for k, v := range defaultFuncs {
-			ref[FUNCTIONS].(map[string]function.Function)[k] = v
+			t[k] = v
 		}
 	}
 
