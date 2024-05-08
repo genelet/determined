@@ -6,11 +6,13 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/genelet/determined/utils"
-
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 )
+
+type Marshaler interface {
+    MarshalHCL() ([]byte, error)
+}
 
 // Marshal marshals object into HCL string
 func Marshal(current interface{}) ([]byte, error) {
@@ -21,6 +23,10 @@ func Marshal(current interface{}) ([]byte, error) {
 }
 
 func MarshalLevel(current interface{}, level int) ([]byte, error) {
+	return marshalLevel(current, false, level)
+}
+
+func marshalLevel(current interface{}, equal bool, level int, keyname ...string) ([]byte, error) {
 	rv := reflect.ValueOf(current)
 	if rv.IsValid() && rv.IsZero() {
 		return nil, nil
@@ -28,11 +34,11 @@ func MarshalLevel(current interface{}, level int) ([]byte, error) {
 
 	switch rv.Kind() {
 	case reflect.Pointer, reflect.Struct:
-		return marshal(current, level)
+		return marshal(current, level, keyname...)
 	default:
 	}
 
-	return utils.Encoding(current, level)
+	return encoding(current, equal, level, keyname...)
 }
 
 func marshal(current interface{}, level int, keyname ...string) ([]byte, error) {
@@ -41,6 +47,15 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 	}
 	leading := strings.Repeat("  ", level+1)
 	lessLeading := strings.Repeat("  ", level)
+
+	if v, ok := current.(Marshaler); ok {
+		bs, err := v.MarshalHCL()
+		if err != nil {
+			return nil, err
+		}
+		str := strings.ReplaceAll(string(bs), "\n", lessLeading + "\n")
+		return []byte(str), nil
+	}
 
 	t := reflect.TypeOf(current)
 	oriValue := reflect.ValueOf(current)
@@ -318,7 +333,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 			}
 		} else {
-			bs, err := utils.Encoding(oriField.Interface(), newlevel)
+			bs, err := MarshalLevel(oriField.Interface(), newlevel)
 			if err != nil {
 				return nil, err
 			}
@@ -374,7 +389,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				empty = append(empty, &marshalOut{hcltag(fieldTag), arr, bs, false})
 			}
 		} else {
-			bs, err := utils.Encoding(oriField.Interface(), newlevel)
+			bs, err := MarshalLevel(oriField.Interface(), newlevel)
 			if err != nil {
 				return nil, err
 			}

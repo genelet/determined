@@ -1,4 +1,4 @@
-package utils
+package dethcl
 
 import (
 	"fmt"
@@ -41,7 +41,7 @@ func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, l
 		}
 	case 1:
 		// pass 'name' as the keyname to the next 'default' below
-		bs, err := encoding(item, equal, level+1, name)
+		bs, err := marshalLevel(item, equal, level+1, name)
 		if err != nil {
 			return err
 		}
@@ -53,7 +53,7 @@ func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, l
 		// we can just remove variable 'equal' from functions encoding and loopHash.
 		*arr = append(*arr, fmt.Sprintf("%s %s %s", name, str, bs))
 	default:
-		bs, err := encoding(item, equal, level+1)
+		bs, err := marshalLevel(item, equal, level+1)
 		if err != nil {
 			return err
 		}
@@ -74,11 +74,6 @@ func matchlast(keyname string, name string) bool {
 	return false
 }
 
-// Encoding encode the data to HCL format
-func Encoding(current interface{}, level int) ([]byte, error) {
-	return encoding(current, false, level)
-}
-
 func encoding(current interface{}, equal bool, level int, keyname ...string) ([]byte, error) {
 	var str string
 	if current == nil {
@@ -90,7 +85,7 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 	rv := reflect.ValueOf(current)
 	switch rv.Kind() {
 	case reflect.Pointer:
-		return encoding(rv.Elem().Interface(), equal, level, keyname...)
+		return marshalLevel(rv.Elem().Interface(), equal, level, keyname...)
 	case reflect.Map:
 		var arr []string
 		iter := rv.MapRange()
@@ -109,7 +104,7 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 	case reflect.Slice, reflect.Array:
 		var arr []string
 		for i := 0; i < rv.Len(); i++ {
-			bs, err := encoding(rv.Index(i).Interface(), true, level+1)
+			bs, err := marshalLevel(rv.Index(i).Interface(), true, level+1)
 			if err != nil {
 				return nil, err
 			}
