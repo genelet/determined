@@ -53,7 +53,12 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 		if err != nil {
 			return nil, err
 		}
-		str := strings.ReplaceAll(string(bs), "\n", lessLeading + "\n")
+
+		str := string(bs)
+		str = strings.ReplaceAll(str, "\n", "\n"+lessLeading)
+		if level > 0 {
+			str = fmt.Sprintf("{%s%s}", leading, str)
+		}
 		return []byte(str), nil
 	}
 
@@ -134,9 +139,6 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 
 	var lines []string
 	for _, item := range outliers {
-		//if allBlank(item.b2) {
-		//	continue
-		//}
 		line := string(item.b0) + " "
 		if item.encode {
 			line += " = "
@@ -149,10 +151,6 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 	}
 	if len(lines) > 0 {
 		str += strings.Join(lines, "\n"+leading)
-		//} else {
-		//	if allBlank(bs) {
-		//		return nil, nil
-		//	}
 	}
 
 	str = strings.TrimRight(str, " \t\n\r")

@@ -549,7 +549,7 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 		if tag == "" {
 			switch typ.Kind() {
 			case reflect.Struct:
-				ls, deeps, deepTypes, deepDecs, err := loopFields(field.Type, objectMap, ref)
+				ls, deeps, deepTypes, deepDecs, err := loopFields(typ, objectMap, ref)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
