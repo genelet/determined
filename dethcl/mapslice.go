@@ -180,19 +180,24 @@ func expressionToNative(ref map[string]interface{}, node *utils.Tree, file *hcl.
 		bs := file.Bytes[rng.Start.Byte:rng.End.Byte]
 		subnode := node.AddNode(fmt.Sprintf("%v", key))
 		return decodeMap(ref, subnode, bs)
+	case *hclsyntax.FunctionCallExpr:
+		if t.Name == "null" {
+			return nil, nil
+		}
 	default:
-		cv, err := utils.ExpressionToCty(ref, node, item)
-		if err != nil {
-			return nil, err
-		}
-
-		if attr != nil {
-			attr[0].Expr = utils.CtyToExpression(cv, attr[0].Expr.Range())
-		}
-		//item = utils.CtyToExpression(cv, item.Range())
-
-		node.AddItem(fmt.Sprintf("%v", key), cv)
-
-		return utils.CtyToNative(cv)
 	}
+
+	cv, err := utils.ExpressionToCty(ref, node, item)
+	if err != nil {
+		return nil, err
+	}
+
+	if attr != nil {
+		attr[0].Expr = utils.CtyToExpression(cv, attr[0].Expr.Range())
+	}
+	//item = utils.CtyToExpression(cv, item.Range())
+
+	node.AddItem(fmt.Sprintf("%v", key), cv)
+
+	return utils.CtyToNative(cv)
 }

@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/genelet/determined/utils"
 )
 
 func isHashAll(item interface{}) (int, map[string]interface{}) {
@@ -46,13 +48,41 @@ func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, l
 			return err
 		}
 		var str string
-		if equal {
+		if equal || depth < 1 {
 			str = "="
 		}
 		// this is the only place where 'equal' matters. if we don't care about it,
 		// we can just remove variable 'equal' from functions encoding and loopHash.
 		*arr = append(*arr, fmt.Sprintf("%s %s %s", name, str, bs))
 	default:
+		switch item.(type) {
+		case string:
+			*arr = append(*arr, fmt.Sprintf("%s = \"%s\"", name, item))
+			return nil
+		case bool:
+			*arr = append(*arr, fmt.Sprintf("%s = %t", name, item))
+			return nil
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			*arr = append(*arr, fmt.Sprintf("%s = %d", name, item))
+			return nil
+		case float32, float64:
+			c, err := utils.NativeToCty(item)
+			if err != nil {
+				return err
+			}
+			n, err := utils.CtyNumberToNative(c)
+			if err != nil {
+				return err
+			}
+			switch n.(type) {
+			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+				*arr = append(*arr, fmt.Sprintf("%s = %d", name, n))
+			default:
+				*arr = append(*arr, fmt.Sprintf("%s = %f", name, n))
+			}
+			return nil
+		default:
+		}
 		bs, err := marshalLevel(item, equal, level+1)
 		if err != nil {
 			return err
@@ -91,6 +121,10 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 		iter := rv.MapRange()
 		for iter.Next() {
 			key := iter.Key()
+			if iter.Value().IsNil() {
+				arr = append(arr, fmt.Sprintf("%s = null()", key.String()))
+				continue
+			}
 			err := loopHash(&arr, key.String(), iter.Value().Interface(), equal, 0, level, keyname...)
 			if err != nil {
 				return nil, err

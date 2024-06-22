@@ -1,6 +1,7 @@
 package dethcl
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/genelet/determined/utils"
@@ -535,5 +536,69 @@ func TestMHclPainting(t *testing.T) {
     sy = 8
   }` {
 		t.Errorf("'%s'", bs)
+	}
+}
+
+func TestZeroFalseSimple(t *testing.T) {
+	hash := map[string]interface{}{
+		"request_id":     "2e7a9b1d-a8d6-4ce4-6380-47c05cf1d16e",
+		"lease_id":       "",
+		"renewable":      false,
+		"lease_duration": 0,
+		"data":           nil,
+	}
+	bs, err := Marshal(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	x := make(map[string]interface{})
+	err = Unmarshal(bs, &x)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if x["lease_duration"].(int) != 0 ||
+		x["renewable"].(bool) != false ||
+		x["data"] != nil ||
+		x["lease_id"] != "" ||
+		x["request_id"] != "2e7a9b1d-a8d6-4ce4-6380-47c05cf1d16e" {
+		t.Errorf("%#v", x)
+	}
+}
+
+func TestZeroFalseMore(t *testing.T) {
+	data := `{"request_id":"2e7a9b1d-a8d6-4ce4-6380-47c05cf1d16e","lease_id":"","renewable":false,"lease_duration":0,"data":null,"wrap_info":null,"warnings":null,"auth":{"client_token":"hvs.CAESIL9QYGestFnF2NwG5LLGs8WN0u_k5JEJOM7Cvu5abJlrGh4KHGh2cy5Pd3cxY2VNMEtTNXMzc01nQmszeHhrV0U","accessor":"fY1yQlCXOJZy5uA3f8fXhTp5","policies":["adv_policy","default"],"token_policies":["adv_policy","default"],"identity_policies":["adv_policy"],"metadata":{"username":"peter_001@kinet.com"},"lease_duration":36000,"renewable":true,"entity_id":"70debb54-a346-06c6-7c22-26bf330aa3c8","token_type":"service","orphan":true,"mfa_requirement":null,"num_uses":0},"mount_type":""}`
+	hash := make(map[string]interface{})
+	err := json.Unmarshal([]byte(data), &hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bs, err := Marshal(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	x := make(map[string]interface{})
+	err = Unmarshal(bs, &x)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if x["lease_duration"].(int) != 0 ||
+		x["renewable"].(bool) != false ||
+		x["data"] != nil ||
+		x["lease_id"] != "" ||
+		x["request_id"] != "2e7a9b1d-a8d6-4ce4-6380-47c05cf1d16e" {
+		t.Errorf("%#v", x)
+	}
+	str1, err := json.Marshal(x["auth"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	str2, err := json.Marshal(hash["auth"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(str1) != string(str2) {
+		t.Errorf("%#v", x["auth"])
+		t.Errorf("%#v", hash["auth"])
 	}
 }

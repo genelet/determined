@@ -66,12 +66,10 @@ service "http" "web_proxy" {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//t.Errorf("%#v", d)
 	bs, err := Marshal(d)
 	if err != nil {
 		t.Fatal(err)
 	}
-	//t.Errorf("%s", bs)
 	m := make(map[string]interface{})
 	err = Unmarshal(bs, &m)
 	if err != nil {

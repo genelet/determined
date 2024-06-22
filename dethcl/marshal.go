@@ -11,7 +11,7 @@ import (
 )
 
 type Marshaler interface {
-    MarshalHCL() ([]byte, error)
+	MarshalHCL() ([]byte, error)
 }
 
 // Marshal marshals object into HCL string
