@@ -106,6 +106,34 @@ func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 		return cty.NilVal, nil
 	}
 
+	switch t := v.(type) {
+	case *hclsyntax.TupleConsExpr:
+		var u []cty.Value
+		for _, item := range t.Exprs {
+			cv, err := ExpressionToCty(ref, node, item)
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			u = append(u, cv)
+		}
+		return cty.TupleVal(u), nil
+	case *hclsyntax.ObjectConsExpr:
+		var u = make(map[string]cty.Value)
+		for _, item := range t.Items {
+			key, err := ExpressionToCty(ref, node, item.KeyExpr)
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			val, err := ExpressionToCty(ref, node, item.ValueExpr)
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			u[key.AsString()] = val
+		}
+		return cty.ObjectVal(u), nil
+	default:
+	}
+
 	ctx := new(hcl.EvalContext)
 	if ref != nil && ref[ATTRIBUTES] != nil {
 		ctx.Variables = ref[ATTRIBUTES].(*Tree).Variables()
@@ -113,6 +141,9 @@ func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 
 	if ref != nil && ref[FUNCTIONS] != nil {
 		if u, ok := v.(*hclsyntax.FunctionCallExpr); ok {
+			if u.Name == "null" {
+				return cty.NilVal, nil
+			}
 			if ref[FUNCTIONS] == nil {
 				return cty.EmptyObjectVal, fmt.Errorf("function call is nil for %s", u.Name)
 			}

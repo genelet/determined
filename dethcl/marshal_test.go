@@ -602,3 +602,55 @@ func TestZeroFalseMore(t *testing.T) {
 		t.Errorf("%#v", hash["auth"])
 	}
 }
+
+type response struct {
+	BodyData    map[string]interface{} `hcl:"body_data,block"`
+	HeadersData map[string][]string    `hcl:"headers_data,optional"`
+}
+
+func TestZeroFalseMore2(t *testing.T) {
+	data := `
+  body_data  = {
+    renewable = false
+    lease_duration = 0
+    mount_type = ""
+    request_id = "5aebeec9-653a-44b2-363f-f9152274cb30"
+    lease_id = ""
+    auth = {
+      token_policies = [
+        "adv_policy",
+        "default"
+      ]
+      identity_policies = [
+        "adv_policy"
+      ]
+      metadata = {
+        username = "peter_001@kinet.com"
+      }
+      entity_id = "70debb54-a346-06c6-7c22-26bf330aa3c8"
+      lease_duration = 36000
+      policies = [
+        "adv_policy",
+        "default"
+      ]
+      renewable = true
+      mfa_requirement = null()
+      token_type = "service"
+      orphan = true
+      num_uses = 0
+    }
+  }`
+
+	r := new(response)
+	err := Unmarshal([]byte(data), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bs, err := Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bs) != 651 {
+		t.Errorf("%s", bs)
+	}
+}

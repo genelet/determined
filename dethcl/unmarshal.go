@@ -126,7 +126,6 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	for _, block := range bd.Blocks {
 		node.AddNodes(block.Type, block.Labels...)
 	}
-
 	newLabels, newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
 	if err != nil {
 		return err
