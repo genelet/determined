@@ -166,6 +166,33 @@ func ExpressionToCty(ref map[string]interface{}, node *Tree, v hclsyntax.Express
 }
 
 func NativeToCty(item interface{}) (cty.Value, error) {
+	if item == nil {
+		return cty.EmptyObjectVal, nil
+	}
+
+	switch t := item.(type) {
+	case map[string]interface{}:
+		hash := make(map[string]cty.Value)
+		for k, v := range t {
+			ct, err := NativeToCty(v)
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			hash[k] = ct
+		}
+		return cty.ObjectVal(hash), nil
+	case []interface{}:
+		var arr []cty.Value
+		for _, v := range t {
+			ct, err := NativeToCty(v)
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			arr = append(arr, ct)
+		}
+		return cty.ListVal(arr), nil
+	default:
+	}
 	typ, err := gocty.ImpliedType(item)
 	if err != nil {
 		return cty.EmptyObjectVal, err

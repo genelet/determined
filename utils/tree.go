@@ -167,27 +167,19 @@ func (self *Tree) FindNode(names []string) *Tree {
 }
 
 func (self *Tree) Variables() map[string]cty.Value {
-	output := make(map[string]cty.Value)
-	if self.Name == VAR {
-		for k, v := range self.Data {
-			output[k] = v
-		}
-	}
-	output[self.Name] = cty.ObjectVal(self.Data)
-	hash := output[self.Name].AsValueMap()
+	hash := make(map[string]cty.Value)
 	for _, down := range self.Downs {
 		if variables := down.Variables(); variables != nil {
-			cv := cty.ObjectVal(down.Variables())
-			if self.Name == VAR {
-				output[down.Name] = cv
-			}
-			hash[down.Name] = cv
+			hash[down.Name] = cty.ObjectVal(variables)
 		}
 	}
-	output[self.Name] = cty.ObjectVal(hash)
-	if len(output) <= 1 {
-		return nil
+	for k, v := range self.Data {
+		hash[k] = v
 	}
 
-	return output
+	if self.Name == VAR {
+		hash[VAR] = cty.ObjectVal(hash)
+	}
+
+	return hash
 }
