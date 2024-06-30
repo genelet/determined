@@ -174,7 +174,9 @@ func (self *Tree) Variables() map[string]cty.Value {
 		}
 	}
 	for k, v := range self.Data {
-		hash[k] = v
+		if k != VAR {
+			hash[k] = v
+		}
 	}
 
 	if self.Name == VAR {
