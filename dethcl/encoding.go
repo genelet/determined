@@ -121,9 +121,16 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 		iter := rv.MapRange()
 		for iter.Next() {
 			key := iter.Key()
-			if iter.Value().IsNil() {
-				arr = append(arr, fmt.Sprintf("%s = null()", key.String()))
-				continue
+			if key.Kind() != reflect.String {
+				return nil, fmt.Errorf("map key must be string, got %v", key.Kind())
+			}
+			switch iter.Value().Kind() {
+			case reflect.Interface, reflect.Ptr, reflect.Map, reflect.Slice, reflect.Func:
+				if iter.Value().IsNil() {
+					arr = append(arr, fmt.Sprintf("%s = null()", key.String()))
+					continue
+				}
+			default:
 			}
 			err := loopHash(&arr, key.String(), iter.Value().Interface(), equal, 0, level, keyname...)
 			if err != nil {
