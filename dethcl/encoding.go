@@ -47,13 +47,16 @@ func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, l
 		if err != nil {
 			return err
 		}
-		var str string
-		if equal || depth < 1 {
-			str = "="
-		}
-		// this is the only place where 'equal' matters. if we don't care about it,
-		// we can just remove variable 'equal' from functions encoding and loopHash.
-		*arr = append(*arr, fmt.Sprintf("%s %s %s", name, str, bs))
+		/*
+			var str string
+			if equal || depth < 1 {
+				str = "="
+			}
+			// this is the only place where 'equal' matters. if we don't care about it,
+			// we can just remove variable 'equal' from functions encoding and loopHash.
+			*arr = append(*arr, fmt.Sprintf("%s %s %s", name, str, bs))
+		*/
+		*arr = append(*arr, fmt.Sprintf("%s %s", name, bs))
 	default:
 		switch item.(type) {
 		case string:

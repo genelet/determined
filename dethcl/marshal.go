@@ -394,7 +394,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 			if bs == nil {
 				return nil, nil
 			}
-			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, true})
+			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 		}
 	default:
 	}

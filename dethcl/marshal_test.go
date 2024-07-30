@@ -610,13 +610,13 @@ type response struct {
 
 func TestZeroFalseMore2(t *testing.T) {
 	data := `
-  body_data  = {
+  body_data {
     renewable = false
     lease_duration = 0
     mount_type = ""
     request_id = "5aebeec9-653a-44b2-363f-f9152274cb30"
     lease_id = ""
-    auth = {
+    auth {
       token_policies = [
         "adv_policy",
         "default"
@@ -624,7 +624,7 @@ func TestZeroFalseMore2(t *testing.T) {
       identity_policies = [
         "adv_policy"
       ]
-      metadata = {
+      metadata {
         username = "peter_001@kinet.com"
       }
       entity_id = "70debb54-a346-06c6-7c22-26bf330aa3c8"
@@ -650,7 +650,75 @@ func TestZeroFalseMore2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(bs) != 651 {
-		t.Errorf("%s", bs)
+	if len(bs) != 644 {
+		t.Errorf("%d %s", len(bs), bs)
+	}
+}
+
+type rspn struct {
+	Method              string                 `hcl:"method,optional" json:"method,omitempty"`
+	Path                string                 `hcl:"path,optional" json:"path,omitempty"`
+	Payload             string                 `hcl:"payload,optional" json:"payload,omitempty"`
+	HeadersData         map[string][]string    `hcl:"request_headers,optional" json:"request_headers,ignore"`
+	StatusCode          int                    `hcl:"status_code,optional" json:"status_code,omitempty"`
+	ResponseBodyData    map[string]interface{} `hcl:"response_data,block" json:"response_data,omitempty"`
+	ResponseHeadersData map[string][]string    `hcl:"response_headers,optional" json:"response_headers,omitempty"`
+}
+
+func TestResponseUnmarshal(t *testing.T) {
+	bs := []byte(`
+  method      = "GET"
+  path        = "http://ec2.us-west-2.amazonaws.com/?Action=DescribeInstanceStatus&Version=2016-11-15"
+  status_code = 200
+  request_headers  = {
+    Authorization = [
+      "AWS4-HMAC-SHA256 Credential=AKIASAZMGJKKCLV57M8Y/20240730/us-west-2/ec2/aws4_request, SignedHeaders=host;x-amz-date, Signature=a9df8dcc2e8d4fc623061f49282554d8edf2d2093e19f0d04e49294c5ba0b1fc"
+    ]
+    X-Amz-Date = [
+      "20240730T122641Z"
+    ]
+  }
+  response_data {
+    DescribeInstanceStatusResponse {
+      requestId = "e64de5a0-693f-43a4-a8f6-1fb94614528e"
+      instanceStatusSet "item"  {
+        instanceId = "i-0064c18e730799d76"
+        availabilityZone = "us-west-2a"
+        instanceState = {
+          code = "16"
+          name = "running"
+        }
+        systemStatus {
+          details "item"  {
+            name = "reachability"
+            status = "passed"
+          }
+          status = "ok"
+        }
+        instanceStatus {
+          status = "ok"
+          details "item"  {
+            name = "reachability"
+            status = "passed"
+          }
+        }
+      }
+      xmlns = "http://ec2.amazonaws.com/doc/2016-11-15/"
+    }
+  }
+`)
+	s1 := len(bs)
+	r := new(rspn)
+	err := Unmarshal(bs, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bs, err = Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2 := len(bs)
+	if s1 != 1164 || s2 != 1154 {
+		t.Errorf("%d => %d => %s", s1, s2, bs)
 	}
 }
