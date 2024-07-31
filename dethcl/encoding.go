@@ -3,7 +3,6 @@ package dethcl
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/genelet/determined/utils"
@@ -25,6 +24,36 @@ func isHashAll(item interface{}) (int, map[string]interface{}) {
 		}
 	}
 	return found, next
+}
+
+func shortDirect(item interface{}, equal bool, level int) (string, []byte, error) {
+	switch item.(type) {
+	case string:
+		return fmt.Sprintf("\"%s\"", item), nil, nil
+	case bool:
+		return fmt.Sprintf("%t", item), nil, nil
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", item), nil, nil
+	case float32, float64:
+		c, err := utils.NativeToCty(item)
+		if err != nil {
+			return "", nil, err
+		}
+		n, err := utils.CtyNumberToNative(c)
+		if err != nil {
+			return "", nil, err
+		}
+		switch n.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			return fmt.Sprintf("%d", n), nil, nil
+		default:
+		}
+		return fmt.Sprintf("%f", n), nil, nil
+	default:
+	}
+
+	bs, err := marshalLevel(item, equal, level+1)
+	return "", bs, err
 }
 
 func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, level int, keyname ...string) error {
@@ -58,42 +87,18 @@ func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, l
 		*/
 		*arr = append(*arr, fmt.Sprintf("%s %s", name, bs))
 	default:
-		switch item.(type) {
-		case string:
-			*arr = append(*arr, fmt.Sprintf("%s = \"%s\"", name, item))
-			return nil
-		case bool:
-			*arr = append(*arr, fmt.Sprintf("%s = %t", name, item))
-			return nil
-		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-			*arr = append(*arr, fmt.Sprintf("%s = %d", name, item))
-			return nil
-		case float32, float64:
-			c, err := utils.NativeToCty(item)
-			if err != nil {
-				return err
-			}
-			n, err := utils.CtyNumberToNative(c)
-			if err != nil {
-				return err
-			}
-			switch n.(type) {
-			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-				*arr = append(*arr, fmt.Sprintf("%s = %d", name, n))
-			default:
-				*arr = append(*arr, fmt.Sprintf("%s = %f", name, n))
-			}
-			return nil
-		default:
-		}
-		bs, err := marshalLevel(item, equal, level+1)
+		str, bs, err := shortDirect(item, equal, level)
 		if err != nil {
 			return err
 		}
-		if keyname != nil && matchlast(keyname[0], string(bs)) {
+		if bs != nil && keyname != nil && matchlast(keyname[0], string(bs)) {
 			return nil
 		}
-		*arr = append(*arr, fmt.Sprintf("%s = %s", name, bs))
+		if str != "" {
+			*arr = append(*arr, fmt.Sprintf("%s = %s", name, str))
+		} else {
+			*arr = append(*arr, fmt.Sprintf("%s = %s", name, bs))
+		}
 	}
 	return nil
 }
@@ -135,9 +140,21 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 				}
 			default:
 			}
-			err := loopHash(&arr, key.String(), iter.Value().Interface(), equal, 0, level, keyname...)
-			if err != nil {
-				return nil, err
+			if keyname != nil && keyname[0] == "NMRBRCKTNDTRMND" {
+				str, bs, err := shortDirect(iter.Value().Interface(), equal, level)
+				if err != nil {
+					return nil, err
+				}
+				if str != "" {
+					arr = append(arr, fmt.Sprintf("%s = %s", key.String(), str))
+				} else {
+					arr = append(arr, fmt.Sprintf("%s = %s", key.String(), bs))
+				}
+			} else {
+				err := loopHash(&arr, key.String(), iter.Value().Interface(), equal, 0, level, keyname...)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		if level == 0 {
@@ -148,7 +165,7 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 	case reflect.Slice, reflect.Array:
 		var arr []string
 		for i := 0; i < rv.Len(); i++ {
-			bs, err := marshalLevel(rv.Index(i).Interface(), true, level+1)
+			bs, err := marshalLevel(rv.Index(i).Interface(), true, level+1, "NMRBRCKTNDTRMND")
 			if err != nil {
 				return nil, err
 			}
@@ -161,18 +178,12 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 		str = fmt.Sprintf("[\n%s\n%s]", leading+strings.Join(arr, ",\n"+leading), lessLeading)
 		// both the above and the following code are correct
 		// str = fmt.Sprintf("[%s]", strings.Join(arr, ", "))
-	case reflect.String:
-		str = "\"" + rv.String() + "\""
-	case reflect.Bool:
-		str = fmt.Sprintf("%t", rv.Bool())
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		str = fmt.Sprintf("%d", rv.Int())
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		str = fmt.Sprintf("%d", rv.Uint())
-	case reflect.Float32:
-		str = strconv.FormatFloat(rv.Float(), 'f', -1, 32)
-	case reflect.Float64:
-		str = strconv.FormatFloat(rv.Float(), 'f', -1, 64)
+	case reflect.String, reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32, reflect.Float64:
+		var err error
+		str, _, err = shortDirect(current, equal, level)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("data type %v not supported", rv.Kind())
 	}

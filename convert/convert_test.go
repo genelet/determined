@@ -108,3 +108,36 @@ func hcl2(t *testing.T, fn string) {
 		t.Errorf("expected: %#v\n", expectedmap)
 	}
 }
+
+func TestHcl2self(t *testing.T) {
+	hcl2self(t, "x")
+	hcl2self(t, "y")
+	hcl2self(t, "z")
+}
+
+func hcl2self(t *testing.T, fn string) {
+	raw, err := os.ReadFile(fn + ".hcl")
+	if err != nil {
+		t.Errorf("error: %v\n", err)
+	}
+
+	hash := map[string]interface{}{}
+	err = dethcl.Unmarshal(raw, &hash)
+	if err != nil {
+		t.Errorf("error: %v\n", err)
+	}
+	bs, err := dethcl.Marshal(hash)
+	if err != nil {
+		t.Errorf("error: %v\n", err)
+	}
+
+	hash1 := map[string]interface{}{}
+	err = dethcl.Unmarshal(bs, &hash1)
+	if err != nil {
+		t.Errorf("error: %v\n", err)
+	}
+	if !reflect.DeepEqual(hash, hash1) {
+		t.Errorf("hash: %#v\n", hash)
+		t.Errorf("hash1: %#v\n", hash1)
+	}
+}
