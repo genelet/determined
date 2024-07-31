@@ -2,6 +2,7 @@ package dethcl
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/genelet/determined/utils"
@@ -707,7 +708,7 @@ func TestResponseUnmarshal(t *testing.T) {
     }
   }
 `)
-	s1 := len(bs)
+
 	r := new(rspn)
 	err := Unmarshal(bs, r)
 	if err != nil {
@@ -717,8 +718,14 @@ func TestResponseUnmarshal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s2 := len(bs)
-	if s1 != 1164 || s2 != 1154 {
-		t.Errorf("%d => %d => %s", s1, s2, bs)
+
+	r1 := new(rspn)
+	err = Unmarshal(bs, r1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(r, r1) == false {
+		t.Errorf("%#v\n%#v", r, r1)
 	}
 }

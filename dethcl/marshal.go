@@ -141,7 +141,7 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 	for _, item := range outliers {
 		line := string(item.b0) + " "
 		if item.encode {
-			line += " = "
+			line += "= "
 		}
 		if item.b1 != nil {
 			line += `"` + strings.Join(item.b1, `" "`) + `" `
@@ -394,7 +394,11 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 			if bs == nil {
 				return nil, nil
 			}
-			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
+			equal := true
+			if typ.Elem().Kind() == reflect.Interface {
+				equal = false
+			}
+			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, equal})
 		}
 	default:
 	}
