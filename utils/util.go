@@ -190,7 +190,7 @@ func NativeToCty(item interface{}) (cty.Value, error) {
 			}
 			arr = append(arr, ct)
 		}
-		return cty.ListVal(arr), nil
+		return cty.TupleVal(arr), nil
 	default:
 	}
 	typ, err := gocty.ImpliedType(item)
