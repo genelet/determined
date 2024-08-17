@@ -14,18 +14,21 @@ const (
 	FUNCTIONS  = "functions"
 )
 
+// Tree is a tree structure that can be used to represent a nested structure in HCL
 type Tree struct {
 	mu    sync.Mutex
 	Name  string
-	Data  map[string]cty.Value
+	Data  sync.Map
 	Up    *Tree
 	Downs []*Tree
 }
 
+// NewTree creates a new tree with the given name
 func NewTree(name string) *Tree {
-	return &Tree{Name: name, Data: make(map[string]cty.Value)}
+	return &Tree{Name: name, Data: sync.Map{}}
 }
 
+// DefaultTreeFunctions returns the default tree, and the map containing default functions and the default tree
 func DefaultTreeFunctions(ref map[string]interface{}) (*Tree, map[string]interface{}) {
 	if ref == nil {
 		ref = make(map[string]interface{})
@@ -49,21 +52,7 @@ func DefaultTreeFunctions(ref map[string]interface{}) (*Tree, map[string]interfa
 	return node, ref
 }
 
-func (self *Tree) SimpleMap() map[string]interface{} {
-	x := map[string]interface{}{"name": self.Name}
-	if self.Up != nil {
-		x["up"] = self.Up.Name
-	}
-	if len(self.Downs) > 0 {
-		var downs []map[string]interface{}
-		for _, down := range self.Downs {
-			downs = append(downs, down.SimpleMap())
-		}
-		x["downs"] = downs
-	}
-	return x
-}
-
+// AddNode adds a new node to the tree. It returns the newly created node.
 func (self *Tree) AddNode(name string) *Tree {
 	first := grep(self.Downs, name)
 	if first != nil {
@@ -78,6 +67,7 @@ func (self *Tree) AddNode(name string) *Tree {
 	return child
 }
 
+// AddNodes adds a new node to the tree, and then adds the given names as children to the new node.
 func (self *Tree) AddNodes(tag string, names ...string) *Tree {
 	node := self.AddNode(tag)
 	for _, name := range names {
@@ -95,6 +85,7 @@ func grep(downs []*Tree, name string) *Tree {
 	return nil
 }
 
+// GetNode returns the node with the given name. If the node does not exist, it returns nil.
 func (self *Tree) GetNode(tag string, names ...string) *Tree {
 	if tag == "" {
 		return self
@@ -114,6 +105,7 @@ func (self *Tree) GetNode(tag string, names ...string) *Tree {
 	return down
 }
 
+// DeleteNode deletes the node with the given name.
 func (self *Tree) DeleteNode(name string) {
 	self.mu.Lock()
 	for i, item := range self.Downs {
@@ -130,18 +122,17 @@ func (self *Tree) DeleteNode(name string) {
 	self.mu.Unlock()
 }
 
+// AddItem adds a new item the tree data.
 func (self *Tree) AddItem(k string, v cty.Value) {
-	self.mu.Lock()
-	self.Data[k] = v
-	self.mu.Unlock()
+	self.Data.Store(k, v)
 }
 
+// GetItem returns the item with the given key in the tree data
 func (self *Tree) DeleteItem(k string) {
-	self.mu.Lock()
-	delete(self.Data, k)
-	self.mu.Unlock()
+	self.Data.Delete(k)
 }
 
+// GetItem returns the item with the given key.
 func (self *Tree) FindNode(names []string) *Tree {
 	if names == nil || len(names) == 0 {
 		return nil
@@ -166,6 +157,7 @@ func (self *Tree) FindNode(names []string) *Tree {
 	return nil
 }
 
+// Variables returns the variables which can be used as the HCL Value context.
 func (self *Tree) Variables() map[string]cty.Value {
 	hash := make(map[string]cty.Value)
 	for _, down := range self.Downs {
@@ -173,11 +165,12 @@ func (self *Tree) Variables() map[string]cty.Value {
 			hash[down.Name] = cty.ObjectVal(variables)
 		}
 	}
-	for k, v := range self.Data {
+	self.Data.Range(func(k, v any) bool {
 		if k != VAR {
-			hash[k] = v
+			hash[k.(string)] = v.(cty.Value)
 		}
-	}
+		return true
+	})
 
 	if self.Name == VAR {
 		hash[VAR] = cty.ObjectVal(hash)
