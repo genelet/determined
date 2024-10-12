@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package det;
+package dethcl;
 
 option go_package = "./utils";
 
