@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"unicode"
+	"github.com/genelet/determined/utils"
 )
 
 // clone clones a value via pointer
@@ -21,7 +22,7 @@ func clone(old interface{}) interface{} {
 	return obj.Interface()
 }
 
-func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructField, map[string]reflect.StructField, error) {
+func loopFields(t reflect.Type, objectMap map[string]*utils.Value) ([]reflect.StructField, map[string]reflect.StructField, error) {
 	var newFields []reflect.StructField
 	origTypes := make(map[string]reflect.StructField)
 	for i := 0; i < t.NumField(); i++ {

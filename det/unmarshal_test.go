@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/genelet/determined/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -251,11 +252,11 @@ type Adult struct {
 	Toys     []*Toy `json:"toys" hcl:"toys,block"`
 	Family   bool   `json:"family" hcl:"family"`
 	Lastname string `json:"lastname" hcl:"lastname"`
-	spec     *Struct
+	spec     *utils.Struct
 	ref      map[string]interface{}
 }
 
-func (self *Adult) Assign(spec *Struct, ref map[string]interface{}) {
+func (self *Adult) Assign(spec *utils.Struct, ref map[string]interface{}) {
 	self.spec = spec
 	self.ref = ref
 }
