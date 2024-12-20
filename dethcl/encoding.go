@@ -106,10 +106,7 @@ func loopHash(arr *[]string, name string, item interface{}, equal bool, depth, l
 func matchlast(keyname string, name string) bool {
 	names := strings.Split(keyname, " ")
 	keyname = names[len(names)-1]
-	if keyname == name {
-		return true
-	}
-	return false
+	return keyname == name
 }
 
 func encoding(current interface{}, equal bool, level int, keyname ...string) ([]byte, error) {

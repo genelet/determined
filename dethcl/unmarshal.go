@@ -81,9 +81,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 			return err
 		}
 		x := current.(*[]interface{})
-		for _, v := range obj {
-			*x = append(*x, v)
-		}
+		*x = append(*x, obj...)
 		return nil
 	default:
 	}
@@ -216,7 +214,7 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	for _, field := range oriFields {
 		tag := (tag2(field.Tag))[0]
 		blocks := oriblock[tag]
-		if blocks == nil || len(blocks) == 0 {
+		if len(blocks) == 0 {
 			continue
 		}
 
@@ -552,18 +550,10 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
-				for _, v := range ls {
-					newLabels = append(newLabels, v)
-				}
-				for _, v := range deeps {
-					newFields = append(newFields, v)
-				}
-				for _, v := range deepTypes {
-					oriFields = append(oriFields, v)
-				}
-				for _, v := range deepDecs {
-					decFields = append(decFields, v)
-				}
+				newLabels = append(newLabels, ls...)
+				newFields = append(newFields, deeps...)
+				oriFields = append(oriFields, deepTypes...)
+				decFields = append(decFields, deepDecs...)
 			default:
 			}
 			continue

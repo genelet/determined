@@ -62,7 +62,9 @@ func TestMHclShape(t *testing.T) {
 	ref := map[string]interface{}{"circle": c}
 	spec, err := utils.NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
-	err = UnmarshalSpec([]byte(data1), g, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data1), g, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +94,9 @@ func TestMHclMoreShape(t *testing.T) {
 	ref := map[string]interface{}{"circle": c, "square": s}
 	spec, err := utils.NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
-	err = UnmarshalSpec([]byte(data2), g, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data2), g, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,12 +205,13 @@ func TestMHash(t *testing.T) {
 	}
 `
 	g := &geometry{}
+	ref := map[string]interface{}{"square": new(square)}
 	spec, err := utils.NewStruct(
 		"geometry", map[string]interface{}{
 			"Shapes": []string{"square", "square"}})
-	//"Shapes": []string{"square", "square"}})
-	ref := map[string]interface{}{"square": new(square)}
-	err = UnmarshalSpec([]byte(data3), g, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data3), g, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,16 +471,18 @@ brand {
 	}
 }
 `
+
+	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
+	c := new(child)
 	spec, err := utils.NewStruct(
 		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"geo", map[string]interface{}{"Shape": "circle"}}}}})
-	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
-
-	c := new(child)
-	err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,13 +519,14 @@ func TestMHclPainting(t *testing.T) {
 	}
 `
 
-	spec, err := utils.NewStruct(
-		"geometry", map[string]interface{}{
-			"Drawings": []string{"team", "team"}})
-
-	ref := map[string]interface{}{"team": new(team)}
+	ref := map[string]interface{}{"square": new(square)}
 	p := &config{}
-	err = UnmarshalSpec([]byte(data4), p, spec, ref)
+	spec, err := utils.NewStruct(
+		"config", map[string]interface{}{
+			"Drawings": []string{"square", "square"}})
+	if err == nil {
+		err = UnmarshalSpec([]byte(data4), p, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -660,7 +668,7 @@ type rspn struct {
 	Method              string                 `hcl:"method,optional" json:"method,omitempty"`
 	Path                string                 `hcl:"path,optional" json:"path,omitempty"`
 	Payload             string                 `hcl:"payload,optional" json:"payload,omitempty"`
-	HeadersData         map[string][]string    `hcl:"request_headers,optional" json:"request_headers,ignore"`
+	HeadersData         map[string][]string    `hcl:"request_headers,optional" json:"request_headers,omitempty"`
 	StatusCode          int                    `hcl:"status_code,optional" json:"status_code,omitempty"`
 	ResponseBodyData    map[string]interface{} `hcl:"response_data,block" json:"response_data,omitempty"`
 	ResponseHeadersData map[string][]string    `hcl:"response_headers,optional" json:"response_headers,omitempty"`

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/genelet/determined/utils"
-	//"github.com/genelet/determined/utils"
 )
 
 type museum struct {
@@ -119,7 +118,9 @@ func TestMapSliceNew(t *testing.T) {
 			},
 		},
 	)
-	err = UnmarshalSpec(bs, m, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec(bs, m, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +328,9 @@ func TestMap2Read(t *testing.T) {
 			},
 		},
 	)
-	err = UnmarshalSpec(bs, m2, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec(bs, m2, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +406,9 @@ func TestMap20Read(t *testing.T) {
 			},
 		},
 	)
-	err = UnmarshalSpec(bs, m2, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec(bs, m2, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

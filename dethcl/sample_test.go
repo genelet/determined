@@ -57,14 +57,6 @@ func (self *circlemore) Area() float32 {
 	return 3.14159 * self.Radius
 }
 
-type cubic struct {
-	Size int `json:"size" hcl:"size"`
-}
-
-func (self *cubic) Area() float32 {
-	return 6.0 * float32(self.Size*self.Size)
-}
-
 type geo struct {
 	Name  string `json:"name" hcl:"name"`
 	Shape inter  `json:"shape" hcl:"shape,block"`
@@ -81,8 +73,8 @@ type picture struct {
 }
 
 type config struct {
-	Name     string  `json:"name" hcl:"name"`
-	Drawings []inter `json:"drawings" hcl:"drawings,block"`
+	Name     string           `json:"name" hcl:"name"`
+	Drawings map[string]inter `json:"drawings" hcl:"drawings,block"`
 }
 
 type Painting struct {

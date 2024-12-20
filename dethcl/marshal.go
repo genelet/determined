@@ -164,17 +164,6 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 	return []byte(str), nil
 }
 
-func allBlank(bs []byte) bool {
-	if bs == nil {
-		return true
-	}
-	str := strings.ReplaceAll(string(bs), " \t\n\r", "")
-	if str == "" || str == "{}" || str == "[]" || str == "null" {
-		return true
-	}
-	return false
-}
-
 type marshalField struct {
 	field reflect.StructField
 	value reflect.Value
@@ -206,17 +195,13 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 				if err != nil {
 					return nil, err
 				}
-				for _, v := range mfs {
-					newFields = append(newFields, v)
-				}
+				newFields = append(newFields, mfs...)
 			case reflect.Struct:
 				mfs, err := getFields(typ, oriField)
 				if err != nil {
 					return nil, err
 				}
-				for _, v := range mfs {
-					newFields = append(newFields, v)
-				}
+				newFields = append(newFields, mfs...)
 			default:
 			}
 			continue

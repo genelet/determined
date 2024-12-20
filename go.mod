@@ -13,7 +13,7 @@ require (
 	github.com/zclconf/go-cty v1.14.1
 	github.com/zclconf/go-cty-yaml v1.0.3
 	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167
-	golang.org/x/text v0.11.0
+	golang.org/x/text v0.19.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -4,7 +4,7 @@ _Determined_ marshals and unmarshals JSON and HCL data to _go struct_ containing
 
 [![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
 
-- Chapter 1: [Decoding of Dynamic JSON Data](#chapter-1-decoding-of-dynamic-json-data) (for JSON only)
+- Chapter 1: [Decoding Dynamic JSON Data](#chapter-1-decoding-of-dynamic-json-data) (for JSON only)
 - Chapter 2: [Marshal GO Object into HCL](#chapter-2-marshal-go-object-into-hcl) (for encoding HCL object)
 - Chapter 3: [Unmarshal HCL Data to GO Object](#chapter-3-unmarshal-hcl-data-to-go-object) (for dynamic HCL decoding)
 - Chapter 4: [Conversion among Data Formats HCL, JSON and YAML](#chapter-4-conversion-among-data-formats-hcl-json-and-yaml)
@@ -64,7 +64,7 @@ The following proto interprets an interface type in dynamic JSON data:
       map<string, Struct> map_fields = 1;  
     }
 ```
-where c_lass_name_  is the  _go struct_  type name at run-time.
+where c_lass_name  is the  _go struct_  type name at run-time.
 
 The CLI,  _protoc_  will generate the following Golang code:
 ```go
@@ -114,7 +114,7 @@ There’s no need for users to interact directly with the aforementioned proto-g
 ```
 Fields of primitive data types, or with defined  _go struct,_  should be ignored, since they will be decoded automatically by  _encoding/json_.
 
-Here are example usages of  _NewStruct_.
+Here are examples of  _NewStruct_.
 
 **Single Interface:**
 
@@ -252,103 +252,109 @@ Here  _child_  has field  `Brand`  which is a map of nested  _toy_:
 To decode JSON to object containing interface types, use  _JsonUnmarshal_:
 
 ```go
+// JsonUnmarshal unmarshals JSON data with interfaces determined by spec.
+//
+//   - dat: JSON data
+//   - current: object as pointer
+//   - spec: *Struct
+//   - ref: struct map, with key being string name and value reference to struct
 func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error
 ```    
 The following program decodes JSON  _data1_  into object  _child_:
  ```go   
-    package main  
-      
-    import (  
-        "fmt"  
-      
-        "github.com/genelet/determined/det"  
-    )  
-      
-    type geo struct {  
-        Name  string `json:"name" hcl:"name"`  
-        Shape inter  `json:"shape" hcl:"shape,block"`  
-    }  
-      
-    type inter interface {  
-        Area() float32  
-    }  
-      
-    type square struct {  
-        SX int `json:"sx" hcl:"sx"`  
-        SY int `json:"sy" hcl:"sy"`  
-    }  
-      
-    func (self *square) Area() float32 {  
-        return float32(self.SX * self.SY)  
-    }  
-      
-    type circle struct {  
-        Radius float32 `json:"radius" hcl:"radius"`  
-    }  
-      
-    func (self *circle) Area() float32 {  
-        return 3.14159 * self.Radius  
-    }  
-      
-    type toy struct {  
-        Geo     geo     `json:"geo" hcl:"geo,block"`  
-        ToyName string  `json:"toy_name" hcl:"toy_name"`  
-        Price   float32 `json:"price" hcl:"price"`  
-    }  
-      
-    type child struct {  
-        Brand map[string]*toy `json:"brand" hcl:"brand,block"`  
-        Age   int  `json:"age" hcl:"age"`  
-    }  
-      
-    func main() {  
-        data1 := `{  
-    "age" : 5,  
-    "brand" : {  
-    "abc1" : {  
-        "toy_name" : "roblox",  
-        "price" : 99.9,  
-        "geo" : {  
-            "name" : "medium shape",  
-            "shape" : { "radius" : 1.234 }  
-        }  
-    },  
-    "def2" : {  
-        "toy_name" : "minecraft",  
-        "price" : 9.9,  
-        "geo" : {  
-            "name" : "quare shape",  
-            "shape" : { "sx" : 5, "sy" : 6 }  
-        }  
-    }  
-    }  
-    }`  
-      
-        spec, err := det.NewStruct(  
-        "child", map[string]interface{}{  
-            "Brand": map[string][2]interface{}{  
-                "abc1":[2]interface{}{"toy", map[string]interface{}{  
-                    "Geo": [2]interface{}{  
-                        "geo", map[string]interface{}{"Shape": "circle"}}}},  
-                "def2":[2]interface{}{"toy", map[string]interface{}{  
-                    "Geo": [2]interface{}{  
-                        "geo", map[string]interface{}{"Shape": "square"}}}},  
-            },  
-        },  
-        )  
-        ref := map[string]interface{}{"toy": &toy{}, "geo": &geo{}, "circle": &circle{}, "square": &square{}}  
-      
-        c := new(child)  
-        err = det.JsonUnmarshal([]byte(data1), c, spec, ref)  
-        if err != nil {  
-            panic(err)  
-        }  
-        fmt.Printf("%v\n", c.Age)  
-        fmt.Printf("%#v\n", c.Brand["abc1"])  
-        fmt.Printf("%#v\n", c.Brand["abc1"].Geo.Shape)  
-        fmt.Printf("%#v\n", c.Brand["def2"])  
-        fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)  
+package main
+
+import (
+    "fmt"
+
+    "github.com/genelet/determined/det"
+)
+
+type geo struct {
+    Name  string `json:"name" hcl:"name"`
+    Shape inter  `json:"shape" hcl:"shape,block"`
+}
+
+type inter interface {
+    Area() float32
+}
+
+type square struct {
+    SX int `json:"sx" hcl:"sx"`
+    SY int `json:"sy" hcl:"sy"`
+}
+
+func (self *square) Area() float32 {
+    return float32(self.SX * self.SY)
+}
+
+type circle struct {
+    Radius float32 `json:"radius" hcl:"radius"`
+}
+
+func (self *circle) Area() float32 {
+    return 3.14159 * self.Radius
+}
+
+type toy struct {
+    Geo     geo     `json:"geo" hcl:"geo,block"`
+    ToyName string  `json:"toy_name" hcl:"toy_name"`
+    Price   float32 `json:"price" hcl:"price"`
+}
+
+type child struct {
+    Brand map[string]*toy `json:"brand" hcl:"brand,block"`
+    Age   int  `json:"age" hcl:"age"`
+}
+
+func main() {
+    data1 := `{
+"age" : 5,
+"brand" : {
+"abc1" : {
+    "toy_name" : "roblox",
+    "price" : 99.9,
+    "geo" : {
+        "name" : "medium shape",
+        "shape" : { "radius" : 1.234 }
     }
+},
+"def2" : {
+    "toy_name" : "minecraft",
+    "price" : 9.9,
+    "geo" : {
+        "name" : "quare shape",
+        "shape" : { "sx" : 5, "sy" : 6 }
+    }
+}
+}
+}`
+
+    spec, err := det.NewStruct(
+    "child", map[string]interface{}{
+        "Brand": map[string][2]interface{}{
+            "abc1":[2]interface{}{"toy", map[string]interface{}{
+                "Geo": [2]interface{}{
+                    "geo", map[string]interface{}{"Shape": "circle"}}}},
+            "def2":[2]interface{}{"toy", map[string]interface{}{
+                "Geo": [2]interface{}{
+                    "geo", map[string]interface{}{"Shape": "square"}}}},
+        },
+    },
+    )
+    ref := map[string]interface{}{"toy": &toy{}, "geo": &geo{}, "circle": &circle{}, "square": &square{}}
+
+    c := new(child)
+    err = det.JsonUnmarshal([]byte(data1), c, spec, ref)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("%v\n", c.Age)
+    fmt.Printf("%#v\n", c.Brand["abc1"])
+    fmt.Printf("%#v\n", c.Brand["abc1"].Geo.Shape)
+    fmt.Printf("%#v\n", c.Brand["def2"])
+    fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)
+}
 ```
 the program outputs:
 ```bash
@@ -357,6 +363,7 @@ the program outputs:
     &main.toy{Geo:main.geo{Name:"square shape", Shape:(*main.square)(0xc0000b6350)}, ToyName:"minecraft", Price:9.9}  
     &main.square{SX:5, SY:6}
 ```
+
 ## 1.5 Customized Unmarshaler of encoding/json
 
 If  _UnmarshalJSON_  is implemented on  _go struct_, it is said to have a customized  _unmarshaler_  and so Golang core package  _encoding/json_ will automatically decode it.
@@ -456,6 +463,7 @@ Now the sample code in Chapter 4 can use  _encoding/json_  to decode:
             "shape" : { "sx" : 5, "sy" : 6 }  
         }  
     }  
+    }  
     }`  
       
         spec, err := det.NewStruct(  
@@ -545,41 +553,41 @@ It panics because of the map field  `Shapes`.
 
 But  _determined_ will encode it properly:
 ```go
-    package main  
-      
-    import (  
-        "fmt"  
-      
-        "github.com/genelet/determined/dethcl"  
-    )  
-      
-    type square struct {  
-        SX int `json:"sx" hcl:"sx"`  
-        SY int `json:"sy" hcl:"sy"`  
-    }  
-      
-    func (self *square) Area() float32 {  
-        return float32(self.SX * self.SY)  
-    }  
-      
-    type geometry struct {  
-        Name   string       `json:"name" hcl:"name"`  
-        Shapes map[string]*square `json:"shapes" hcl:"shapes"`  
-    }  
-      
-    func main() {  
-        app := &geometry{  
-            Name: "Medium Article",  
-            Shapes: map[string]*square{  
-                "k1": &square{SX: 2, SY: 3}, "k2": &square{SX: 5, SY: 6}},  
-        }  
-      
-        bs, err := dethcl.Marshal(app)  
-        if err != nil {  
-            panic(err)  
-        }  
-        fmt.Printf("%s", bs)  
+package main
+
+import (
+    "fmt"
+
+    "github.com/genelet/determined/dethcl"
+)
+
+type square struct {
+    SX int `json:"sx" hcl:"sx"`
+    SY int `json:"sy" hcl:"sy"`
+}
+
+func (self *square) Area() float32 {
+    return float32(self.SX * self.SY)
+}
+
+type geometry struct {
+    Name   string       `json:"name" hcl:"name"`
+    Shapes map[string]*square `json:"shapes" hcl:"shapes"`
+}
+
+func main() {
+    app := &geometry{
+        Name: "Medium Article",
+        Shapes: map[string]*square{
+            "k1": &square{SX: 2, SY: 3}, "k2": &square{SX: 5, SY: 6}},
     }
+
+    bs, err := dethcl.Marshal(app)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("%s", bs)
+}
 ```
 Run the code:
 ```bash
@@ -602,7 +610,7 @@ Note:
 
 ## 2.3 Encode Interface Data
 
-Go struct  _picture_  has field  `Drawings`, a list of  _interface_. This sample shows how  _determined_  encodes data of one  _square_  and one  _circle_  in the list.
+Go struct  _picture_  has field  `Drawings`, which is a list of  _interface_. This sample shows how  _determined_  encodes data of one  _square_  and one  _circle_  in the list.
 ```go
     package main  
       
@@ -669,57 +677,57 @@ Run the code:
 
 `label`  is encoded as map key. If it is missing, the block map will be encoded as list:
 ```go
-    package main  
-      
-    import (  
-        "fmt"  
-        "github.com/genelet/determined/dethcl"  
-    )  
-      
-    type inter interface {  
-        Area() float32  
-    }  
-      
-    type square struct {  
-        SX int `json:"sx" hcl:"sx"`  
-        SY int `json:"sy" hcl:"sy"`  
-    }  
-      
-    func (self *square) Area() float32 {  
-        return float32(self.SX * self.SY)  
-    }  
-      
-    type moresquare struct {  
-        Morename1 string `json:"morename1", hcl:"morename1,label"`  
-        Morename2 string `json:"morename2", hcl:"morename2,label"`  
-        SX int `json:"sx" hcl:"sx"`  
-        SY int `json:"sy" hcl:"sy"`  
-    }  
-      
-    func (self *moresquare) Area() float32 {  
-        return float32(self.SX * self.SY)  
-    }  
-      
-    type picture struct {  
-        Name   string    `json:"name" hcl:"name"`  
-        Drawings []inter `json:"drawings" hcl:"drawings"`  
-    }  
-      
-    func main() {  
-        app := &picture{  
-            Name: "Medium Article",  
-            Drawings: []inter{  
-                &square{SX: 2, SY: 3},  
-                &moresquare{Morename1: "abc2", Morename2: "def2", SX: 2, SY: 3},  
-            },  
-        }  
-      
-        bs, err := dethcl.Marshal(app)  
-        if err != nil {  
-            panic(err)  
-        }  
-        fmt.Printf("%s", bs)  
+package main
+
+import (
+    "fmt"
+    "github.com/genelet/determined/dethcl"
+)
+
+type inter interface {
+    Area() float32
+}
+
+type square struct {
+    SX int `json:"sx" hcl:"sx"`
+    SY int `json:"sy" hcl:"sy"`
+}
+
+func (self *square) Area() float32 {
+    return float32(self.SX * self.SY)
+}
+
+type moresquare struct {
+    Morename1 string `json:"morename1", hcl:"morename1,label"`
+    Morename2 string `json:"morename2", hcl:"morename2,label"`
+    SX int `json:"sx" hcl:"sx"`
+    SY int `json:"sy" hcl:"sy"`
+}
+
+func (self *moresquare) Area() float32 {
+    return float32(self.SX * self.SY)
+}
+
+type picture struct {
+    Name   string    `json:"name" hcl:"name"`
+    Drawings []inter `json:"drawings" hcl:"drawings"`
+}
+
+func main() {
+    app := &picture{
+        Name: "Medium Article",
+        Drawings: []inter{
+            &square{SX: 2, SY: 3},
+            &moresquare{Morename1: "abc2", Morename2: "def2", SX: 2, SY: 3},
+        },
     }
+
+    bs, err := dethcl.Marshal(app)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("%s", bs)
+}
 ```
 Run the code:
 ```bash
@@ -854,7 +862,9 @@ Beneath the surface, we have followed Go’s  _reflect_  package to define data 
       repeated Struct list_fields = 1;  
     }
  ```   
-    which is auto generated into the Go code:
+
+which is auto generated into the Go code:
+
   ```go  
     type Struct struct {  
         ClassName string            `protobuf:"bytes,1,opt,name=className,proto3" json:"className,omitempty"`  
@@ -926,12 +936,16 @@ In the following example, the  _geo_  type contains interface  `Shape`  which is
         return 3.14159 * self.Radius  
     }
 ```
+
 At run time, we know the data instance of geo is using type  `Shape`  =  _cirle_, so our  _Struct_  is:
+
 ```go
     spec, err := dethcl.NewStruct(  
       "geo", map[string]interface{}{"Shape": "circle"})
 ``` 
-    and for  `Shape`  of  _square:_
+
+and for  `Shape`  of  _square_:
+
  ```go   
     spec, err = NewStruct(  
       "geo", map[string]interface{}{"Shape": "square"})
@@ -954,33 +968,33 @@ incoming data is slice of square, size 2
       "Picture", map[string]interface{}{  
         "Drawings": []string{"square", "square"}})
 ```
+
 Type  _geometry_  has field  `Shapes`  as a map of  `Shape`  of size 2:
+
 ```go
-    type geometry struct {  
-        Name   string           `json:"name" hcl:"name"`  
-        Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`  
-    }  
+type geometry struct {
+    Name   string           `json:"name" hcl:"name"`
+    Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`
+}
+
+# incoming HCL data is map but MUST be expressed as slice of one label! e.g.
+# name = "medium shapes"
+#   shapes obj5 {
+#     sx = 5
+#     sy = 6
+#   }
+#   shapes obj7 {
+#     sx = 7
+#     sy = 8
+#   }
+
+spec, err := NewStruct(
+  "geometry", map[string]interface{}{
+    "Shapes": []string{"square", "square"}})
 ```
   
-incoming HCL data is map e.g.  
-```bash
-    name = "medium shapes"  
-    shapes obj5 {  
-       sx = 5  
-      sy = 6  
-      }  
-    shapes obj7 {  
-      sx = 7  
-      sy = 8  
-    }  
-```
-  Use:
-```go
-    spec, err := NewStruct(  
-      "geometry", map[string]interface{}{  
-        "Shapes": []string{"square", "square"}})
-```
 Type  _toy_  has field`Geo`  which contains  `Shape`:
+
 ```go
     type toy struct {  
         Geo     geo     `json:"geo" hcl:"geo,block"`  
@@ -993,7 +1007,9 @@ Type  _toy_  has field`Geo`  which contains  `Shape`:
         "Geo": [2]interface{}{  
           "geo", map[string]interface{}{"Shape": "square"}}})
 ```
-Type  _child_  has field  `Brand`  which is a map of the above  _Nested of nested_  _toy:_
+
+Type  _child_  has field  `Brand`  which is a map of the above  _Nested of nested_  _toy_:
+
 ```go
     type child struct {  
         Brand map[string]*toy `json:"brand" hcl:"brand,block"`  
@@ -1013,6 +1029,7 @@ Type  _child_  has field  `Brand`  which is a map of the above  _Nested of neste
       },  
     )
 ```
+
 ## 3.4 Unmarshal HCL Data to Object
 
 The decoding function  _Unmarshal_  can be used in 4 cases.
@@ -1025,73 +1042,128 @@ The decoding function  _Unmarshal_  can be used in 4 cases.
 ```go
     func Unmarshal(dat []byte, object interface{}, labels ...string) error
 ```
+
 3. Decode  _data_  to  _object_  with dynamic schema specified by  _spec_  and  _ref_.
 ```go
-    func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error   
+func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error 
+//
+// spec: describe how the interface fields are interprested
+// ref: a reference map to map class names in spec, to objects of empty value.
+// e.g.
+// ref := map[string]interface{}{"cirle": new(Circle), "geo": new(Geo)}
 ```
+
 4. Decode  _data_  to  _object_  with dynamic schema specified by  _spec_  and  _ref ,_ and with  `label`. The labels will be assigned to the  _label_  fields in  _object_.
 ```go
-    func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error    
+func UnmarshalSpec(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}, label_values ...string) error 
+//
+// spec: describe how the interface fields are interprested
+// ref: a reference map to map class names in spec, to objects of empty value.
+// e.g.
+// ref := map[string]interface{}{"cirle": new(Circle), "geo": new(Geo)}
 ```
+
 In the following example, we decode data to  _child_  of type  _Nested of nested_, which contains multiple  _interfaces_  and  _maps_,
+
 ```go
-    package main  
-      
-    import (  
-        "fmt"  
-      
-        "github.com/genelet/determined/dethcl"  
-        "github.com/genelet/determined/utils"  
-    )  
-      
-    func main() {  
-        data1 := `  
-    age = 5  
-    brand "abc1" {  
-        toy_name = "roblox"  
-        price = 99.9  
-        geo {  
-            name = "medium shape"  
-            shape {  
-                radius = 1.234  
-            }  
-        }  
-    }  
-    brand "def2" {  
-        toy_name = "minecraft"  
-        price = 9.9  
-        geo {  
-            name = "quare shape"  
-            shape {  
-                sx = 5  
-                sy = 6  
-            }  
-        }  
-    }  
-    `  
-        spec, err := utils.NewStruct("child", map[string]interface{}{  
-            "Brand": map[string][2]interface{}{  
-                "abc1":{"toy", map[string]interface{}{  
-                    "Geo": [2]interface{}{  
-                        "geo", map[string]interface{}{"Shape": "circle"}}}},  
-                "ref2":{"toy", map[string]interface{}{  
-                    "Geo": [2]interface{}{  
-                        "geo", map[string]interface{}{"Shape": "square"}}}},  
-            },  
-        })  
-        ref := map[string]interface{}{"toy": &toy{}, "geo": &geo{}, "circle": &circle{}, "square": &square{}}  
-      
-        c := new(child)  
-        err = dethcl.UnmarshalSpec([]byte(data1), c, spec, ref)  
-        if err != nil {  
-            panic(err)  
-        }  
-        fmt.Printf("%v\n", c.Age)  
-        fmt.Printf("%#v\n", c.Brand["abc1"])  
-        fmt.Printf("%#v\n", c.Brand["abc1"].Geo.Shape)  
-        fmt.Printf("%#v\n", c.Brand["def2"])  
-        fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)  
-    }  
+package main
+
+import (
+    "fmt"
+
+    "github.com/genelet/determined/utils"
+    "github.com/genelet/determined/dethcl"
+)
+
+type inter interface {
+	Area() float32
+}
+
+type square struct {
+	SX int `json:"sx" hcl:"sx"`
+	SY int `json:"sy" hcl:"sy"`
+}
+
+func (self *square) Area() float32 {
+	return float32(self.SX * self.SY)
+}
+
+type circle struct {
+	Radius float32 `json:"radius" hcl:"radius"`
+}
+
+func (self *circle) Area() float32 {
+	return 3.14159 * self.Radius
+}
+
+type geo struct {
+	Name  string `json:"name" hcl:"name"`
+	Shape inter  `json:"shape" hcl:"shape,block"`
+}
+
+type toy struct {
+	Geo     geo     `json:"geo" hcl:"geo,block"`
+	ToyName string  `json:"toy_name" hcl:"toy_name"`
+	Price   float32 `json:"price" hcl:"price"`
+}
+
+func (self *toy) ImportPrice(rate float32) float32 {
+	return rate * 0.7 * self.Price
+}
+
+type child struct {
+	Brand map[string]*toy `json:"brand" hcl:"brand,block"`
+	Age   int  `json:"age" hcl:"age"`
+}
+
+func main() {
+    data1 := `
+age = 5
+brand "abc1" {
+    toy_name = "roblox"
+    price = 99.9
+    geo {
+        name = "medium shape"
+        shape {
+            radius = 1.234
+        }
+    }
+}
+brand "def2" {
+    toy_name = "minecraft"
+    price = 9.9
+    geo {
+        name = "quare shape"
+        shape {
+            sx = 5
+            sy = 6
+        }
+    }
+}
+`
+    spec, err := utils.NewStruct("child", map[string]interface{}{
+        "Brand": map[string][2]interface{}{
+            "abc1":[2]interface{}{"toy", map[string]interface{}{
+                "Geo": [2]interface{}{
+                    "geo", map[string]interface{}{"Shape": "circle"}}}},
+            "def2":[2]interface{}{"toy", map[string]interface{}{
+                "Geo": [2]interface{}{
+                    "geo", map[string]interface{}{"Shape": "square"}}}},
+        },
+    })
+    ref := map[string]interface{}{"toy": &toy{}, "geo": &geo{}, "circle": &circle{}, "square": &square{}}
+
+    c := new(child)
+    err = dethcl.UnmarshalSpec([]byte(data1), c, spec, ref)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("%v\n", c.Age)
+    fmt.Printf("%#v\n", c.Brand["abc1"])
+    fmt.Printf("%#v\n", c.Brand["abc1"].Geo.Shape)
+    fmt.Printf("%#v\n", c.Brand["def2"])
+    fmt.Printf("%#v\n", c.Brand["def2"].Geo.Shape)
+}
 ```
   
 the program outputs:  

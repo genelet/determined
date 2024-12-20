@@ -33,7 +33,9 @@ func TestHclShape1(t *testing.T) {
 	ref := map[string]interface{}{"circle": c}
 	spec, err := utils.NewStruct(
 		"geo", map[string]interface{}{"Shape": "circle"})
-	err = UnmarshalSpec([]byte(data1), g, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data1), g, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +55,9 @@ func TestHclShape1(t *testing.T) {
 	ref = map[string]interface{}{"circle": c, "square": s}
 	spec, err = utils.NewStruct(
 		"geo", map[string]interface{}{"Shape": "square"})
-	err = UnmarshalSpec([]byte(data2), g, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data2), g, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,13 +233,14 @@ func TestHash(t *testing.T) {
 		sy = 8
 	}
 `
+	ref := map[string]interface{}{"square": new(square)}
 	g := &geometry{}
 	spec, err := utils.NewStruct(
 		"geometry", map[string]interface{}{
 			"Shapes": []string{"square", "square"}})
-	//"Shapes": []string{"square", "square"}})
-	ref := map[string]interface{}{"square": new(square)}
-	err = UnmarshalSpec([]byte(data3), g, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data3), g, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,16 +462,17 @@ brand {
 	}
 }
 `
+	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
+	c := new(child)
 	spec, err := utils.NewStruct(
 		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"geo", map[string]interface{}{"Shape": "circle"}}}}})
-	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
-
-	c := new(child)
-	err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,16 +495,17 @@ brand = {
 	}
 }
 `
+	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
+	c := new(child)
 	spec, err := utils.NewStruct(
 		"child1", map[string]interface{}{
 			"Brand": [2]interface{}{
 				"toy", map[string]interface{}{
 					"Geo": [2]interface{}{
 						"geo", map[string]interface{}{"Shape": "circle"}}}}})
-	ref := map[string]interface{}{"geo": &geo{}, "circle": &circle{}, "toy": &toy{}}
-
-	c := new(child)
-	err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	if err == nil {
+		err = UnmarshalSpec([]byte(data1), c, spec, ref)
+	}
 	str := err.Error()
 	expected := `An argument named "brand" is not expected here.`
 	if str[len(str)-len(expected):] != expected {
@@ -559,14 +566,6 @@ func TestClone(t *testing.T) {
 	}
 }
 
-type some struct {
-	L1 string `json:"l1" hcl:"l1,label"`
-	L2 string `json:"l2" hcl:"l2,label"`
-	L3 string `json:"l3" hcl:"l3,label"`
-	SX int    `json:"sx" hcl:"sx"`
-	SY int    `json:"sy" hcl:"sy"`
-}
-
 type xclass struct {
 	Name    string             `json:"name" hcl:"name"`
 	Squares map[string]*square `json:"squares" hcl:"squares"`
@@ -609,9 +608,11 @@ func TestMapList(t *testing.T) {
 		spec[field.Name] = arr
 	}
 
-	tr, err := utils.NewStruct(typ.Name(), spec)
 	xc := &xclass{}
-	err = UnmarshalSpec(bs, xc, tr, ref)
+	tr, err := utils.NewStruct(typ.Name(), spec)
+	if err == nil {
+		err = UnmarshalSpec(bs, xc, tr, ref)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
