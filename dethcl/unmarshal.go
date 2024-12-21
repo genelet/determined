@@ -112,10 +112,14 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	}
 	bd := file.Body.(*hclsyntax.Body)
 
+	var kNulls []string
 	for k, v := range bd.Attributes {
 		cv, err := utils.ExpressionToCty(ref, node, v.Expr)
 		if err != nil {
 			return err
+		}
+		if cv.IsNull() {
+			kNulls = append(kNulls, k)
 		}
 		v.Expr = utils.CtyToExpression(cv, v.Range())
 		node.AddItem(k, cv)
@@ -124,12 +128,12 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 	for _, block := range bd.Blocks {
 		node.AddNodes(block.Type, block.Labels...)
 	}
-	newLabels, newFields, oriFields, decFields, err := loopFields(t, objectMap, ref)
+	newLabels, newFields, oriFields, decFields, err := loopFields(t, objectMap, ref, kNulls)
 	if err != nil {
 		return err
 	}
 
-	labelExprs, existingAttrs, rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, oriFields, decFields, newFields, newLabels)
+	labelExprs, existingAttrs, rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, kNulls, oriFields, decFields, newFields, newLabels)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -434,7 +438,7 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
-func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+func refreshBody(bd *hclsyntax.Body, kNulls []string, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
 	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
 
 	oriref := getTagref(oriFields)
@@ -445,6 +449,9 @@ func refreshBody(bd *hclsyntax.Body, oriFields, decFields, newFields, newLabels 
 	var decattrs map[string]*hclsyntax.Attribute
 	var existingAttrs map[string]bool
 	for k, v := range bd.Attributes {
+		if grep(kNulls, k) {
+			continue
+		}
 		if decref[k] {
 			if decattrs == nil {
 				decattrs = make(map[string]*hclsyntax.Attribute)
@@ -511,10 +518,22 @@ func getTagref(oriFields []reflect.StructField) map[string]bool {
 	return tagref
 }
 
+func grep(list []string, single string) bool {
+	if list == nil {
+		return false
+	}
+	for _, item := range list {
+		if item == single {
+			return true
+		}
+	}
+	return false
+}
+
 // newFields for normal fields, can be decoded withe gohcl
 // oriFields for blocks, decoded individually as body
 // decFields for map[string]interface{} or []interface{}
-func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[string]interface{}) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
+func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[string]interface{}, kNulls []string) ([]reflect.StructField, []reflect.StructField, []reflect.StructField, []reflect.StructField, error) {
 	var newLabels []reflect.StructField
 	var newFields []reflect.StructField
 	var oriFields []reflect.StructField
@@ -530,6 +549,9 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 			continue
 		}
 		tag := (tag2(field.Tag))[0]
+		if grep(kNulls, tag) {
+			continue
+		}
 		what := (tag2(field.Tag))[1]
 		if strings.ToLower(what) == "label" {
 			newLabels = append(newLabels, field)
@@ -546,7 +568,7 @@ func loopFields(t reflect.Type, objectMap map[string]*utils.Value, ref map[strin
 		if tag == "" {
 			switch typ.Kind() {
 			case reflect.Struct:
-				ls, deeps, deepTypes, deepDecs, err := loopFields(typ, objectMap, ref)
+				ls, deeps, deepTypes, deepDecs, err := loopFields(typ, objectMap, ref, kNulls)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
