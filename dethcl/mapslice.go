@@ -44,27 +44,6 @@ func decodeMap(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[str
 	return decodeBody(ref, node, file, file.Body.(*hclsyntax.Body))
 }
 
-func checkItemInBlocks(blocks2 [][]*hclsyntax.Block, labels []string) ([]*hclsyntax.Block, int) {
-	for k, blocks := range blocks2 {
-		block := blocks[len(blocks)-1]
-		var found bool
-		if block.Type == labels[0] {
-			for i := 1; i < len(labels); i++ {
-				if len(block.Labels) > i-1 && block.Labels[i-1] == labels[i] {
-					found = true
-				} else {
-					found = false
-					break
-				}
-			}
-		}
-		if found {
-			return blocks, k
-		}
-	}
-	return nil, -1
-}
-
 func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, body *hclsyntax.Body) (map[string]interface{}, error) {
 	object := make(map[string]interface{})
 	for key, item := range body.Attributes {
@@ -75,71 +54,94 @@ func decodeBody(ref map[string]interface{}, node *utils.Tree, file *hcl.File, bo
 		object[key] = val
 	}
 
-	var blocks2 [][]*hclsyntax.Block
+	var sliceBodies map[string][]*hclsyntax.Body
+	counts := make(map[string]int)
+	var mapBodies map[string]map[string]*hclsyntax.Body
+	var map2Bodies map[string]map[string]map[string]*hclsyntax.Body
 	for _, item := range body.Blocks {
-		labels := append([]string{item.Type}, item.Labels...)
-		leading, k := checkItemInBlocks(blocks2, labels)
-		if leading != nil {
-			blocks2[k] = append(leading, item)
-		} else {
-			blocks2 = append(blocks2, []*hclsyntax.Block{item})
+		switch len(item.Labels) {
+		case 0:
+			if sliceBodies == nil {
+				sliceBodies = make(map[string][]*hclsyntax.Body)
+			}
+			sliceBodies[item.Type] = append(sliceBodies[item.Type], item.Body)
+			counts[item.Type]++
+		case 1:
+			if mapBodies == nil {
+				mapBodies = make(map[string]map[string]*hclsyntax.Body)
+			}
+			if mapBodies[item.Type] == nil {
+				mapBodies[item.Type] = make(map[string]*hclsyntax.Body)
+			}
+			mapBodies[item.Type][item.Labels[0]] = item.Body
+		case 2:
+			if map2Bodies == nil {
+				map2Bodies = make(map[string]map[string]map[string]*hclsyntax.Body)
+			}
+			if map2Bodies[item.Type] == nil {
+				map2Bodies[item.Type] = make(map[string]map[string]*hclsyntax.Body)
+			}
+			if map2Bodies[item.Type][item.Labels[0]] == nil {
+				map2Bodies[item.Type][item.Labels[0]] = make(map[string]*hclsyntax.Body)
+			}
+			map2Bodies[item.Type][item.Labels[0]][item.Labels[1]] = item.Body
+		default:
+			return nil, fmt.Errorf("not resolvable")
 		}
 	}
 
-	for _, blocks := range blocks2 {
-		var val interface{}
-		var err error
-		b0 := blocks[0]
-		subnode := node.AddNodes(b0.Type, b0.Labels...)
-		if len(blocks) > 1 {
-			var multi []map[string]interface{}
-			for i, block := range blocks {
-				subnode2 := subnode.AddNode(fmt.Sprintf("%d", i))
-				x, err := decodeBody(ref, subnode2, file, block.Body)
-				if err != nil {
-					return nil, err
-				}
-				multi = append(multi, x)
-			}
-			val = multi
-		} else {
-			val, err = decodeBody(ref, subnode, file, b0.Body)
+	for key, bodies := range sliceBodies {
+		var val []interface{}
+		keynode := node.AddNode(key)
+		for i, body := range bodies {
+			subnode := keynode.AddNode(fmt.Sprintf("%d", i))
+			x, err := decodeBody(ref, subnode, file, body)
 			if err != nil {
 				return nil, err
 			}
+			val = append(val, x)
 		}
-
-		labels := append([]string{b0.Type}, b0.Labels...)
-		var x map[string]interface{}
-		for j := len(labels) - 1; j >= 0; j-- {
-			if x == nil {
-				x = map[string]interface{}{labels[j]: val}
-			} else {
-				x = map[string]interface{}{labels[j]: x}
-			}
-		}
-
-		l0 := labels[0]
-		if object[l0] == nil {
-			object[l0] = x[l0]
+		if counts[key] > 1 {
+			object[key] = val
 		} else {
-			loop(x[l0].(map[string]interface{}), object[l0].(map[string]interface{}))
+			object[key] = val[0]
 		}
+	}
+
+	for key, bodies := range mapBodies {
+		val := make(map[string]interface{})
+		keynode := node.AddNode(key)
+		for k, body := range bodies {
+			subnode := keynode.AddNode(k)
+			x, err := decodeBody(ref, subnode, file, body)
+			if err != nil {
+				return nil, err
+			}
+			val[k] = x
+		}
+		object[key] = val
+	}
+
+	for key, bodies := range map2Bodies {
+		val := make(map[string]interface{})
+		keynode := node.AddNode(key)
+		for k, bodies2 := range bodies {
+			val2 := make(map[string]interface{})
+			keynode2 := keynode.AddNode(k)
+			for k2, body := range bodies2 {
+				subnode := keynode2.AddNode(k2)
+				x, err := decodeBody(ref, subnode, file, body)
+				if err != nil {
+					return nil, err
+				}
+				val2[k2] = x
+			}
+			val[k] = val2
+		}
+		object[key] = val
 	}
 
 	return object, nil
-}
-
-func loop(x, y map[string]interface{}) {
-	for k, v := range x {
-		if y[k] == nil {
-			y[k] = v
-		}
-		u, ok := v.(map[string]interface{})
-		if ok {
-			loop(u, y[k].(map[string]interface{}))
-		}
-	}
 }
 
 func decodeObjectConsExpr(ref map[string]interface{}, node *utils.Tree, bs []byte) (map[string]interface{}, error) {
