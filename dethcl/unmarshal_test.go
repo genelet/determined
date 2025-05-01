@@ -2,6 +2,7 @@ package dethcl
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/genelet/determined/utils"
@@ -507,9 +508,9 @@ brand = {
 		err = UnmarshalSpec([]byte(data1), c, spec, ref)
 	}
 	str := err.Error()
-	expected := `An argument named "brand" is not expected here.`
-	if str[len(str)-len(expected):] != expected {
-		t.Errorf("'%s'", str[len(str)-len(expected):])
+	expected := `Missing expression; Expected the start of an expression, but found the end of the file.`
+	if !strings.HasSuffix(str, expected) {
+		t.Errorf("%v", err)
 	}
 }
 

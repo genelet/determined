@@ -3,6 +3,7 @@ package dethcl
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -133,9 +134,9 @@ func UnmarshalSpecTree(node *utils.Tree, dat []byte, current interface{}, spec *
 		return err
 	}
 
-	labelExprs, existingAttrs, rawValue, decattrs, decblock, oriblock, diags := refreshBody(bd, kNulls, oriFields, decFields, newFields, newLabels)
-	if diags.HasErrors() {
-		return diags
+	labelExprs, existingAttrs, rawValue, decattrs, decblock, oriblock, err := refreshBody(node, file, bd, kNulls, oriFields, decFields, newFields, newLabels)
+	if err != nil {
+		return err
 	}
 
 	oriValue := reflect.ValueOf(&current).Elem()
@@ -438,12 +439,18 @@ func plusUnmarshalSpecTree(subnode *utils.Tree, s []byte, trial interface{}, nex
 	return UnmarshalSpecTree(subnode, s, trial, nextStruct, ref, labels...)
 }
 
-func refreshBody(bd *hclsyntax.Body, kNulls []string, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, hcl.Diagnostics) {
+// newFields for normal fields, can be decoded withe gohcl
+// oriFields for blocks, decoded individually as body
+// decFields for map[string]interface{} or []interface{}
+func refreshBody(node *utils.Tree, file *hcl.File, bd *hclsyntax.Body, kNulls []string, oriFields, decFields, newFields, newLabels []reflect.StructField) (map[string]hclsyntax.Expression, map[string]bool, reflect.Value, map[string]*hclsyntax.Attribute, map[string][]*hclsyntax.Block, map[string][]*hclsyntax.Block, error) {
 	body := &hclsyntax.Body{SrcRange: bd.SrcRange, EndRange: bd.EndRange}
 
 	oriref := getTagref(oriFields)
 	decref := getTagref(decFields)
 	labref := getTagref(newLabels)
+
+	oriblock := make(map[string][]*hclsyntax.Block)
+	decblock := make(map[string][]*hclsyntax.Block)
 
 	var labelExprs map[string]hclsyntax.Expression
 	var decattrs map[string]*hclsyntax.Attribute
@@ -462,6 +469,31 @@ func refreshBody(bd *hclsyntax.Body, kNulls []string, oriFields, decFields, newF
 				labelExprs = make(map[string]hclsyntax.Expression)
 			}
 			labelExprs[k] = v.Expr
+		} else if oriref[k] { // this MUST BE hash or slice with equal sign.
+			// Unmarshal []any produces an equal sign (unmarshal a map[string]any does not)
+			// Equal sign results in suxh N attribute. It is recorded in oriref and there is a struct associated.
+			if t, ok := v.Expr.(*hclsyntax.LiteralValueExpr); !ok || !t.Val.CanIterateElements() {
+				return nil, nil, reflect.Zero(reflect.TypeOf(nil)), nil, nil, nil, fmt.Errorf("unknown expression type %T", t)
+			}
+			start := v.EqualsRange.End.Byte + 1
+			str := string(file.Bytes[start:v.SrcRange.End.Byte])
+			re := regexp.MustCompile(`(?s){[^}]+}`)
+			// the starting and ending positions of each matched string block, including the braces
+			indices := re.FindAllStringIndex(str, -1)
+			// there is only one block in case of hash; there would be multiple blocks in case of slice
+			for _, item := range indices {
+				block := &hclsyntax.Block{
+					Type: k,
+					OpenBraceRange: hcl.Range{
+						End: hcl.Pos{Byte: start + item[0] + 1}, // remove leading brace
+					},
+					CloseBraceRange: hcl.Range{
+						Start: hcl.Pos{Byte: start + item[1] - 1}, // remove trailing brace
+					},
+				}
+				oriblock[k] = append(oriblock[k], block)
+			}
+			node.AddNode(k)
 		} else {
 			if body.Attributes == nil {
 				body.Attributes = make(map[string]*hclsyntax.Attribute)
@@ -474,8 +506,6 @@ func refreshBody(bd *hclsyntax.Body, kNulls []string, oriFields, decFields, newF
 		}
 	}
 
-	oriblock := make(map[string][]*hclsyntax.Block)
-	decblock := make(map[string][]*hclsyntax.Block)
 	for _, block := range bd.Blocks {
 		tag := block.Type
 		if oriref[tag] {
