@@ -1,3 +1,4 @@
+// Package dethcl implements marshal and unmarshal between HCL string and go struct.
 package dethcl
 
 import (
@@ -55,6 +56,13 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 		}
 
 		str := string(bs)
+		if level > 0 {
+			if isBlanck(bs) {
+				str = "\n"
+			} else {
+				str = "\n" + str + "\n"
+			}
+		}
 		str = strings.ReplaceAll(str, "\n", "\n"+lessLeading)
 		if level > 0 {
 			str = fmt.Sprintf("{%s%s}", leading, str)
@@ -143,7 +151,7 @@ func marshal(current interface{}, level int, keyname ...string) ([]byte, error) 
 		if item.encode {
 			line += "= "
 		}
-		if item.b1 != nil {
+		if len(item.b1) > 0 {
 			line += `"` + strings.Join(item.b1, `" "`) + `" `
 		}
 		line += string(item.b2)
@@ -204,13 +212,22 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 			continue
 		}
 
+		// treat field of type pointer e.g. *map[string]*Example, the same as map[string]*Example
+		if typ.Kind() == reflect.Pointer && (typ.Elem().Kind() == reflect.Slice || typ.Elem().Kind() == reflect.Map) {
+			typ = typ.Elem()
+			oriField = oriField.Elem()
+			if !oriField.IsValid() {
+				continue
+			}
+		}
 		pass := false
 		switch typ.Kind() {
 		case reflect.Interface, reflect.Pointer, reflect.Struct:
 			pass = true
 		case reflect.Slice:
 			if oriField.Len() == 0 {
-				continue
+				pass = true
+				break
 			}
 			switch oriField.Index(0).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
@@ -219,7 +236,8 @@ func getFields(t reflect.Type, oriValue reflect.Value) ([]*marshalField, error) 
 			}
 		case reflect.Map:
 			if oriField.Len() == 0 {
-				continue
+				pass = true
+				break
 			}
 			switch oriField.MapIndex(oriField.MapKeys()[0]).Kind() {
 			case reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct:
@@ -256,6 +274,11 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 	typ := field.Type
 	newlevel := level + 1
 
+	// treat ptr the same as the underlying type e.g. *Example, Example
+	if typ.Kind() == reflect.Ptr && (typ.Elem().Kind() == reflect.Map || typ.Elem().Kind() == reflect.Slice) {
+		typ = typ.Elem()
+	}
+
 	switch typ.Kind() {
 	case reflect.Interface, reflect.Pointer:
 		newCurrent := oriField.Interface()
@@ -263,7 +286,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		if err != nil {
 			return nil, err
 		}
-		if bs == nil {
+		if isBlanck(bs) {
 			return nil, nil
 		}
 		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
@@ -274,20 +297,24 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 		} else {
 			newCurrent = oriField.Interface()
 		}
-
 		bs, err := MarshalLevel(newCurrent, newlevel)
 		if err != nil {
 			return nil, err
 		}
-		if bs == nil {
+		if isBlanck(bs) {
 			return nil, nil
 		}
 		empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
 	case reflect.Slice:
-		n := oriField.Len()
-		if n < 1 {
+		if oriField.IsNil() {
 			return nil, nil
 		}
+
+		n := oriField.Len()
+		if n < 1 {
+			return []*marshalOut{{hcltag(fieldTag), nil, []byte(`[]`), true}}, nil
+		}
+
 		first := oriField.Index(0)
 		var isLoop bool
 		switch first.Kind() {
@@ -307,7 +334,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				if err != nil {
 					return nil, err
 				}
-				if bs == nil {
+				if isBlanck(bs) {
 					continue
 				}
 				empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, false})
@@ -317,16 +344,22 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 			if err != nil {
 				return nil, err
 			}
-			if bs == nil {
+			if isBlanck(bs) {
 				return nil, nil
 			}
 			empty = append(empty, &marshalOut{hcltag(fieldTag), nil, bs, true})
 		}
 	case reflect.Map:
-		n := oriField.Len()
-		if n < 1 {
+		if oriField.IsNil() {
 			return nil, nil
 		}
+
+		n := oriField.Len()
+		if n < 1 {
+			leading := strings.Repeat("  ", level+1)
+			return []*marshalOut{{hcltag(fieldTag), nil, []byte("{\n" + leading + "}"), false}}, nil
+		}
+
 		first := oriField.MapIndex(oriField.MapKeys()[0])
 		var isLoop bool
 		switch first.Kind() {
@@ -363,7 +396,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 				if err != nil {
 					return empty, err
 				}
-				if bs == nil {
+				if isBlanck(bs) {
 					continue
 				}
 				empty = append(empty, &marshalOut{hcltag(fieldTag), arr, bs, false})
@@ -373,7 +406,7 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 			if err != nil {
 				return nil, err
 			}
-			if bs == nil {
+			if isBlanck(bs) {
 				return nil, nil
 			}
 			equal := true
@@ -385,4 +418,13 @@ func getOutlier(field reflect.StructField, oriField reflect.Value, level int) ([
 	default:
 	}
 	return empty, nil
+}
+
+func isBlanck(bs []byte) bool {
+	for _, b := range bs {
+		if b != ' ' && b != '\t' && b != '\n' && b != '\r' {
+			return false
+		}
+	}
+	return true
 }

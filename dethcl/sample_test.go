@@ -17,16 +17,6 @@ func (self *square) Area() float32 {
 	return float32(self.SX * self.SY)
 }
 
-type team struct {
-	TeamName string `json:"team_name" hcl:"team_name,label"`
-	SX       int    `json:"sx" hcl:"sx"`
-	SY       int    `json:"sy" hcl:"sy"`
-}
-
-func (self *team) Area() float32 {
-	return float32(self.SX * self.SY)
-}
-
 type moresquare struct {
 	Morename1 string `json:"morename1" hcl:"morename1,label"`
 	Morename2 string `json:"morename2" hcl:"morename2,label"`
@@ -67,6 +57,11 @@ type geometry struct {
 	Shapes map[string]inter `json:"shapes" hcl:"shapes,block"`
 }
 
+type geometries struct {
+	Name   string            `json:"name" hcl:"name"`
+	Shapes *map[string]inter `json:"shapes" hcl:"shapes,block"`
+}
+
 type picture struct {
 	Name     string  `json:"name" hcl:"name"`
 	Drawings []inter `json:"drawings" hcl:"drawings,block"`
@@ -85,7 +80,9 @@ type Painting struct {
 func (self *Painting) UnmarshalHCL(dat []byte, labels ...string) error {
 	spec, err := utils.NewStruct(
 		"Painting", map[string]interface{}{
-			"Drawings": []string{"square", "square"}})
+			"Drawings": []string{"square", "square"},
+		},
+	)
 	if err != nil {
 		return err
 	}

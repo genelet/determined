@@ -473,7 +473,7 @@ func refreshBody(node *utils.Tree, file *hcl.File, bd *hclsyntax.Body, kNulls []
 			// Unmarshal []any produces an equal sign (unmarshal a map[string]any does not)
 			// Equal sign results in suxh N attribute. It is recorded in oriref and there is a struct associated.
 			if t, ok := v.Expr.(*hclsyntax.LiteralValueExpr); !ok || !t.Val.CanIterateElements() {
-				return nil, nil, reflect.Zero(reflect.TypeOf(nil)), nil, nil, nil, fmt.Errorf("unknown expression type %T", t)
+				return nil, nil, reflect.ValueOf(nil), nil, nil, nil, fmt.Errorf("unknown expression type %T", t)
 			}
 			start := v.EqualsRange.End.Byte + 1
 			str := string(file.Bytes[start:v.SrcRange.End.Byte])

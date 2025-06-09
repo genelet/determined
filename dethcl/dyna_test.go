@@ -29,17 +29,17 @@ type Job struct {
 }
 
 type Pipeline struct {
-	Version      int               `hcl:"version,optional"`
-	Say          map[string]string `hcl:"say,optional"`
-	TEST_FOLDER  string            `hcl:"TEST_FOLDER"`
-	EXECUTION_ID string            `hcl:"EXECUTION_ID"`
-	Jobs         []*Job            `hcl:"job,block"`
+	Version     int               `hcl:"version,optional"`
+	Say         map[string]string `hcl:"say,optional"`
+	TestFolder  string            `hcl:"TestFolder"`
+	ExecutionID string            `hcl:"ExecutionID"`
+	Jobs        []*Job            `hcl:"job,block"`
 }
 
 func TestDynaCty(t *testing.T) {
 	data1 := `
-TEST_FOLDER = "__test__"
-EXECUTION_ID = random(6)
+TestFolder = "__test__"
+ExecutionID = random(6)
 version = 2
 say = {
 	for k, v in {hello: "world"}: k => v if k == "hello"
@@ -52,13 +52,13 @@ job check "this is a temporal job" {
 job e2e "running integration tests" {
 
   python "app-e2e.py" {
-    root_dir = var.TEST_FOLDER
+    root_dir = var.TestFolder
 	python_version = version + 6
   }
 
   slack {
     channel  = "slack-my-channel"
-    message = "Job execution ${EXECUTION_ID} completed successfully"
+    message = "Job execution ${ExecutionID} completed successfully"
   }
 }
 `
@@ -92,7 +92,7 @@ job e2e "running integration tests" {
 	if p.Say["hello"] != "world" {
 		t.Errorf("%#v", p.Say)
 	}
-	if p.TEST_FOLDER != "__test__" || len(p.Jobs) != 2 {
+	if p.TestFolder != "__test__" || len(p.Jobs) != 2 {
 		t.Errorf("%#v", p)
 	}
 	for i, job := range p.Jobs {
@@ -119,8 +119,8 @@ job e2e "running integration tests" {
 
 func TestDynaNorm(t *testing.T) {
 	data1 := `
-TEST_FOLDER = "__test__"
-EXECUTION_ID = random(6)
+TestFolder = "__test__"
+ExecutionID = random(6)
 version = 2
 say = {
 	for k, v in {hello: "world"}: k => v if k == "hello"
@@ -133,13 +133,13 @@ job check "this is a temporal job" {
 job e2e "running integration tests" {
 
   python "app-e2e.py" {
-    root_dir = var.TEST_FOLDER
+    root_dir = var.TestFolder
 	python_version = version + 6
   }
 
   slack {
     channel  = "slack-my-channel"
-    message = "Job execution ${EXECUTION_ID} completed successfully"
+    message = "Job execution ${ExecutionID} completed successfully"
   }
 }
 `
@@ -164,7 +164,7 @@ job e2e "running integration tests" {
 	if p.Say["hello"] != "world" {
 		t.Errorf("%#v", p.Say)
 	}
-	if p.TEST_FOLDER != "__test__" || len(p.Jobs) != 2 {
+	if p.TestFolder != "__test__" || len(p.Jobs) != 2 {
 		t.Errorf("%#v", p)
 	}
 	for i, job := range p.Jobs {
@@ -191,8 +191,8 @@ job e2e "running integration tests" {
 
 func TestDynaTime(t *testing.T) {
 	data1 := `
-TEST_FOLDER = "__test__"
-EXECUTION_ID = datetimeparse("Jan 2, 2006 at 3:04pm (MST)", "Feb 3, 2013 at 7:54pm (PST)")
+TestFolder = "__test__"
+ExecutionID = datetimeparse("Jan 2, 2006 at 3:04pm (MST)", "Feb 3, 2013 at 7:54pm (PST)")
 version = 2
 say = {
 	for k, v in {hello: "world"}: k => v if k == "hello"
@@ -205,13 +205,13 @@ job check "this is a temporal job" {
 job e2e "running integration tests" {
 
   python "app-e2e.py" {
-    root_dir = var.TEST_FOLDER
+    root_dir = var.TestFolder
 	python_version = version + 6
   }
 
   slack {
     channel  = "slack-my-channel"
-    message = "${EXECUTION_ID}"
+    message = "${ExecutionID}"
   }
 }
 `
@@ -235,7 +235,7 @@ job e2e "running integration tests" {
 	if p.Say["hello"] != "world" {
 		t.Errorf("%#v", p.Say)
 	}
-	if p.TEST_FOLDER != "__test__" || len(p.Jobs) != 2 {
+	if p.TestFolder != "__test__" || len(p.Jobs) != 2 {
 		t.Errorf("%#v", p)
 	}
 	for i, job := range p.Jobs {

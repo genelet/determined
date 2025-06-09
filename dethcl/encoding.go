@@ -119,6 +119,8 @@ func encoding(current interface{}, equal bool, level int, keyname ...string) ([]
 
 	rv := reflect.ValueOf(current)
 	switch rv.Kind() {
+	case reflect.Struct:
+		return marshalLevel(current, false, level, keyname...)
 	case reflect.Pointer:
 		return marshalLevel(rv.Elem().Interface(), equal, level, keyname...)
 	case reflect.Map:

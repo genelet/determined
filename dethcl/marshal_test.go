@@ -241,6 +241,60 @@ func TestMHash(t *testing.T) {
 	}
 }
 
+func TestMPointerHash(t *testing.T) {
+	data3 := `
+	name = "peter shapes"
+	shapes obj5 {
+		sx = 5
+		sy = 6
+	}
+	shapes obj7 {
+		sx = 7
+		sy = 8
+	}
+`
+	g := &geometry{}
+	ref := map[string]interface{}{"square": new(square)}
+	spec, err := utils.NewStruct(
+		"geometry", map[string]interface{}{
+			"Shapes": []string{"square", "square"}})
+	if err == nil {
+		err = UnmarshalSpec([]byte(data3), g, spec, ref)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p := &geometries{
+		Name:   g.Name,
+		Shapes: &g.Shapes,
+	}
+
+	bs, err := Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(bs) != `  name = "peter shapes"
+  shapes "obj5" {
+    sx = 5
+    sy = 6
+  }
+  shapes "obj7" {
+    sx = 7
+    sy = 8
+  }` && string(bs) != `  name = "peter shapes"
+  shapes "obj7" {
+    sx = 7
+    sy = 8
+  }
+  shapes "obj5" {
+    sx = 5
+    sy = 6
+  }` {
+		t.Errorf("'%s'", bs)
+	}
+}
+
 func TestMHclOld(t *testing.T) {
 	data1 := `  description = "here is detailed description"
   y13 = {
