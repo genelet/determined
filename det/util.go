@@ -3,11 +3,12 @@ package det
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"unicode"
 )
 
 // clone clones a value via pointer
-func clone(old interface{}) interface{} {
+func clone(old any) any {
 	obj := reflect.New(reflect.TypeOf(old).Elem())
 	oldVal := reflect.ValueOf(old).Elem()
 	newVal := obj.Elem()
@@ -31,15 +32,15 @@ func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructFi
 			continue
 		}
 		tcontent := field.Tag.Get("json")
-		if tcontent == `-` || (len(tcontent)>=2 && tcontent[len(tcontent)-2:] == `,-`) {
+		if tcontent == "-" || strings.HasSuffix(tcontent, ",-") {
 			continue
 		}
-		if tcontent == "" {
+		if tcontent == "" && field.Anonymous && field.Type.Kind() == reflect.Struct {
 			deeps, deepTypes, err := loopFields(field.Type, objectMap)
-			if err != nil { return nil, nil, err }
-			for _, v := range deeps {
-				newFields = append(newFields, v)
+			if err != nil {
+				return nil, nil, err
 			}
+			newFields = append(newFields, deeps...)
 			for k, v := range deepTypes {
 				origTypes[k] = v
 			}

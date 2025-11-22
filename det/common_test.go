@@ -6,13 +6,13 @@ import (
 
 func TestCommonString(t *testing.T) {
    spec, err := NewStruct(
-        "Geo", map[string]interface{}{
+        "Geo", map[string]any{
             "TheString888": "Circle",
-            "TheString":    [2]interface{}{"Circle"},
+            "TheString":    [2]any{"Circle"},
             "TheList888":   []string{"CircleClass1", "CircleClass2"},
-            "TheList": [][2]interface{}{{"CircleClass1"}, {"CircleClass2"}},
+            "TheList": [][2]any{{"CircleClass1"}, {"CircleClass2"}},
             "TheMap888": map[string]string{"a1": "CircleClass1", "a2": "CircleClass2"},
-            "TheMap": map[string][2]interface{}{"a1": {"CircleClass1"}, "a2": {"CircleClass2"}},
+            "TheMap": map[string][2]any{"a1": {"CircleClass1"}, "a2": {"CircleClass2"}},
         },
     )
     if err != nil {
@@ -35,11 +35,11 @@ func TestCommonString(t *testing.T) {
 
 func TestCommonStruct(t *testing.T) {
 	spec, err := NewStruct(
-		"Geo", map[string]interface{}{
-			"Shape1": [2]interface{}{
-				"Class1", map[string]interface{}{"Field1": "Circle1"}},
-			"Shape2": [2]interface{}{
-				"Class2", map[string]interface{}{"Field2": []string{"Circle2", "Circle3"}}},
+		"Geo", map[string]any{
+			"Shape1": [2]any{
+				"Class1", map[string]any{"Field1": "Circle1"}},
+			"Shape2": [2]any{
+				"Class2", map[string]any{"Field2": []string{"Circle2", "Circle3"}}},
 		},
 	)
 	if err != nil {
@@ -71,10 +71,10 @@ func TestCommonStruct(t *testing.T) {
 
 func TestCommonList(t *testing.T) {
 	spec, err := NewStruct(
-		"Geo", map[string]interface{}{
-			"ListShapes": [][2]interface{}{
-				{"Class2", map[string]interface{}{"Field3": "Circle"}},
-				{"Class3", map[string]interface{}{"Field5": "Circle"}}},
+		"Geo", map[string]any{
+			"ListShapes": [][2]any{
+				{"Class2", map[string]any{"Field3": "Circle"}},
+				{"Class3", map[string]any{"Field5": "Circle"}}},
 		},
 	)
 	if err != nil {
@@ -94,10 +94,10 @@ func TestCommonList(t *testing.T) {
 
 func TestCommonMap(t *testing.T) {
     spec, err := NewStruct(
-        "Geo", map[string]interface{}{
-            "HashShapes": map[string][2]interface{}{
-                "x1": {"Class5", map[string]interface{}{"Field4": "Circle"}},
-                "y1": {"Class6", map[string]interface{}{"Field5": "Circle"}}},
+        "Geo", map[string]any{
+            "HashShapes": map[string][2]any{
+                "x1": {"Class5", map[string]any{"Field4": "Circle"}},
+                "y1": {"Class6", map[string]any{"Field5": "Circle"}}},
         },
     )
     if err != nil {

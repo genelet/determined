@@ -76,10 +76,13 @@ func TestSliceForMap(t *testing.T) {
 }`
 	geometry := &Geometry{}
 	spec, err := NewStruct(
-		"Geometry", map[string]interface{}{
+		"Geometry", map[string]any{
 			"Shapes": []string{
 				"Square"}}) // in case of key is unknown, use slice
-	ref := map[string]interface{}{"Circle": new(Circle), "Square": new(Square)}
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := map[string]any{"Circle": new(Circle), "Square": new(Square)}
 	err = JsonUnmarshal([]byte(data3), geometry, spec, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -102,9 +105,12 @@ func TestJsonShape(t *testing.T) {
 }`
 	geo := &Geo{}
 	c := &Circle{}
-	ref := map[string]interface{}{"Circle": c}
+	ref := map[string]any{"Circle": c}
 	spec, err := NewStruct(
-		"Geo", map[string]interface{}{"Shape": "Circle"})
+		"Geo", map[string]any{"Shape": "Circle"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = JsonUnmarshal([]byte(data1), geo, spec, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -122,9 +128,12 @@ func TestJsonShape(t *testing.T) {
 }`
 	geo = &Geo{}
 	s := &Square{}
-	ref = map[string]interface{}{"Circle": c, "Square": s}
+	ref = map[string]any{"Circle": c, "Square": s}
 	spec, err = NewStruct(
-		"Geo", map[string]interface{}{"Shape": "Square"})
+		"Geo", map[string]any{"Shape": "Square"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = JsonUnmarshal([]byte(data2), geo, spec, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -142,10 +151,13 @@ func TestJsonShape(t *testing.T) {
 }`
 	geometry := &Geometry{}
 	spec, err = NewStruct(
-		"Geometry", map[string]interface{}{
+		"Geometry", map[string]any{
 			"Shapes": map[string]string{
 				"obj5": "Square",
 				"obj7": "Square"}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = JsonUnmarshal([]byte(data3), geometry, spec, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -160,9 +172,12 @@ func TestJsonShape(t *testing.T) {
 
 	geometry = &Geometry{}
 	spec, err = NewStruct(
-		"Geometry", map[string]interface{}{
+		"Geometry", map[string]any{
 			"Shapes": map[string]string{
 				"obj7": "Square"}}) // in case of less items, use the first one
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = JsonUnmarshal([]byte(data3), geometry, spec, ref)
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +199,7 @@ func TestJsonShape(t *testing.T) {
 }`
 	picture := &Picture{}
 	spec, err = NewStruct(
-		"Picture", map[string]interface{}{
+		"Picture", map[string]any{
 			"Drawings": []string{"Square", "Square"}})
 	if err != nil {
 		t.Fatal(err)
@@ -203,7 +218,7 @@ func TestJsonShape(t *testing.T) {
 
 	picture = &Picture{}
 	spec, err = NewStruct(
-		"Picture", map[string]interface{}{
+		"Picture", map[string]any{
 			"Drawings": []string{"Square"}})
 	if err != nil {
 		t.Fatal(err)
@@ -252,10 +267,10 @@ type Adult struct {
 	Family   bool   `json:"family" hcl:"family"`
 	Lastname string `json:"lastname" hcl:"lastname"`
 	spec     *Struct
-	ref      map[string]interface{}
+	ref      map[string]any
 }
 
-func (self *Adult) Assign(spec *Struct, ref map[string]interface{}) {
+func (self *Adult) Assign(spec *Struct, ref map[string]any) {
 	self.spec = spec
 	self.ref = ref
 }
@@ -278,12 +293,15 @@ func TestJsonToy1(t *testing.T) {
 }
 }`
 	spec, err := NewStruct(
-		"Child", map[string]interface{}{
-			"Brand": [2]interface{}{
-				"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Circle"}}}}})
-	ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
+		"Child", map[string]any{
+			"Brand": [2]any{
+				"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Circle"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := map[string]any{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
 
 	child := new(Child1)
 	err = JsonUnmarshal([]byte(data1), child, spec, ref)
@@ -310,12 +328,15 @@ func TestJsonToy(t *testing.T) {
 }
 }`
 	spec, err := NewStruct(
-		"Child", map[string]interface{}{
-			"Toy": [2]interface{}{
-				"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Circle"}}}}})
-	ref := map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
+		"Child", map[string]any{
+			"Toy": [2]any{
+				"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Circle"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := map[string]any{"Geo": &Geo{}, "Circle": &Circle{}, "Toy": &Toy{}}
 
 	child := new(Child)
 	err = JsonUnmarshal([]byte(data1), child, spec, ref)
@@ -351,19 +372,19 @@ func TestJsonToy(t *testing.T) {
 }]
 }`
 	spec, err = NewStruct(
-		"Adult", map[string]interface{}{
-			"Toys": [][2]interface{}{
-				{"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Circle"}}}},
-				{"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Square"}}}},
+		"Adult", map[string]any{
+			"Toys": [][2]any{
+				{"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Circle"}}}},
+				{"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Square"}}}},
 			}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref = map[string]interface{}{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
+	ref = map[string]any{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
 
 	adult := new(Adult)
 	err = JsonUnmarshal([]byte(data2), adult, spec, ref)
@@ -398,14 +419,14 @@ func TestJsonToy(t *testing.T) {
 
 func TestJsonEncoding(t *testing.T) {
 	spec, err := NewStruct(
-		"Adult", map[string]interface{}{
-			"Toys": [][2]interface{}{
-				{"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Circle"}}}},
-				{"Toy", map[string]interface{}{
-					"Geo": [2]interface{}{
-						"Geo", map[string]interface{}{"Shape": "Square"}}}},
+		"Adult", map[string]any{
+			"Toys": [][2]any{
+				{"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Circle"}}}},
+				{"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Square"}}}},
 			}})
 	if err != nil {
 		t.Fatal(err)
@@ -416,5 +437,29 @@ func TestJsonEncoding(t *testing.T) {
 	}
 	if strings.ReplaceAll(string(bs), " ", "") != `{"ClassName":"Adult","fields":{"Toys":{"listStruct":{"listFields":[{"ClassName":"Toy","fields":{"Geo":{"singleStruct":{"ClassName":"Geo","fields":{"Shape":{"singleStruct":{"ClassName":"Circle"}}}}}}},{"ClassName":"Toy","fields":{"Geo":{"singleStruct":{"ClassName":"Geo","fields":{"Shape":{"singleStruct":{"ClassName":"Square"}}}}}}}]}}}}` {
 		t.Errorf("%s", bs)
+	}
+}
+
+type NoTagStruct struct {
+	NoTagInt int
+	Name     string `json:"name"`
+}
+
+func TestNoTagFieldPanic(t *testing.T) {
+	s := &NoTagStruct{}
+	data := []byte(`{"name": "test"}`)
+	spec, err := NewStruct("NoTagStruct")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// This call triggers loopFields. If the bug exists, it will panic because NoTagInt has no tag and is not a struct.
+	err = JsonUnmarshal(data, s, spec, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s.Name != "test" {
+		t.Errorf("expected name to be 'test', got %s", s.Name)
 	}
 }
