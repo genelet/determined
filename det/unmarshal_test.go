@@ -404,7 +404,7 @@ func TestJsonToy(t *testing.T) {
 	second.Assign(spec, ref)
 	err = json.Unmarshal([]byte(data2), second)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	_, ok = second.Toys[0].Shape.(*Circle)
