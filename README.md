@@ -27,12 +27,12 @@ To decode JSON to an object containing interface types, use `det.JsonUnmarshal`.
 //
 //   - dat: JSON data
 //   - current: object as pointer
-//   - spec: *Struct
+//   - spec: *schema.Struct
 //   - ref: struct map, with key being string name and value reference to struct
-func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error
+func JsonUnmarshal(dat []byte, current interface{}, spec *schema.Struct, ref map[string]interface{}) error
 ```
 
-You first need to define the structure of your interfaces using `det.NewStruct`.
+You first need to define the structure of your interfaces using `schema.NewStruct` from the [github.com/genelet/schema](https://github.com/genelet/schema) package.
 
 ### Example
 
@@ -44,6 +44,7 @@ package main
 import (
     "fmt"
     "github.com/genelet/determined/det"
+    "github.com/genelet/schema"
 )
 
 type geo struct {
@@ -107,7 +108,7 @@ func main() {
     }`
 
     // Define the structure of the interfaces for the specific data
-    spec, err := det.NewStruct(
+    spec, err := schema.NewStruct(
         "child", map[string]interface{}{
             "Brand": map[string][2]interface{}{
                 "abc1":[2]interface{}{"toy", map[string]interface{}{

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+
+	"github.com/genelet/schema"
 )
 
 // JsonUnmarshal unmarshals JSON data with interfaces determined by Determined.
@@ -12,7 +14,7 @@ import (
 //   - current: object as interface
 //   - spec: Determined
 //   - ref: struct map, with key being string name and value pointer to struct
-func JsonUnmarshal(dat []byte, current any, spec *Struct, ref map[string]any) error {
+func JsonUnmarshal(dat []byte, current any, spec *schema.Struct, ref map[string]any) error {
 	if spec == nil {
 		return json.Unmarshal(dat, current)
 	}
@@ -77,7 +79,7 @@ func JsonUnmarshal(dat []byte, current any, spec *Struct, ref map[string]any) er
 	return nil
 }
 
-func handleMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *MapStruct, ref map[string]any, name string) error {
+func handleMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *schema.MapStruct, ref map[string]any, name string) error {
 	nextMapStructs := x.GetMapFields()
 	if len(nextMapStructs) == 0 {
 		return fmt.Errorf("missing map struct for %s", name)
@@ -114,7 +116,7 @@ func handleMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *MapSt
 // handleListOrMapStruct handles both slice fields ([]T) and map fields (map[string]T)
 // where the spec provides a list of struct types. For slices, the index determines
 // which struct spec to use. For maps, all values use the first struct spec as the type.
-func handleListOrMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *ListStruct, ref map[string]any, fieldName string) error {
+func handleListOrMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *schema.ListStruct, ref map[string]any, fieldName string) error {
 	n := rawField.Len()
 
 	nextListStructs := x.GetListFields()
@@ -170,7 +172,7 @@ func handleListOrMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x 
 	return nil
 }
 
-func handleSingleStruct(f, rawField reflect.Value, x *Struct, ref map[string]any) error {
+func handleSingleStruct(f, rawField reflect.Value, x *schema.Struct, ref map[string]any) error {
 	trial := ref[x.ClassName]
 	if trial == nil {
 		return fmt.Errorf("class ref not found for %s", x.ClassName)
@@ -191,7 +193,7 @@ func handleSingleStruct(f, rawField reflect.Value, x *Struct, ref map[string]any
 // handleMap2Struct handles map[[2]string]T fields where JSON is represented as nested objects.
 // JSON format: {"key1": {"key2": {...}}}
 // Go type: map[[2]string]*SomeStruct
-func handleMap2Struct(f, rawField reflect.Value, fieldType reflect.Type, x *Map2Struct, ref map[string]any, name string) error {
+func handleMap2Struct(f, rawField reflect.Value, fieldType reflect.Type, x *schema.Map2Struct, ref map[string]any, name string) error {
 	nextMap2Structs := x.GetMap2Fields()
 	if len(nextMap2Structs) == 0 {
 		return fmt.Errorf("missing map2 struct for %s", name)

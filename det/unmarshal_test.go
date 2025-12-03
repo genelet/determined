@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/genelet/schema"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -75,7 +76,7 @@ func TestSliceForMap(t *testing.T) {
 	}
 }`
 	geometry := &Geometry{}
-	spec, err := NewStruct(
+	spec, err := schema.NewStruct(
 		"Geometry", map[string]any{
 			"Shapes": []string{
 				"Square"}}) // in case of key is unknown, use slice
@@ -106,7 +107,7 @@ func TestJsonShape(t *testing.T) {
 	geo := &Geo{}
 	c := &Circle{}
 	ref := map[string]any{"Circle": c}
-	spec, err := NewStruct(
+	spec, err := schema.NewStruct(
 		"Geo", map[string]any{"Shape": "Circle"})
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +130,7 @@ func TestJsonShape(t *testing.T) {
 	geo = &Geo{}
 	s := &Square{}
 	ref = map[string]any{"Circle": c, "Square": s}
-	spec, err = NewStruct(
+	spec, err = schema.NewStruct(
 		"Geo", map[string]any{"Shape": "Square"})
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +151,7 @@ func TestJsonShape(t *testing.T) {
 	}
 }`
 	geometry := &Geometry{}
-	spec, err = NewStruct(
+	spec, err = schema.NewStruct(
 		"Geometry", map[string]any{
 			"Shapes": map[string]string{
 				"obj5": "Square",
@@ -171,7 +172,7 @@ func TestJsonShape(t *testing.T) {
 	}
 
 	geometry = &Geometry{}
-	spec, err = NewStruct(
+	spec, err = schema.NewStruct(
 		"Geometry", map[string]any{
 			"Shapes": map[string]string{
 				"obj7": "Square"}}) // in case of less items, use the first one
@@ -198,7 +199,7 @@ func TestJsonShape(t *testing.T) {
 	]
 }`
 	picture := &Picture{}
-	spec, err = NewStruct(
+	spec, err = schema.NewStruct(
 		"Picture", map[string]any{
 			"Drawings": []string{"Square", "Square"}})
 	if err != nil {
@@ -217,7 +218,7 @@ func TestJsonShape(t *testing.T) {
 	}
 
 	picture = &Picture{}
-	spec, err = NewStruct(
+	spec, err = schema.NewStruct(
 		"Picture", map[string]any{
 			"Drawings": []string{"Square"}})
 	if err != nil {
@@ -266,11 +267,11 @@ type Adult struct {
 	Toys     []*Toy `json:"toys" hcl:"toys,block"`
 	Family   bool   `json:"family" hcl:"family"`
 	Lastname string `json:"lastname" hcl:"lastname"`
-	spec     *Struct
+	spec     *schema.Struct
 	ref      map[string]any
 }
 
-func (self *Adult) Assign(spec *Struct, ref map[string]any) {
+func (self *Adult) Assign(spec *schema.Struct, ref map[string]any) {
 	self.spec = spec
 	self.ref = ref
 }
@@ -292,7 +293,7 @@ func TestJsonToy1(t *testing.T) {
 	}
 }
 }`
-	spec, err := NewStruct(
+	spec, err := schema.NewStruct(
 		"Child", map[string]any{
 			"Brand": [2]any{
 				"Toy", map[string]any{
@@ -327,7 +328,7 @@ func TestJsonToy(t *testing.T) {
 	}
 }
 }`
-	spec, err := NewStruct(
+	spec, err := schema.NewStruct(
 		"Child", map[string]any{
 			"Toy": [2]any{
 				"Toy", map[string]any{
@@ -371,7 +372,7 @@ func TestJsonToy(t *testing.T) {
 	}
 }]
 }`
-	spec, err = NewStruct(
+	spec, err = schema.NewStruct(
 		"Adult", map[string]any{
 			"Toys": [][2]any{
 				{"Toy", map[string]any{
@@ -418,7 +419,7 @@ func TestJsonToy(t *testing.T) {
 }
 
 func TestJsonEncoding(t *testing.T) {
-	spec, err := NewStruct(
+	spec, err := schema.NewStruct(
 		"Adult", map[string]any{
 			"Toys": [][2]any{
 				{"Toy", map[string]any{
@@ -448,7 +449,7 @@ type NoTagStruct struct {
 func TestNoTagFieldPanic(t *testing.T) {
 	s := &NoTagStruct{}
 	data := []byte(`{"name": "test"}`)
-	spec, err := NewStruct("NoTagStruct")
+	spec, err := schema.NewStruct("NoTagStruct")
 	if err != nil {
 		t.Fatal(err)
 	}

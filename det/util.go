@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/genelet/schema"
 )
 
 // clone creates a new zero-value instance of the same type as old.
@@ -22,7 +24,7 @@ func clone(old any) any {
 	return reflect.New(reflect.TypeOf(old).Elem()).Interface()
 }
 
-func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructField, map[string]reflect.StructField, error) {
+func loopFields(t reflect.Type, objectMap map[string]*schema.Value) ([]reflect.StructField, map[string]reflect.StructField, error) {
 	var newFields []reflect.StructField
 	origTypes := make(map[string]reflect.StructField)
 	for i := 0; i < t.NumField(); i++ {
@@ -73,7 +75,7 @@ func loopFields(t reflect.Type, objectMap map[string]*Value) ([]reflect.StructFi
 
 // getFirstStructFromMap returns the first struct from a map using deterministic key order.
 // This ensures consistent behavior across runs since Go map iteration order is random.
-func getFirstStructFromMap(m map[string]*Struct) *Struct {
+func getFirstStructFromMap(m map[string]*schema.Struct) *schema.Struct {
 	if len(m) == 0 {
 		return nil
 	}
@@ -86,7 +88,7 @@ func getFirstStructFromMap(m map[string]*Struct) *Struct {
 }
 
 // getFirstMapStructFromMap returns the first MapStruct from a map using deterministic key order.
-func getFirstMapStructFromMap(m map[string]*MapStruct) *MapStruct {
+func getFirstMapStructFromMap(m map[string]*schema.MapStruct) *schema.MapStruct {
 	if len(m) == 0 {
 		return nil
 	}
