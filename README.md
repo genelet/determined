@@ -2,6 +2,8 @@
 
 _Determined_ marshals and unmarshals JSON data to _go struct_ containing interfaces determined at run-time.
 
+[![GoDoc](https://godoc.org/github.com/genelet/determined?status.svg)](https://godoc.org/github.com/genelet/determined)
+
 > **Note**: The HCL parsing feature has been extracted and moved to a separate Github package [github.com/genelet/horizon](https://github.com/genelet/horizon). The old HCL code in this package is frozen for compatibility reasons.
 
 ## Installation
