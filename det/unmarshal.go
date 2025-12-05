@@ -13,7 +13,16 @@ import (
 //   - dat: JSON data
 //   - current: object as interface
 //   - spec: Determined
-//   - ref: struct map, with key being string name and value pointer to struct
+//   - ref: struct map, with key being string name and value pointer to struct.
+//     The ref map can also contain []any values to specify interface implementations,
+//     which will be used for auto-discovery of struct types.
+//
+// Example with implementations:
+//
+//	ref := map[string]any{
+//	    "Shape": []any{new(Circle), new(Square)},  // interface implementations
+//	}
+//	err := JsonUnmarshal(data, &config, spec, ref)
 func JsonUnmarshal(dat []byte, current any, spec *schema.Struct, ref map[string]any) error {
 	if spec == nil {
 		return json.Unmarshal(dat, current)
@@ -22,6 +31,25 @@ func JsonUnmarshal(dat []byte, current any, spec *schema.Struct, ref map[string]
 	if len(objectMap) == 0 {
 		return json.Unmarshal(dat, current)
 	}
+
+	// Extract implementations from ref (values that are []any)
+	implementations := make(map[string][]any)
+	for k, v := range ref {
+		if impls, ok := v.([]any); ok {
+			implementations[k] = impls
+		}
+	}
+
+	// Auto-collect struct types from the target object
+	autoRef := collectStructTypesFromObject(current, implementations)
+
+	// Merge passed ref into autoRef (passed ref takes precedence)
+	for k, v := range ref {
+		if _, isSlice := v.([]any); !isSlice {
+			autoRef[k] = v
+		}
+	}
+	ref = autoRef
 
 	t := reflect.TypeOf(current).Elem()
 	newFields, origTypes, err := loopFields(t, objectMap)

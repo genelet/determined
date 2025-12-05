@@ -236,7 +236,62 @@ To decode JSON to object containing interface types, use  _JsonUnmarshal_:
 //   - spec: *Struct
 //   - ref: struct map, with key being string name and value reference to struct
 func JsonUnmarshal(dat []byte, current interface{}, spec *Struct, ref map[string]interface{}) error
-```    
+```
+
+### 4.1 Auto-Discovery of Struct Types
+
+`JsonUnmarshal` has been enhanced to automatically discover struct types from the target object. This reduces the need for manually building the `ref` map with all struct types.
+
+**How it works:**
+
+1. Starts from the target object and traverses all fields recursively
+2. For struct fields: automatically adds the struct type to the internal ref map
+3. For interface fields: looks up implementations from `[]any` values in the passed ref
+4. For map/slice fields: processes the element type recursively
+5. Adds both short names and package-qualified names for each type
+
+**Passing Interface Implementations:**
+
+The `ref` map can include `[]any` values to specify which concrete types implement each interface:
+
+```go
+ref := map[string]any{
+    // Interface implementations ([]any values)
+    "inter": []any{new(circle), new(square)},
+}
+err := det.JsonUnmarshal(data, &config, spec, ref)
+```
+
+**Simplified Usage Example:**
+
+Before (manual ref construction):
+```go
+ref := map[string]any{
+    "child":  new(child),
+    "toy":    new(toy),
+    "geo":    new(geo),
+    "circle": new(circle),
+    "square": new(square),
+}
+err := det.JsonUnmarshal(data, &config, spec, ref)
+```
+
+After (with auto-discovery):
+```go
+// Only specify interface implementations
+ref := map[string]any{
+    "inter": []any{new(circle), new(square)},
+}
+err := det.JsonUnmarshal(data, &config, spec, ref)
+```
+
+**Important Notes:**
+- Go reflection cannot discover which types implement an interface, so you must provide interface implementations as `[]any` values in the ref map
+- Package-qualified names (e.g., `"mypackage.Config"`) are automatically added alongside short names
+- Explicitly passed ref values take precedence over auto-discovered types
+
+### 4.2 Full Example
+
 The following program decodes JSON  _data1_  into object  _child_:
  ```go   
 package main
