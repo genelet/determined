@@ -114,7 +114,7 @@ func handleMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *schem
 	}
 
 	// Get default struct using deterministic key order
-	first := getFirstStructFromMap(nextMapStructs)
+	first := getFirstFromMap(nextMapStructs)
 
 	n := rawField.Len()
 	keys := rawField.MapKeys()
@@ -126,12 +126,11 @@ func handleMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x *schem
 		if tmp, ok := nextMapStructs[key.String()]; ok {
 			nextStruct = tmp
 		}
-		trial := ref[nextStruct.ClassName]
-		if trial == nil {
-			return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
+		trial, err := getRef(ref, nextStruct.ClassName)
+		if err != nil {
+			return err
 		}
-		trial = clone(trial)
-		err := JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
+		err = JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
 		if err != nil {
 			return err
 		}
@@ -177,12 +176,11 @@ func handleListOrMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x 
 			nextStruct = nextListStructs[k]
 		}
 
-		trial := ref[nextStruct.ClassName]
-		if trial == nil {
-			return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
+		trial, err := getRef(ref, nextStruct.ClassName)
+		if err != nil {
+			return err
 		}
-		trial = clone(trial)
-		err := JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
+		err = JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
 		if err != nil {
 			return err
 		}
@@ -201,12 +199,11 @@ func handleListOrMapStruct(f, rawField reflect.Value, fieldType reflect.Type, x 
 }
 
 func handleSingleStruct(f, rawField reflect.Value, x *schema.Struct, ref map[string]any) error {
-	trial := ref[x.ClassName]
-	if trial == nil {
-		return fmt.Errorf("class ref not found for %s", x.ClassName)
+	trial, err := getRef(ref, x.ClassName)
+	if err != nil {
+		return err
 	}
-	trial = clone(trial)
-	err := JsonUnmarshal(rawField.Bytes(), trial, x, ref)
+	err = JsonUnmarshal(rawField.Bytes(), trial, x, ref)
 	if err != nil {
 		return err
 	}
@@ -228,11 +225,11 @@ func handleMap2Struct(f, rawField reflect.Value, fieldType reflect.Type, x *sche
 	}
 
 	// Get a default struct for unmarshaling using deterministic key order
-	firstMapStruct := getFirstMapStructFromMap(nextMap2Structs)
+	firstMapStruct := getFirstFromMap(nextMap2Structs)
 	if firstMapStruct == nil {
 		return fmt.Errorf("missing inner map struct for map2 %s", name)
 	}
-	firstStruct := getFirstStructFromMap(firstMapStruct.GetMapFields())
+	firstStruct := getFirstFromMap(firstMapStruct.GetMapFields())
 	if firstStruct == nil {
 		return fmt.Errorf("missing inner struct for map2 %s", name)
 	}
@@ -270,13 +267,12 @@ func handleMap2Struct(f, rawField reflect.Value, fieldType reflect.Type, x *sche
 				nextStruct = s
 			}
 
-			trial := ref[nextStruct.ClassName]
-			if trial == nil {
-				return fmt.Errorf("class ref not found for %s", nextStruct.ClassName)
+			trial, err := getRef(ref, nextStruct.ClassName)
+			if err != nil {
+				return err
 			}
-			trial = clone(trial)
 
-			err := JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
+			err = JsonUnmarshal(v.Bytes(), trial, nextStruct, ref)
 			if err != nil {
 				return err
 			}

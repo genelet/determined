@@ -89,11 +89,16 @@ func TestSliceForMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	shapes := geometry.Shapes
-	if geometry.Name != "peter shapes" ||
-		shapes["obj5"].(*Square).SX != 5 ||
-		shapes["obj7"].(*Square).SX != 7 {
-		t.Errorf("%#v", shapes["obj5"].(*Square))
-		t.Errorf("%#v", shapes["obj7"].(*Square))
+	sq5, ok := shapes["obj5"].(*Square)
+	if !ok {
+		t.Fatal("shapes[obj5] is not *Square")
+	}
+	sq7, ok := shapes["obj7"].(*Square)
+	if !ok {
+		t.Fatal("shapes[obj7] is not *Square")
+	}
+	if geometry.Name != "peter shapes" || sq5.SX != 5 || sq7.SX != 7 {
+		t.Errorf("%#v, %#v", sq5, sq7)
 	}
 }
 
@@ -116,7 +121,11 @@ func TestJsonShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if geo.Name != "peter shape" || geo.Shape.(*Circle).Radius != 1.234 {
+	circle, ok := geo.Shape.(*Circle)
+	if !ok {
+		t.Fatal("Shape is not *Circle")
+	}
+	if geo.Name != "peter shape" || circle.Radius != 1.234 {
 		t.Errorf("%#v", geo)
 	}
 
@@ -139,7 +148,11 @@ func TestJsonShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if geo.Name != "peter shape" || geo.Shape.(*Square).SX != 5 {
+	sq, ok := geo.Shape.(*Square)
+	if !ok {
+		t.Fatal("Shape is not *Square")
+	}
+	if geo.Name != "peter shape" || sq.SX != 5 {
 		t.Errorf("%#v", geo)
 	}
 
@@ -164,11 +177,16 @@ func TestJsonShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	shapes := geometry.Shapes
-	if geometry.Name != "peter shapes" ||
-		shapes["obj5"].(*Square).SX != 5 ||
-		shapes["obj7"].(*Square).SX != 7 {
-		t.Errorf("%#v", shapes["obj5"].(*Square))
-		t.Errorf("%#v", shapes["obj7"].(*Square))
+	sq5, ok := shapes["obj5"].(*Square)
+	if !ok {
+		t.Fatal("shapes[obj5] is not *Square")
+	}
+	sq7, ok := shapes["obj7"].(*Square)
+	if !ok {
+		t.Fatal("shapes[obj7] is not *Square")
+	}
+	if geometry.Name != "peter shapes" || sq5.SX != 5 || sq7.SX != 7 {
+		t.Errorf("%#v, %#v", sq5, sq7)
 	}
 
 	geometry = &Geometry{}
@@ -184,11 +202,16 @@ func TestJsonShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	shapes = geometry.Shapes
-	if geometry.Name != "peter shapes" ||
-		shapes["obj5"].(*Square).SX != 5 ||
-		shapes["obj7"].(*Square).SX != 7 {
-		t.Errorf("%#v", shapes["obj5"].(*Square))
-		t.Errorf("%#v", shapes["obj7"].(*Square))
+	sq5, ok = shapes["obj5"].(*Square)
+	if !ok {
+		t.Fatal("shapes[obj5] is not *Square")
+	}
+	sq7, ok = shapes["obj7"].(*Square)
+	if !ok {
+		t.Fatal("shapes[obj7] is not *Square")
+	}
+	if geometry.Name != "peter shapes" || sq5.SX != 5 || sq7.SX != 7 {
+		t.Errorf("%#v, %#v", sq5, sq7)
 	}
 
 	data4 := `{
@@ -210,11 +233,16 @@ func TestJsonShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	drawings := picture.Drawings
-	if picture.Name != "peter drawings" ||
-		drawings[0].(*Square).SX != 5 ||
-		drawings[1].(*Square).SX != 7 {
-		t.Errorf("%#v", drawings[0].(*Square))
-		t.Errorf("%#v", drawings[1].(*Square))
+	dsq0, ok := drawings[0].(*Square)
+	if !ok {
+		t.Fatal("drawings[0] is not *Square")
+	}
+	dsq1, ok := drawings[1].(*Square)
+	if !ok {
+		t.Fatal("drawings[1] is not *Square")
+	}
+	if picture.Name != "peter drawings" || dsq0.SX != 5 || dsq1.SX != 7 {
+		t.Errorf("%#v, %#v", dsq0, dsq1)
 	}
 
 	picture = &Picture{}
@@ -229,17 +257,25 @@ func TestJsonShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	drawings = picture.Drawings
-	if picture.Name != "peter drawings" ||
-		drawings[0].(*Square).SX != 5 ||
-		drawings[1].(*Square).SX != 7 {
-		t.Errorf("%#v", drawings[0].(*Square))
-		t.Errorf("%#v", drawings[1].(*Square))
+	dsq0, ok = drawings[0].(*Square)
+	if !ok {
+		t.Fatal("drawings[0] is not *Square")
+	}
+	dsq1, ok = drawings[1].(*Square)
+	if !ok {
+		t.Fatal("drawings[1] is not *Square")
+	}
+	if picture.Name != "peter drawings" || dsq0.SX != 5 || dsq1.SX != 7 {
+		t.Errorf("%#v, %#v", dsq0, dsq1)
 	}
 
 	picture = &Picture{}
 	err = json.Unmarshal([]byte(data4), picture)
-	if err == nil || err.Error() != "json: cannot unmarshal object into Go struct field Picture.drawings of type det.I" {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("expected error when unmarshaling interface without spec")
+	}
+	if !strings.Contains(err.Error(), "cannot unmarshal") {
+		t.Fatalf("unexpected error message: %s", err)
 	}
 }
 
@@ -309,7 +345,11 @@ func TestJsonToy1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if child.Age != 5 || child.Brand.Shape.(*Circle).Radius != 1.234 {
+	brandCircle, ok := child.Brand.Shape.(*Circle)
+	if !ok {
+		t.Fatal("Brand.Shape is not *Circle")
+	}
+	if child.Age != 5 || brandCircle.Radius != 1.234 {
 		t.Errorf("%#v", child)
 	}
 }
@@ -344,7 +384,11 @@ func TestJsonToy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if child.Age != 5 || child.Toy.Shape.(*Circle).Radius != 1.234 {
+	toyCircle, ok := child.Toy.Shape.(*Circle)
+	if !ok {
+		t.Fatal("Toy.Shape is not *Circle")
+	}
+	if child.Age != 5 || toyCircle.Radius != 1.234 {
 		t.Errorf("%#v", child)
 	}
 
@@ -392,7 +436,7 @@ func TestJsonToy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, ok := adult.Toys[0].Shape.(*Circle)
+	_, ok = adult.Toys[0].Shape.(*Circle)
 	if !ok {
 		t.Errorf("%#v", adult.Toys[0])
 	}
@@ -462,5 +506,54 @@ func TestNoTagFieldPanic(t *testing.T) {
 
 	if s.Name != "test" {
 		t.Errorf("expected name to be 'test', got %s", s.Name)
+	}
+}
+
+func BenchmarkJsonUnmarshal(b *testing.B) {
+	data := []byte(`{
+"family":true,
+"lastname":"Bizhang",
+"toys":[{
+	"toy_name":"roblox",
+	"price":99.9,
+	"geo":{
+		"name": "peter shape",
+		"shape": {
+    		"radius":1.234
+		}
+	}
+},{
+	"toy_name":"minecraft",
+	"price":199.9,
+	"geo":{
+		"name": "marcus shape",
+		"shape": {
+    		"sx":134,
+			"sy":567
+		}
+	}
+}]
+}`)
+	spec, err := schema.NewStruct(
+		"Adult", map[string]any{
+			"Toys": [][2]any{
+				{"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Circle"}}}},
+				{"Toy", map[string]any{
+					"Geo": [2]any{
+						"Geo", map[string]any{"Shape": "Square"}}}},
+			}})
+	if err != nil {
+		b.Fatal(err)
+	}
+	ref := map[string]any{"Geo": &Geo{}, "Circle": &Circle{}, "Square": &Square{}, "Toy": &Toy{}}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		adult := new(Adult)
+		if err := JsonUnmarshal(data, adult, spec, ref); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

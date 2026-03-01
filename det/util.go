@@ -2,6 +2,7 @@ package det
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -9,6 +10,29 @@ import (
 
 	"github.com/genelet/schema"
 )
+
+// getRef looks up className in ref, returning a cloned instance or an error if not found.
+func getRef(ref map[string]any, className string) (any, error) {
+	trial := ref[className]
+	if trial == nil {
+		return nil, fmt.Errorf("class ref not found for %s", className)
+	}
+	return clone(trial), nil
+}
+
+// getFirstFromMap returns the value for the lexicographically smallest key, or zero if empty.
+func getFirstFromMap[V any](m map[string]V) V {
+	var zero V
+	if len(m) == 0 {
+		return zero
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return m[keys[0]]
+}
 
 // clone creates a new zero-value instance of the same type as old.
 // The old parameter must be a pointer to a struct.
@@ -73,29 +97,3 @@ func loopFields(t reflect.Type, objectMap map[string]*schema.Value) ([]reflect.S
 	return newFields, origTypes, nil
 }
 
-// getFirstStructFromMap returns the first struct from a map using deterministic key order.
-// This ensures consistent behavior across runs since Go map iteration order is random.
-func getFirstStructFromMap(m map[string]*schema.Struct) *schema.Struct {
-	if len(m) == 0 {
-		return nil
-	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return m[keys[0]]
-}
-
-// getFirstMapStructFromMap returns the first MapStruct from a map using deterministic key order.
-func getFirstMapStructFromMap(m map[string]*schema.MapStruct) *schema.MapStruct {
-	if len(m) == 0 {
-		return nil
-	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return m[keys[0]]
-}
