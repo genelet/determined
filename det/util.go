@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/genelet/schema"
+	"github.com/tabilet/schema"
 )
 
 // getRef looks up className in ref, returning a cloned instance or an error if not found.

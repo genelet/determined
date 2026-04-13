@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/genelet/schema"
+	"github.com/tabilet/schema"
 )
 
 // JsonUnmarshal unmarshals JSON data with interfaces determined by Determined.

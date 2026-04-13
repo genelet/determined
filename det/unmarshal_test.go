@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genelet/schema"
+	"github.com/tabilet/schema"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
