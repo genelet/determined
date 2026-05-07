@@ -3,6 +3,7 @@ module github.com/genelet/determined
 go 1.25.4
 
 require (
+	github.com/OpenUdon/schema v0.0.0-20260507023912-6ea3308bb955
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/google/uuid v1.6.0
@@ -10,12 +11,11 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tabilet/schema v0.0.0-20260413181549-3f8667c17b7f
 	github.com/zclconf/go-cty v1.17.0
 	github.com/zclconf/go-cty-yaml v1.1.0
 	golang.org/x/crypto v0.45.0
 	golang.org/x/text v0.31.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 )
 

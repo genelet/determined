@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/tabilet/schema"
+	"github.com/OpenUdon/schema"
 )
 
 // JsonUnmarshal unmarshals JSON data with interfaces determined by Determined.

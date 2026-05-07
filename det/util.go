@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/tabilet/schema"
+	"github.com/OpenUdon/schema"
 )
 
 // getRef looks up className in ref, returning a cloned instance or an error if not found.
